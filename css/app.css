@@ -59,7 +59,12 @@ select {
 }
 
 .scheme-bar select {
+  min-width: 120px;
   max-width: 200px;
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
 }
 
 .save-status {
@@ -241,6 +246,11 @@ select {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.stack .btn {
+  white-space: normal;
+  text-align: left;
 }
 
 .row {
@@ -501,7 +511,12 @@ select {
   }
 
   .scheme-bar select {
-    max-width: 120px;
+    min-width: 0;
+    max-width: 130px;
+  }
+
+  .save-status {
+    font-size: 11px;
   }
 
   .scheme-bar .btn {

@@ -1,0 +1,166 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  DesignFormatError,
+  SCHEMA_VERSION,
+  createDesign,
+  fingerprint,
+  migrateDesign,
+  parseDesign,
+  uniqueName,
+  validateDesign,
+} from '../../js/storage/schema.js';
+
+const NOW = '2026-10-08T09:00:00.000Z';
+
+function sampleDesign() {
+  const design = createDesign({ id: 'd1', name: '方案 1', now: NOW, floorplanRef: 'abc' });
+  design.rooms = { living: { floorColor: '#c8a97e' } };
+  design.furniture = [
+    { id: 'f1', type: 'sofa', x: 2, y: 3, rotation: 15, size: { w: 210, d: 90, h: 85 }, color: '#8c9aa6' },
+  ];
+  return design;
+}
+
+test('createDesign 帶入版本、名稱、時間與預設樓高', () => {
+  // Act
+  const design = createDesign({ id: 'd1', name: '方案 1', now: NOW });
+
+  // Assert
+  assert.deepEqual(design, {
+    schemaVersion: SCHEMA_VERSION,
+    id: 'd1',
+    name: '方案 1',
+    createdAt: NOW,
+    updatedAt: NOW,
+    floorplanRef: null,
+    ceilingHeight: 2.8,
+    rooms: {},
+    furniture: [],
+  });
+});
+
+test('validateDesign 合法設計沒有錯誤', () => {
+  // Act & Assert
+  assert.deepEqual(validateDesign(sampleDesign()), []);
+});
+
+for (const [name, mutate, fragment] of [
+  ['名稱空白', (d) => (d.name = '  '), 'name'],
+  ['時間不是日期', (d) => (d.updatedAt = '昨天'), 'updatedAt'],
+  ['樓高超出範圍', (d) => (d.ceilingHeight = 12), 'ceilingHeight'],
+  ['地板顏色不是色碼', (d) => (d.rooms.living.floorColor = 'red'), 'rooms.living.floorColor'],
+  ['家具不是陣列', (d) => (d.furniture = {}), 'furniture'],
+  ['家具類型未知', (d) => (d.furniture[0].type = 'spaceship'), 'furniture[0].type'],
+  ['家具座標不是數字', (d) => (d.furniture[0].x = '2'), 'furniture[0].x'],
+  ['家具尺寸超出上限', (d) => (d.furniture[0].size.w = 9999), 'furniture[0].size.w'],
+  ['家具顏色錯誤', (d) => (d.furniture[0].color = '#zzz'), 'furniture[0].color'],
+  ['家具 id 重複', (d) => d.furniture.push({ ...d.furniture[0] }), 'furniture[1].id'],
+]) {
+  test(`validateDesign ${name}時指出欄位路徑`, () => {
+    // Arrange
+    const design = sampleDesign();
+    mutate(design);
+
+    // Act
+    const errors = validateDesign(design);
+
+    // Assert
+    assert.equal(errors.length, 1, errors.join(' / '));
+    assert.ok(errors[0].includes(fragment), errors[0]);
+  });
+}
+
+test('validateDesign 不是物件時回傳單一錯誤', () => {
+  // Act & Assert
+  assert.equal(validateDesign('hello').length, 1);
+});
+
+test('migrateDesign 依序套用每一版的遷移，且不修改原物件', () => {
+  // Arrange：假設格式已經改到第 3 版
+  const migrations = {
+    1: (d) => ({ ...d, schemaVersion: 2, wallColor: '#ffffff' }),
+    2: (d) => ({ ...d, schemaVersion: 3, furniture: d.furniture.map((f) => ({ ...f, locked: false })) }),
+  };
+  const old = { schemaVersion: 1, furniture: [{ id: 'f1' }] };
+
+  // Act
+  const migrated = migrateDesign(old, { migrations, current: 3 });
+
+  // Assert
+  assert.equal(migrated.schemaVersion, 3);
+  assert.equal(migrated.wallColor, '#ffffff');
+  assert.equal(migrated.furniture[0].locked, false);
+  assert.equal(old.schemaVersion, 1);
+  assert.equal(old.furniture[0].locked, undefined);
+});
+
+for (const [name, raw, fragment] of [
+  ['比程式還新的版本', { schemaVersion: 99 }, '較新版本'],
+  ['沒有版本號', { name: 'x' }, 'schemaVersion'],
+  ['版本號不是整數', { schemaVersion: '1' }, 'schemaVersion'],
+]) {
+  test(`migrateDesign ${name}時丟出格式錯誤`, () => {
+    // Act & Assert
+    assert.throws(() => migrateDesign(raw), (e) => e instanceof DesignFormatError && e.message.includes(fragment));
+  });
+}
+
+test('migrateDesign 缺少中間版本的遷移時丟出格式錯誤', () => {
+  // Act & Assert
+  assert.throws(
+    () => migrateDesign({ schemaVersion: 1 }, { migrations: {}, current: 2 }),
+    (e) => e instanceof DesignFormatError && e.message.includes('1'),
+  );
+});
+
+test('parseDesign 合法時回傳設計、不合法時丟出列出所有問題的錯誤', () => {
+  // Arrange
+  const bad = sampleDesign();
+  bad.name = '';
+  bad.furniture[0].x = null;
+
+  // Act & Assert
+  assert.equal(parseDesign(sampleDesign()).name, '方案 1');
+  assert.throws(
+    () => parseDesign(bad),
+    (e) => e instanceof DesignFormatError && e.problems.length === 2,
+  );
+});
+
+for (const [name, input, existing, expected] of [
+  ['沒衝突原樣回傳', '方案 1', ['方案 2'], '方案 1'],
+  ['衝突時加上 (2)', '方案 1', ['方案 1'], '方案 1 (2)'],
+  ['(2) 也被用掉就用 (3)', '方案 1', ['方案 1', '方案 1 (2)'], '方案 1 (3)'],
+]) {
+  test(`uniqueName ${name}`, () => {
+    // Act & Assert
+    assert.equal(uniqueName(input, existing), expected);
+  });
+}
+
+test('fingerprint 同內容相同、不同內容不同', () => {
+  // Act & Assert
+  assert.equal(fingerprint('abc'), fingerprint('abc'));
+  assert.notEqual(fingerprint('abc'), fingerprint('abd'));
+  assert.match(fingerprint('abc'), /^[0-9a-f]{8}$/);
+});
+
+test('migrateDesign 遷移函式就地修改時，原物件也不受影響', () => {
+  // Arrange：遷移寫法不小心直接改傳入的物件
+  const migrations = {
+    1: (d) => {
+      d.schemaVersion = 2;
+      d.furniture.push({ id: 'added' });
+      return d;
+    },
+  };
+  const old = { schemaVersion: 1, furniture: [] };
+
+  // Act
+  migrateDesign(old, { migrations, current: 2 });
+
+  // Assert
+  assert.equal(old.schemaVersion, 1);
+  assert.equal(old.furniture.length, 0);
+});

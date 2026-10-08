@@ -15,13 +15,13 @@ export class Viewer {
     this.listeners = new Set();
     this.canWalkTo = () => true;
     this.pressed = new Set();
-    this.clock = new THREE.Clock();
+    this.timer = new THREE.Timer();
 
     // preserveDrawingBuffer 讓截圖時讀得到畫面
     this.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     container.appendChild(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
@@ -32,7 +32,6 @@ export class Viewer {
     this.center = center;
 
     this.perspective = new THREE.PerspectiveCamera(50, 1, 0.05, 200);
-    this.perspective.position.set(center.x - bounds.width * 0.4, Math.max(bounds.width, bounds.depth) * 1.1, center.z + bounds.depth * 1.1);
     this.orbit = new OrbitControls(this.perspective, this.renderer.domElement);
     this.orbit.target.copy(center);
     this.orbit.maxPolarAngle = Math.PI * 0.48;
@@ -57,6 +56,7 @@ export class Viewer {
     this.#bindKeys();
     new ResizeObserver(() => this.resize()).observe(container);
     this.resize();
+    this.fitOrbit();
     this.renderer.setAnimationLoop(() => this.#tick());
   }
 
@@ -146,6 +146,28 @@ export class Viewer {
     this.ortho.updateProjectionMatrix();
   }
 
+  // 把房子外框的 8 個角投影到畫面上，調整距離直到最外側剛好落在畫面 90% 處；直式、橫式畫面都適用
+  fitOrbit() {
+    const { width, depth } = this.bounds;
+    const corners = [];
+    for (const x of [0, width]) for (const y of [0, 2.8]) for (const z of [0, -depth]) corners.push(new THREE.Vector3(x, y, z));
+    const direction = new THREE.Vector3(-0.35, 0.95, 1).normalize();
+    let distance = Math.hypot(width, depth) * 2;
+    for (let i = 0; i < 12; i++) {
+      this.perspective.position.copy(this.center).addScaledVector(direction, distance);
+      this.perspective.lookAt(this.center);
+      this.perspective.updateMatrixWorld();
+      const extent = Math.max(...corners.map((c) => {
+        const p = c.clone().project(this.perspective);
+        return Math.max(Math.abs(p.x), Math.abs(p.y));
+      }));
+      distance *= extent / 0.9;
+    }
+    this.perspective.position.copy(this.center).addScaledVector(direction, distance);
+    this.orbit.target.copy(this.center);
+    this.orbit.update();
+  }
+
   #moveWalker(dt) {
     if (!this.walk.isLocked || this.pressed.size === 0) return;
     const forward = (this.pressed.has('f') ? 1 : 0) - (this.pressed.has('b') ? 1 : 0);
@@ -169,7 +191,8 @@ export class Viewer {
   }
 
   #tick() {
-    const dt = Math.min(this.clock.getDelta(), 0.1);
+    this.timer.update();
+    const dt = Math.min(this.timer.getDelta(), 0.1);
     if (this.mode === 'walk') this.#moveWalker(dt);
     if (this.mode === 'orbit') this.orbit.update();
     this.renderer.render(this.scene, this.camera);

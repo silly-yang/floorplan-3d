@@ -1,14 +1,20 @@
 // 進入點：載入平面圖、建立 3D 場景、串起各面板
+import { createSession } from './app/session.js';
 import { createStore } from './app/store.js';
 import { buildSolids, validateFloorplan } from './core/floorplan.js';
 import { pointInPolygon, pointSegmentDistance } from './core/geometry2d.js';
 import { Editor } from './interact/editor.js';
+import { exportGlb, exportPng } from './scene/exporters.js';
 import { FurnitureLayer } from './scene/furnitureLayer.js';
 import { buildHouse, disposeObject, floorColorOf } from './scene/house.js';
 import { Viewer } from './scene/viewer.js';
+import { DesignStore, StorageUnavailableError } from './storage/localStore.js';
+import { fingerprint } from './storage/schema.js';
 import { renderCatalog } from './ui/catalogPanel.js';
-import { $, alertDialog, el } from './ui/dom.js';
+import { setupCloudPanel } from './ui/cloudPanel.js';
+import { $, alertDialog, el, toast } from './ui/dom.js';
 import { setupInspector } from './ui/inspector.js';
+import { makeStatusHandler, setupSessionUi } from './ui/sessionUi.js';
 
 const WALKER_RADIUS = 0.2;
 const BODY_HEIGHT = 1.2; // 低於這個高度的量體（牆、窗台）會擋住漫遊
@@ -17,10 +23,58 @@ const CUTAWAY_HEIGHT = 1.1; // 剖面模式的牆高，方便從上方看家具
 async function loadFloorplan() {
   const response = await fetch('data/floorplan.json', { cache: 'no-cache' });
   if (!response.ok) throw new Error(`讀取 data/floorplan.json 失敗（HTTP ${response.status}）`);
-  const floorplan = await response.json();
+  const text = await response.text();
+  let floorplan;
+  try {
+    floorplan = JSON.parse(text);
+  } catch {
+    throw new Error('data/floorplan.json 不是有效的 JSON');
+  }
   const errors = validateFloorplan(floorplan);
   if (errors.length) throw new Error(`平面圖格式錯誤：\n${errors.join('\n')}`);
-  return floorplan;
+  return { floorplan, ref: fingerprint(text) };
+}
+
+// 瀏覽器不給用 localStorage 時（部分無痕模式）改存在記憶體，關掉分頁就沒了
+class MemoryStorage {
+  constructor() {
+    this.map = new Map();
+  }
+  get length() {
+    return this.map.size;
+  }
+  key(i) {
+    return [...this.map.keys()][i] ?? null;
+  }
+  getItem(k) {
+    return this.map.get(k) ?? null;
+  }
+  setItem(k, v) {
+    this.map.set(k, String(v));
+  }
+  removeItem(k) {
+    this.map.delete(k);
+  }
+}
+
+function openSession(store, floorplanRef, onStatus) {
+  const make = (storage) =>
+    createSession({
+      designStore: new DesignStore(storage),
+      store,
+      now: () => new Date().toISOString(),
+      newId: () => crypto.randomUUID(),
+      floorplanRef,
+      onStatus,
+    });
+  try {
+    const session = make(window.localStorage);
+    return { session, ...session.init(), persistent: true };
+  } catch (error) {
+    if (!(error instanceof StorageUnavailableError) && error?.name !== 'SecurityError') throw error;
+    const session = make(new MemoryStorage());
+    return { session, ...session.init(), persistent: false };
+  }
 }
 
 function setupTabs() {
@@ -169,13 +223,16 @@ function setupHistoryButtons(store, editor) {
 async function main() {
   setupTabs();
   let floorplan;
+  let floorplanRef;
   try {
-    floorplan = await loadFloorplan();
+    ({ floorplan, ref: floorplanRef } = await loadFloorplan());
   } catch (error) {
     await alertDialog('無法載入平面圖', error.message);
     return;
   }
   const store = createStore({ ceilingHeight: 2.8, rooms: {}, furniture: [] });
+  let exportAll = () => {};
+  const { session, warnings, persistent } = openSession(store, floorplanRef, makeStatusHandler(() => exportAll));
   const getSolids = makeSolidsGetter(floorplan, store);
   const viewer = new Viewer($('#stage'), floorplan.bounds);
   viewer.canWalkTo = makeWalkCollision(getSolids);
@@ -197,7 +254,23 @@ async function main() {
   setupInspector(editor, getSolids);
   setupStageTools(editor, setCutaway);
   setupHistoryButtons(store, editor);
-  window.__app = { store, viewer, floorplan, furnitureLayer, editor };
+  ({ exportAll } = setupSessionUi({
+    session,
+    exportPng: () => exportPng(viewer, furnitureLayer),
+    exportGlb: () => exportGlb(viewer, furnitureLayer),
+    onFloorplanMismatch: (design) => {
+      if (design.floorplanRef && design.floorplanRef !== floorplanRef) {
+        toast(`「${design.name}」是在舊版平面圖上做的，家具位置可能需要調整`, { duration: 6000 });
+      }
+    },
+  }));
+  setupCloudPanel({ session });
+  // 開發驗證用：網址加 ?debug 才暴露內部物件
+  if (new URLSearchParams(location.search).has('debug')) window.__app = { store, viewer, floorplan, furnitureLayer, editor, session };
+  if (!persistent) {
+    await alertDialog('無法自動儲存', '瀏覽器不允許這個網頁使用儲存空間（可能是無痕模式或隱私設定）。這次的設計只會留在這個分頁，關閉前請到「檔案」匯出。');
+  }
+  if (warnings.length) await alertDialog('部分方案無法讀取', warnings.join('\n'));
 }
 
 main();

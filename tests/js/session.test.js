@@ -1,0 +1,277 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { createStore } from '../../js/app/store.js';
+import { createSession } from '../../js/app/session.js';
+import { DesignStore } from '../../js/storage/localStore.js';
+import { createDesign } from '../../js/storage/schema.js';
+
+class MemoryStorage {
+  constructor() {
+    this.map = new Map();
+  }
+  get length() {
+    return this.map.size;
+  }
+  key(i) {
+    return [...this.map.keys()][i] ?? null;
+  }
+  getItem(k) {
+    return this.map.get(k) ?? null;
+  }
+  setItem(k, v) {
+    this.map.set(k, String(v));
+  }
+  removeItem(k) {
+    this.map.delete(k);
+  }
+}
+
+function fakeTimers() {
+  const jobs = new Map();
+  let seq = 0;
+  return {
+    setTimeout: (fn) => (jobs.set(++seq, fn), seq),
+    clearTimeout: (id) => jobs.delete(id),
+    run: () => [...jobs.values()].forEach((fn, i, all) => (jobs.clear(), fn())),
+  };
+}
+
+// 開一個「頁面」：同一個 storage 再開一次就等於重新整理
+function openPage(storage) {
+  let clock = 0;
+  let ids = 0;
+  const store = createStore({ ceilingHeight: 2.8, rooms: {}, furniture: [] });
+  const timers = fakeTimers();
+  const session = createSession({
+    designStore: new DesignStore(storage),
+    store,
+    now: () => new Date(Date.UTC(2026, 9, 8, 9, 0, clock++)).toISOString(),
+    newId: () => `id-${++ids}-${Math.random().toString(36).slice(2, 6)}`,
+    floorplanRef: 'fp1',
+    timers,
+  });
+  return { store, session, timers };
+}
+
+const sofa = { id: 'f1', type: 'sofa', x: 2, y: 3, rotation: 30, size: { w: 200, d: 90, h: 85 }, color: '#112233' };
+
+test('空的瀏覽器第一次開啟時建立並儲存「方案 1」', () => {
+  // Arrange
+  const storage = new MemoryStorage();
+  const { session } = openPage(storage);
+
+  // Act
+  session.init();
+
+  // Assert
+  assert.equal(session.current.name, '方案 1');
+  assert.deepEqual(session.list().map((d) => d.name), ['方案 1']);
+});
+
+test('重新整理頁面後設計完整保留（含家具、樓高、地板色）', () => {
+  // Arrange
+  const storage = new MemoryStorage();
+  const page1 = openPage(storage);
+  page1.session.init();
+  page1.store.commit({ ceilingHeight: 3.1, rooms: { living: { floorColor: '#445566' } }, furniture: [sofa] });
+  page1.timers.run();
+
+  // Act
+  const page2 = openPage(storage);
+  page2.session.init();
+
+  // Assert
+  assert.deepEqual(page2.store.getState(), { ceilingHeight: 3.1, rooms: { living: { floorColor: '#445566' } }, furniture: [sofa] });
+  assert.equal(page2.session.current.id, page1.session.current.id);
+});
+
+test('拖曳中的 preview 不觸發存檔，commit 才存', () => {
+  // Arrange
+  const storage = new MemoryStorage();
+  const { session, store, timers } = openPage(storage);
+  session.init();
+
+  // Act
+  store.preview({ ...store.getState(), furniture: [sofa] });
+  timers.run();
+  const afterPreview = new DesignStore(storage).load(session.current.id).furniture.length;
+  store.commit({ ...store.getState(), furniture: [sofa] });
+  timers.run();
+
+  // Assert
+  assert.equal(afterPreview, 0);
+  assert.equal(new DesignStore(storage).load(session.current.id).furniture.length, 1);
+});
+
+test('新增方案時自動取不重複名稱、切過去且清空復原歷史', () => {
+  // Arrange
+  const { session, store } = openPage(new MemoryStorage());
+  session.init();
+  store.commit({ ...store.getState(), furniture: [sofa] });
+
+  // Act
+  session.createNew();
+
+  // Assert
+  assert.equal(session.current.name, '方案 2');
+  assert.deepEqual(store.getState().furniture, []);
+  assert.equal(store.canUndo(), false);
+});
+
+test('切換方案前先把目前方案未存的變更存起來', () => {
+  // Arrange
+  const storage = new MemoryStorage();
+  const { session, store } = openPage(storage);
+  session.init();
+  const firstId = session.current.id;
+  session.createNew();
+  session.switchTo(firstId);
+  store.commit({ ...store.getState(), furniture: [sofa] });
+
+  // Act：還沒等到自動儲存就切走
+  const secondId = session.list().find((d) => d.id !== firstId).id;
+  session.switchTo(secondId);
+
+  // Assert
+  assert.equal(new DesignStore(storage).load(firstId).furniture.length, 1);
+});
+
+test('重新命名不會因為復原而被改回去', () => {
+  // Arrange
+  const { session, store } = openPage(new MemoryStorage());
+  session.init();
+  store.commit({ ...store.getState(), furniture: [sofa] });
+
+  // Act
+  session.rename('客廳版');
+  store.undo();
+
+  // Assert
+  assert.equal(session.current.name, '客廳版');
+  assert.equal(session.list()[0].name, '客廳版');
+});
+
+test('重新命名為空白或與其他方案同名時拒絕', () => {
+  // Arrange
+  const { session } = openPage(new MemoryStorage());
+  session.init();
+  session.createNew();
+
+  // Act & Assert
+  assert.throws(() => session.rename('   '), /名稱/);
+  assert.throws(() => session.rename('方案 1'), /已經有/);
+});
+
+test('複製方案得到新 id、名稱加「複本」、內容相同', () => {
+  // Arrange
+  const { session, store } = openPage(new MemoryStorage());
+  session.init();
+  store.commit({ ...store.getState(), furniture: [sofa] });
+  const originalId = session.current.id;
+
+  // Act
+  session.duplicate();
+
+  // Assert
+  assert.notEqual(session.current.id, originalId);
+  assert.equal(session.current.name, '方案 1 複本');
+  assert.deepEqual(store.getState().furniture, [sofa]);
+  assert.equal(session.list().length, 2);
+});
+
+test('刪除目前方案時切到另一個；刪到最後一個時自動建立新的空方案', () => {
+  // Arrange
+  const { session } = openPage(new MemoryStorage());
+  session.init();
+  session.createNew();
+  const [first, second] = session.list();
+
+  // Act
+  session.remove(second.id);
+  const afterFirstRemove = session.current.id;
+  session.remove(first.id);
+
+  // Assert
+  assert.equal(afterFirstRemove, first.id);
+  assert.equal(session.list().length, 1);
+  assert.notEqual(session.current.id, first.id);
+});
+
+test('目前方案的儲存資料損毀時改開其他方案並提出警告', () => {
+  // Arrange
+  const storage = new MemoryStorage();
+  const page1 = openPage(storage);
+  page1.session.init();
+  page1.session.createNew();
+  const brokenId = page1.session.current.id;
+  storage.setItem(`fp3d.design.${brokenId}`, '{壞掉');
+
+  // Act
+  const page2 = openPage(storage);
+  const { warnings } = page2.session.init();
+
+  // Assert
+  assert.notEqual(page2.session.current.id, brokenId);
+  assert.ok(warnings.length >= 1);
+});
+
+test('匯入覆蓋目前開著的方案時，畫面內容跟著換成匯入的版本', () => {
+  // Arrange
+  const { session, store } = openPage(new MemoryStorage());
+  session.init();
+  const incoming = { ...createDesign({ id: session.current.id, name: '方案 1', now: '2026-10-09T00:00:00.000Z' }), furniture: [sofa] };
+
+  // Act
+  session.importDesign(incoming);
+
+  // Assert
+  assert.deepEqual(store.getState().furniture, [sofa]);
+});
+
+test('匯入新方案會存進清單但不切換目前方案', () => {
+  // Arrange
+  const { session } = openPage(new MemoryStorage());
+  session.init();
+  const currentId = session.current.id;
+
+  // Act
+  session.importDesign(createDesign({ id: 'imported', name: '匯入的', now: '2026-10-09T00:00:00.000Z' }));
+
+  // Assert
+  assert.equal(session.current.id, currentId);
+  assert.ok(session.list().some((d) => d.name === '匯入的'));
+});
+
+test('刪除目前方案時若還有未存的變更，不會把刪掉的方案又寫回去', () => {
+  // Arrange
+  const storage = new MemoryStorage();
+  const { session, store } = openPage(storage);
+  session.init();
+  session.createNew();
+  const doomed = session.current.id;
+  store.commit({ ...store.getState(), furniture: [sofa] });
+
+  // Act：自動儲存還在等待中就刪除
+  session.remove(doomed);
+
+  // Assert
+  assert.equal(storage.getItem(`fp3d.design.${doomed}`), null);
+  assert.ok(!session.list().some((d) => d.id === doomed));
+});
+
+test('load 讀取其他方案的完整內容，不切換目前方案', () => {
+  // Arrange
+  const { session, store } = openPage(new MemoryStorage());
+  session.init();
+  store.commit({ ...store.getState(), furniture: [sofa] });
+  session.flush();
+  const firstId = session.current.id;
+  session.createNew();
+
+  // Act
+  const loaded = session.load(firstId);
+
+  // Assert
+  assert.deepEqual(loaded.furniture, [sofa]);
+  assert.notEqual(session.current.id, firstId);
+});
