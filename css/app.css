@@ -968,6 +968,8 @@ select {
 
   .preset-thumb {
     height: 72px;
+  }
+}
 
 /* ---------- 匯入平面圖（DXF）精靈 ---------- */
 .import-wizard {
