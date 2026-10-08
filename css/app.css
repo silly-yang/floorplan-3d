@@ -1190,6 +1190,22 @@ select {
   margin: 8px 0;
 }
 
+/* 預覽時點到的窗：改窗台、窗頂 */
+.wizard-window {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 8px;
+  border: 1px solid #e0218a;
+  border-radius: 6px;
+}
+
+.wizard-window input {
+  width: 72px;
+}
+
 .wizard-warnings li,
 .wizard-hint {
   color: var(--warn);
@@ -1229,8 +1245,8 @@ select {
   margin-bottom: 8px;
 }
 
-/* 預覽匯入的平面圖時的提示條；版面高度扣掉它 */
-.preview-banner {
+/* 使用匯入的平面圖時的提示條；版面高度扣掉它 */
+.floorplan-banner {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1242,12 +1258,8 @@ select {
   font-size: 14px;
 }
 
-.previewing .layout {
+.on-imported-floorplan .layout {
   height: calc(100% - var(--topbar-h) - 40px);
-}
-
-.previewing .save-status {
-  display: none;
 }
 
 @media (max-width: 760px) {
@@ -1276,12 +1288,12 @@ select {
     padding: 8px;
   }
 
-  .preview-banner {
+  .floorplan-banner {
     font-size: 12px;
     height: 56px;
   }
 
-  .previewing .layout {
+  .on-imported-floorplan .layout {
     height: calc(100% - var(--topbar-h) - 56px);
   }
 }

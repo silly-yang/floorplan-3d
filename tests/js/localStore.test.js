@@ -69,6 +69,19 @@ test('list 依建立順序列出所有方案', () => {
   assert.deepEqual(broken, []);
 });
 
+test('list 帶出每個方案用的 floorplanRef', () => {
+  // Arrange
+  const store = new DesignStore(new FakeStorage());
+  store.save({ ...design('a'), floorplanRef: 'fp-a' });
+  store.save(design('b'));
+
+  // Act
+  const { designs } = store.list();
+
+  // Assert
+  assert.deepEqual(designs.map((d) => [d.id, d.floorplanRef]), [['a', 'fp-a'], ['b', null]]);
+});
+
 test('save 不合法的設計時丟出格式錯誤，且什麼都不寫入', () => {
   // Arrange
   const storage = new FakeStorage();

@@ -109,6 +109,44 @@ test('convertDxf 牆線沒封閉時給警告', () => {
   assert.ok(warnings.some((w) => w.includes('沒有封閉')));
 });
 
+test('convertDxf 沒有編號的窗用預設高度並在警告列出個數', () => {
+  // Arrange：門洞處畫上窗線，再加一段牆留第二個沒編號的窗
+  const config = { ...baseConfig(), unlabeledWindow: { sill: 0.9, head: 2.1 } };
+  const extra = [
+    dxf.line('OPEN-Window', [o + 100, o + 7.5], [o + 190, o + 7.5]),
+    ...dxf.rectLines('L3', o + 400, o + 0, o + 500, o + 15),
+    ...dxf.rectLines('L3', o + 600, o + 0, o + 700, o + 15),
+    dxf.line('OPEN-Window', [o + 500, o + 7.5], [o + 600, o + 7.5]),
+  ];
+
+  // Act
+  const { floorplan, warnings } = build(config, extra);
+
+  // Assert
+  const windows = floorplan.openings.filter((x) => x.kind === 'window');
+  assert.deepEqual(windows.map((w) => [w.label, w.sill, w.head]), [['', 0.9, 2.1], ['', 0.9, 2.1]]);
+  assert.ok(warnings.some((w) => w.includes('有 2 個窗沒有編號，用預設高度')), warnings.join('\n'));
+});
+
+test('convertDxf unlabeledWindow 的窗台不低於窗頂時丟出設定錯誤', () => {
+  // Arrange
+  const config = { ...baseConfig(), unlabeledWindow: { sill: 2.1, head: 0.9 } };
+
+  // Act & Assert
+  assert.throws(() => build(config), (err) => err instanceof ConfigError && /unlabeledWindow/.test(err.message));
+});
+
+test('convertDxf 窗都有編號時不出現沒有編號的警告', () => {
+  // Arrange
+  const config = { ...baseConfig(), unlabeledWindow: { sill: 0.9, head: 2.1 } };
+
+  // Act
+  const { warnings } = build(config);
+
+  // Assert
+  assert.ok(!warnings.some((w) => w.includes('沒有編號')));
+});
+
 test('convertDxf 欄杆線把陽台封起來，填色不越過欄杆', () => {
   // Arrange：上方沒有牆，只有一條欄杆線；欄杆刻意不落在填色格子中心上
   const entities = [

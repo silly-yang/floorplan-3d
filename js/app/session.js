@@ -19,7 +19,20 @@ const contentOf = (design) => ({
 });
 
 // defaultFurniture：新方案預先擺好的家具（建商附的廚衛），每次呼叫要給新的 id
-export function createSession({ designStore, store, now, newId, floorplanRef = null, timers = globalThis, onStatus = () => {}, defaultFurniture = () => [] }) {
+// ownsRef：方案的 floorplanRef 是否屬於目前的平面圖；清單、預設名稱、刪除後改開的方案都只看這些
+// preferredId：開頁時優先開的方案，沒給就用上次開的
+export function createSession({
+  designStore,
+  store,
+  now,
+  newId,
+  floorplanRef = null,
+  ownsRef = () => true,
+  preferredId = null,
+  timers = globalThis,
+  onStatus = () => {},
+  defaultFurniture = () => [],
+}) {
   let meta = null; // 目前方案除了 store 內容以外的欄位
   const listeners = new Set();
   const emit = () => listeners.forEach((l) => l());
@@ -56,7 +69,8 @@ export function createSession({ designStore, store, now, newId, floorplanRef = n
     emit();
   };
 
-  const names = () => designStore.list().designs.map((d) => d.name);
+  const ownDesigns = (designs) => designs.filter((d) => ownsRef(d.floorplanRef));
+  const names = () => ownDesigns(designStore.list().designs).map((d) => d.name);
 
   const createAndOpen = (name) => {
     const design = { ...createDesign({ id: newId(), name, now: now(), floorplanRef }), furniture: defaultFurniture() };
@@ -74,9 +88,13 @@ export function createSession({ designStore, store, now, newId, floorplanRef = n
     // 回傳 { warnings }：損毀的方案、找不到的方案都只警告，不讓頁面壞掉
     init() {
       const warnings = [];
-      const { designs, broken } = designStore.list();
+      const listed = designStore.list();
+      const designs = ownDesigns(listed.designs);
+      const broken = listed.broken;
       for (const b of broken) warnings.push(`方案資料損毀，已略過（${b.id}）：${b.error.message}`);
-      const preferred = designStore.activeId;
+      // 上次開的方案屬於別張平面圖時不開
+      const wanted = preferredId ?? designStore.activeId;
+      const preferred = listed.designs.some((d) => d.id === wanted && !ownsRef(d.floorplanRef)) ? null : wanted;
       const candidates = [preferred, ...designs.map((d) => d.id)].filter((id, i, all) => id && all.indexOf(id) === i);
       for (const id of candidates) {
         try {
@@ -95,7 +113,7 @@ export function createSession({ designStore, store, now, newId, floorplanRef = n
     },
 
     list() {
-      return designStore.list().designs;
+      return ownDesigns(designStore.list().designs);
     },
 
     load(id) {
@@ -148,7 +166,7 @@ export function createSession({ designStore, store, now, newId, floorplanRef = n
       if (removingCurrent) {
         autosaver.cancel(); // 待存的內容是刪掉的方案，存下去會把它寫回來
         meta = null;
-        const next = designStore.list().designs[0];
+        const next = ownDesigns(designStore.list().designs)[0];
         if (next) open(designStore.load(next.id));
         else createAndOpen(nextDefaultName());
       }

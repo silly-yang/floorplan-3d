@@ -4,6 +4,7 @@ import { createDesign } from '../../js/storage/schema.js';
 import {
   EXPORT_FORMAT,
   ImportError,
+  assignFloorplans,
   buildExport,
   exportFileName,
   findConflict,
@@ -128,4 +129,84 @@ test('resolveImport 沒有任何衝突時原樣保留', () => {
 
   // Assert
   assert.equal(result.id, 'a');
+});
+
+// ---------- 平面圖跟著設計檔走 ----------
+
+const plan = (width) => ({
+  version: 1,
+  units: 'm',
+  bounds: { width, depth: 2 },
+  walls: [{ id: 'wall-1', kind: 'rc', polygon: [[0, 0], [width, 0], [width, 0.15]] }],
+  openings: [],
+  rooms: [{ id: 'room-1', name: '客廳', rects: [[0, 0, 1, 1]] }],
+  fixtures: [],
+  outlets: [],
+});
+const fpRecord = (ref, name = `平面圖 ${ref}`) => ({ ref, name, createdAt: NOW, floorplan: plan(5) });
+const designOn = (id, floorplanRef) => createDesign({ id, name: `方案 ${id}`, now: NOW, floorplanRef });
+
+test('匯出包第 2 版帶上匯入的平面圖與預設平面圖的 ref，匯入時原樣讀回', () => {
+  // Arrange
+  const designs = [designOn('a', 'imp-1'), designOn('b', 'default-ref')];
+
+  // Act
+  const bundle = buildExport(designs, NOW, { floorplans: [fpRecord('imp-1')], defaultRefs: ['default-ref'] });
+  const parsed = parseImportText(JSON.stringify(bundle));
+
+  // Assert
+  assert.equal(bundle.version, 2);
+  assert.deepEqual(parsed.floorplans, [fpRecord('imp-1')]);
+  assert.deepEqual(parsed.defaultRefs, ['default-ref']);
+  assert.deepEqual(parsed.designs, designs);
+  assert.equal(parsed.checksFloorplans, true);
+});
+
+for (const [name, content] of [
+  ['第 1 版匯出包', () => ({ format: EXPORT_FORMAT, version: 1, exportedAt: NOW, designs: [designOn('a', 'whatever')] })],
+  ['單一設計物件', () => designOn('a', 'whatever')],
+  ['設計陣列', () => [designOn('a', 'whatever')]],
+]) {
+  test(`parseImportText 舊格式沒有平面圖資訊，照舊全部匯入：${name}`, () => {
+    // Arrange
+    const parsed = parseImportText(JSON.stringify(content()));
+
+    // Act
+    const { designs, errors } = assignFloorplans(parsed, { hasFloorplan: () => false, defaultRef: 'default-ref' });
+
+    // Assert
+    assert.deepEqual(parsed.floorplans, []);
+    assert.equal(parsed.checksFloorplans, false);
+    assert.deepEqual(designs.map((d) => d.id), ['a']);
+    assert.deepEqual(errors, []);
+  });
+}
+
+test('parseImportText 格式錯誤的平面圖列進錯誤，其他照常讀', () => {
+  // Arrange
+  const bundle = buildExport([], NOW, { floorplans: [{ ...fpRecord('bad', '壞掉的'), floorplan: { version: 1 } }, fpRecord('ok')], defaultRefs: [] });
+
+  // Act
+  const { floorplans, errors } = parseImportText(JSON.stringify(bundle));
+
+  // Assert
+  assert.deepEqual(floorplans.map((f) => f.ref), ['ok']);
+  assert.equal(errors.length, 1);
+  assert.match(errors[0].label, /平面圖「壞掉的」/);
+  assert.ok(errors[0].problems.length > 0);
+});
+
+test('assignFloorplans 方案的平面圖找不到時明確報錯，不放到預設平面圖上', () => {
+  // Arrange
+  const designs = [designOn('known', 'imp-1'), designOn('default', 'default-ref'), designOn('old-default', 'old-ref'), designOn('legacy', null), designOn('lost', 'imp-9')];
+  const parsed = parseImportText(JSON.stringify(buildExport(designs, NOW, { floorplans: [], defaultRefs: ['old-ref'] })));
+
+  // Act
+  const result = assignFloorplans(parsed, { hasFloorplan: (ref) => ref === 'imp-1', defaultRef: 'default-ref' });
+
+  // Assert
+  assert.deepEqual(result.designs.map((d) => d.id), ['known', 'default', 'old-default', 'legacy']);
+  assert.equal(result.errors.length, 1);
+  assert.match(result.errors[0].label, /方案 lost/);
+  assert.ok(result.errors[0].problems[0].includes('平面圖'));
 });
