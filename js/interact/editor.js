@@ -13,7 +13,7 @@ import {
   snapToWalls,
   updateFurniture,
 } from '../core/layout.js';
-import { createDoubleTapDetector } from '../core/cameraMath.js';
+import { arrowOffset, createDoubleTapDetector } from '../core/cameraMath.js';
 import { doorStateOf } from '../core/doors.js';
 import { createFurniture, getCatalogItem } from '../furniture/catalog.js';
 import { initialElevation } from '../core/mounting.js';
@@ -32,6 +32,8 @@ const PEGBOARD_MIME = 'application/x-pegboard-id'; // 與 pegboardPanel 相同
 const WALK_REACH = 2.5;
 const NUDGE_RADIUS = 0.8; // 旋轉、改尺寸撞牆時，最多自動挪動幾公尺 // 漫遊時伸手可及、能開關門的距離（公尺）
 
+const ARROW_STEP = { normal: 0.05, large: 0.5, fine: 0.01 }; // 公尺
+const ARROW_SETTLE = 600; // 毫秒；方向鍵停手這麼久才算一次可復原的移動
 const newId = () => crypto.randomUUID();
 
 export class Editor {
@@ -514,6 +516,51 @@ export class Editor {
     this.snap = enabled;
   }
 
+  // ---------- 方向鍵微調 ----------
+
+  // 畫面「上」在平面上的方向：鏡頭的上方向量投影到地面；平視時改用視線方向
+  #screenUp() {
+    const camera = this.viewer.camera;
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+    if (Math.hypot(up.x, up.z) > 0.1) return [up.x, -up.z];
+    const forward = new THREE.Vector3();
+    camera.getWorldDirection(forward);
+    return [forward.x, -forward.z];
+  }
+
+  // 連續按鍵先用 preview，停手一下才 commit，復原一次就回到按鍵前
+  #arrowMove(key, step) {
+    const item = this.selected;
+    const offset = item && arrowOffset(key, this.#screenUp(), step);
+    if (!offset) return false;
+    const design = this.store.getState();
+    const target = [item.x + offset[0], item.y + offset[1]];
+    let spot;
+    if (isElectrical(item.type)) spot = snapToWall(target, this.walls);
+    else if (isWallTv(item)) {
+      spot = this.#tvWallSpot(item, target);
+      if (spot && hitsWalls({ ...item, ...spot }, this.getSolids(), item.elevation)) spot = null;
+    } else spot = moveToward(item, { x: target[0], y: target[1] }, this.getSolids());
+    if (!spot || (spot.x === item.x && spot.y === item.y)) {
+      toast('再往前會撞到牆');
+      return true;
+    }
+    // 0.1 + 0.05 這類累加會出現 3.8999999999999995，取到微米
+    spot = { ...spot, x: Math.round(spot.x * 1e6) / 1e6, y: Math.round(spot.y * 1e6) / 1e6 };
+    this.arrowBase ??= design;
+    this.store.preview(updateFurniture(design, item.id, this.#withLightElevation(item, spot)));
+    clearTimeout(this.arrowTimer);
+    this.arrowTimer = setTimeout(() => this.#commitArrowMove(), ARROW_SETTLE);
+    return true;
+  }
+
+  #commitArrowMove() {
+    clearTimeout(this.arrowTimer);
+    if (!this.arrowBase) return;
+    this.store.commit(this.store.getState(), { base: this.arrowBase });
+    this.arrowBase = null;
+  }
+
   // ---------- 鍵盤 ----------
 
   #bindKeys() {
@@ -522,6 +569,13 @@ export class Editor {
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) || e.target?.isContentEditable) return;
       if (document.querySelector('dialog[open]')) return;
       const mod = e.ctrlKey || e.metaKey;
+      // 方向鍵：5 cm；Shift 50 cm；Alt 1 cm。漫遊時方向鍵是走路，不攔
+      if (!mod && this.viewer.mode !== 'walk' && e.key.startsWith('Arrow')) {
+        if (this.#arrowMove(e.key, e.shiftKey ? ARROW_STEP.large : e.altKey ? ARROW_STEP.fine : ARROW_STEP.normal)) e.preventDefault();
+        return;
+      }
+      // 其他操作前先把還沒 commit 的方向鍵移動存起來
+      this.#commitArrowMove();
       const key = e.key.toLowerCase();
       if (mod && key === 'z' && !e.shiftKey) this.undo();
       else if (mod && (key === 'y' || (key === 'z' && e.shiftKey))) this.redo();

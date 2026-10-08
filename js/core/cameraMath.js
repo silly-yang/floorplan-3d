@@ -46,6 +46,18 @@ const WALK_START_RATIO = 0.2; // 站在長邊這個比例處，看向另一端�
 
 const rectArea = ([x0, y0, x1, y1]) => (x1 - x0) * (y1 - y0);
 
+// 方向鍵 → 平面位移 [dx, dy]：「上」是畫面上方，貼齊到最接近的平面軸；不是方向鍵回 null
+const ARROW_TURNS = { ArrowUp: 0, ArrowRight: 1, ArrowDown: 2, ArrowLeft: 3 }; // 從「上」順時針轉幾個 90°
+
+export function arrowOffset(key, screenUp, step) {
+  const turns = ARROW_TURNS[key];
+  if (turns === undefined) return null;
+  const [ux, uy] = screenUp;
+  let dir = Math.abs(ux) >= Math.abs(uy) ? [Math.sign(ux), 0] : [0, Math.sign(uy)];
+  for (let i = 0; i < turns; i++) dir = [dir[1], -dir[0]]; // 平面上順時針 90°
+  return [dir[0] * step + 0, dir[1] * step + 0];
+}
+
 // 漫遊起點：面積最大的房間裡最大的一塊矩形；回傳世界座標 { x, z, yaw }，沒有房間回 null
 export function walkStart(rooms) {
   const areaOf = (room) => room.rects.reduce((s, r) => s + rectArea(r), 0);

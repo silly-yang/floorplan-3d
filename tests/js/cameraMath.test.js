@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createDoubleTapDetector, focusOn, walkStart, zoomToward } from '../../js/core/cameraMath.js';
+import { arrowOffset, createDoubleTapDetector, focusOn, walkStart, zoomToward } from '../../js/core/cameraMath.js';
 
 const v = (x, y, z) => ({ x, y, z });
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
@@ -105,4 +105,33 @@ test('walkStart 房間面積以所有矩形加總比較，不是只看最大的�
 test('walkStart 沒有房間時回 null', () => {
   // Act & Assert
   assert.equal(walkStart([]), null);
+});
+
+// ---------- 方向鍵移動 ----------
+// screenUp：畫面「上」在平面上的方向（平面座標 x 向東、y 向北）
+
+const offsetClose = (actual, expected) => actual && close(actual[0], expected[0]) && close(actual[1], expected[1]);
+
+for (const [name, key, screenUp, expected] of [
+  ['畫面上方朝北時，↑ 往北', 'ArrowUp', [0, 1], [0, 0.05]],
+  ['畫面上方朝北時，→ 往東', 'ArrowRight', [0, 1], [0.05, 0]],
+  ['畫面上方朝北時，↓ 往南', 'ArrowDown', [0, 1], [0, -0.05]],
+  ['畫面上方朝北時，← 往西', 'ArrowLeft', [0, 1], [-0.05, 0]],
+  ['畫面上方朝東時，↑ 往東', 'ArrowUp', [1, 0], [0.05, 0]],
+  ['畫面上方朝東時，→ 往南', 'ArrowRight', [1, 0], [0, -0.05]],
+  ['斜看時取比較接近的軸（偏北）', 'ArrowUp', [0.4, 0.9], [0, 0.05]],
+  ['斜看時取比較接近的軸（偏西）', 'ArrowUp', [-0.9, 0.3], [-0.05, 0]],
+]) {
+  test(`arrowOffset ${name}`, () => {
+    // Act
+    const offset = arrowOffset(key, screenUp, 0.05);
+
+    // Assert
+    assert.ok(offsetClose(offset, expected), `${offset}`);
+  });
+}
+
+test('arrowOffset 不是方向鍵時回 null', () => {
+  // Act & Assert
+  assert.equal(arrowOffset('KeyR', [0, 1], 0.05), null);
 });
