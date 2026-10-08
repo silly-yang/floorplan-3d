@@ -44,6 +44,8 @@ for (const [name, b, expected] of [
   ['完全包含', square(0.25, 0.25, 0.5), true],
   ['分離', square(2, 0, 1), false],
   ['只碰到邊不算重疊', square(1, 0, 1), false],
+  ['上下邊對齊、左右部分重疊', [[0.5, 0], [1.5, 0], [1.5, 1], [0.5, 1]], true],
+  ['完全重合', square(0, 0, 1), true],
 ]) {
   test(`polygonsIntersect ${name}`, () => {
     // Act
@@ -87,4 +89,23 @@ test('rectCorners 旋轉 90 度時寬深對調', () => {
   const ys = corners.map(([, y]) => y);
   assert.ok(close(Math.max(...xs) - Math.min(...xs), 1));
   assert.ok(close(Math.max(...ys) - Math.min(...ys), 2));
+});
+
+// L 形牆（凹多邊形）：真實圖面的外牆轉角就是這種形狀
+const L_WALL = [[0, 0], [2, 0], [2, 0.2], [0.2, 0.2], [0.2, 2], [0, 2]];
+
+test('polygonsIntersect 矩形放在 L 形牆的凹口內不算相交', () => {
+  // Act
+  const result = polygonsIntersect([[0.5, 0.5], [1.5, 0.5], [1.5, 1.5], [0.5, 1.5]], L_WALL);
+
+  // Assert
+  assert.equal(result, false);
+});
+
+test('polygonsIntersect 矩形壓到 L 形牆的一臂算相交', () => {
+  // Act
+  const result = polygonsIntersect([[0.1, 0.5], [0.5, 0.5], [0.5, 1], [0.1, 1]], L_WALL);
+
+  // Assert
+  assert.equal(result, true);
 });

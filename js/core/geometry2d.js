@@ -45,7 +45,54 @@ function strictlyInside(pt, poly) {
   return edges(poly).every(([a, b]) => pointSegmentDistance(pt, a, b) > EPS);
 }
 
+const signedArea = (poly) => edges(poly).reduce((s, [p, q]) => s + p[0] * q[1] - q[0] * p[1], 0) / 2;
+
+function isConvex(poly) {
+  let sign = 0;
+  for (let i = 0; i < poly.length; i++) {
+    const c = cross(poly[i], poly[(i + 1) % poly.length], poly[(i + 2) % poly.length]);
+    if (Math.abs(c) < EPS) continue;
+    if (sign === 0) sign = Math.sign(c);
+    else if (Math.sign(c) !== sign) return false;
+  }
+  return true;
+}
+
+// Sutherland–Hodgman：以凸多邊形 clip 裁切任意簡單多邊形 subject，回傳交集
+function clipPolygon(subject, clip) {
+  const ccw = signedArea(clip) > 0 ? clip : [...clip].reverse();
+  let output = subject;
+  for (const [a, b] of edges(ccw)) {
+    if (output.length === 0) break;
+    const input = output;
+    output = [];
+    const inside = (p) => cross(a, b, p) >= -EPS;
+    const intersect = (p, q) => {
+      const t = cross(a, b, p) / (cross(a, b, p) - cross(a, b, q));
+      return [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
+    };
+    input.forEach((p, i) => {
+      const q = input[(i + 1) % input.length];
+      if (inside(q)) {
+        if (!inside(p)) output.push(intersect(p, q));
+        output.push(q);
+      } else if (inside(p)) {
+        output.push(intersect(p, q));
+      }
+    });
+  }
+  return output;
+}
+
+const OVERLAP_AREA = 1e-8; // 平方公尺；只碰到邊的交集面積為 0
+
 export function polygonsIntersect(a, b) {
+  // 有一邊是凸多邊形（家具底面一定是）就直接算交集面積，邊對齊的情況也判得準
+  if (isConvex(a) || isConvex(b)) {
+    const [subject, clip] = isConvex(a) ? [b, a] : [a, b];
+    const overlap = clipPolygon(subject, clip);
+    return overlap.length >= 3 && Math.abs(signedArea(overlap)) > OVERLAP_AREA;
+  }
   for (const [p, q] of edges(a)) {
     for (const [r, s] of edges(b)) {
       if (segmentsCross(p, q, r, s)) return true;

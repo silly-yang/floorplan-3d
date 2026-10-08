@@ -59,7 +59,10 @@ export function buildHouse(floorplan, { ceilingHeight, rooms }) {
     depthWrite: false,
   });
   for (const glass of buildGlass(floorplan)) {
-    const mesh = extrude(glass.polygon, glass.bottom, glass.top, glassMaterial);
+    // 剖面模式的牆比窗低，玻璃也跟著截掉
+    const top = Math.min(glass.top, ceilingHeight);
+    if (top <= glass.bottom) continue;
+    const mesh = extrude(glass.polygon, glass.bottom, top, glassMaterial);
     mesh.castShadow = false;
     mesh.name = glass.id;
     group.add(mesh);

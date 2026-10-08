@@ -2,15 +2,17 @@
 import { createStore } from './app/store.js';
 import { buildSolids, validateFloorplan } from './core/floorplan.js';
 import { pointInPolygon, pointSegmentDistance } from './core/geometry2d.js';
-import { createFurniture } from './furniture/catalog.js';
+import { Editor } from './interact/editor.js';
 import { FurnitureLayer } from './scene/furnitureLayer.js';
 import { buildHouse, disposeObject, floorColorOf } from './scene/house.js';
 import { Viewer } from './scene/viewer.js';
 import { renderCatalog } from './ui/catalogPanel.js';
 import { $, alertDialog, el } from './ui/dom.js';
+import { setupInspector } from './ui/inspector.js';
 
 const WALKER_RADIUS = 0.2;
 const BODY_HEIGHT = 1.2; // 低於這個高度的量體（牆、窗台）會擋住漫遊
+const CUTAWAY_HEIGHT = 1.1; // 剖面模式的牆高，方便從上方看家具
 
 async function loadFloorplan() {
   const response = await fetch('data/floorplan.json', { cache: 'no-cache' });
@@ -43,32 +45,47 @@ function setupViewSwitch(viewer) {
   });
 }
 
-function makeWalkCollision(floorplan, store) {
-  return ([x, y]) => {
-    const blockers = buildSolids(floorplan, store.getState().ceilingHeight).filter((s) => s.bottom < BODY_HEIGHT);
-    return blockers.every(({ polygon }) => {
-      if (pointInPolygon([x, y], polygon)) return false;
-      return polygon.every((a, i) => pointSegmentDistance([x, y], a, polygon[(i + 1) % polygon.length]) > WALKER_RADIUS);
-    });
+// 量體只跟樓高有關，樓高沒變就沿用上次的結果
+function makeSolidsGetter(floorplan, store) {
+  let cache = { height: null, solids: [] };
+  return () => {
+    const height = store.getState().ceilingHeight;
+    if (cache.height !== height) cache = { height, solids: buildSolids(floorplan, height) };
+    return cache.solids;
   };
+}
+
+function makeWalkCollision(getSolids) {
+  return ([x, y]) =>
+    getSolids()
+      .filter((s) => s.bottom < BODY_HEIGHT)
+      .every(({ polygon }) => {
+        if (pointInPolygon([x, y], polygon)) return false;
+        return polygon.every((a, i) => pointSegmentDistance([x, y], a, polygon[(i + 1) % polygon.length]) > WALKER_RADIUS);
+      });
 }
 
 function setupFloorPanel(floorplan, store) {
   const ceiling = $('#ceiling-input');
   const list = $('#room-list');
+  let colorBase = null;
   const render = (design) => {
     ceiling.value = design.ceilingHeight;
     list.replaceChildren(
       ...floorplan.rooms.map((room) => {
         const input = el('input', { type: 'color', value: floorColorOf(room.id, design.rooms) });
-        const update = (commit) => {
+        const next = () => {
           const current = store.getState();
-          const next = { ...current, rooms: { ...current.rooms, [room.id]: { floorColor: input.value } } };
-          if (commit) store.commit(next);
-          else store.preview(next);
+          return { ...current, rooms: { ...current.rooms, [room.id]: { floorColor: input.value } } };
         };
-        input.addEventListener('input', () => update(false));
-        input.addEventListener('change', () => update(true));
+        input.addEventListener('input', () => {
+          colorBase ??= store.getState();
+          store.preview(next());
+        });
+        input.addEventListener('change', () => {
+          store.commit(next(), colorBase ? { base: colorBase } : {});
+          colorBase = null;
+        });
         return el('li', {}, el('label', { class: 'field' }, el('span', {}, room.name), input));
       }),
     );
@@ -88,22 +105,65 @@ function setupFloorPanel(floorplan, store) {
   render(store.getState());
 }
 
+// 回傳 setCutaway(boolean)：剖面模式只改顯示，不改設計裡的樓高
 function setupHouse(floorplan, viewer, store) {
   let house = null;
   let lastKey = '';
-  const sync = (design) => {
-    const key = JSON.stringify([design.ceilingHeight, design.rooms]);
+  let cutaway = false;
+  const sync = () => {
+    const design = store.getState();
+    const height = cutaway ? Math.min(CUTAWAY_HEIGHT, design.ceilingHeight) : design.ceilingHeight;
+    const key = JSON.stringify([height, design.rooms]);
     if (key === lastKey) return;
     lastKey = key;
     if (house) {
       viewer.scene.remove(house.group);
       disposeObject(house.group);
     }
-    house = buildHouse(floorplan, design);
+    house = buildHouse(floorplan, { ceilingHeight: height, rooms: design.rooms });
     viewer.scene.add(house.group);
   };
   store.subscribe(sync);
-  sync(store.getState());
+  sync();
+  return (enabled) => {
+    cutaway = enabled;
+    sync();
+  };
+}
+
+function toggleButton(label, initial, onToggle, title) {
+  const button = el('button', { class: 'btn', 'aria-pressed': String(initial), title }, label);
+  const paint = (on) => {
+    button.classList.toggle('primary', on);
+    button.setAttribute('aria-pressed', String(on));
+  };
+  paint(initial);
+  button.addEventListener('click', () => {
+    const on = button.getAttribute('aria-pressed') !== 'true';
+    paint(on);
+    onToggle(on);
+  });
+  return button;
+}
+
+function setupStageTools(editor, setCutaway) {
+  $('#stage-tools').replaceChildren(
+    toggleButton('對齊網格 5 cm', true, (on) => editor.setSnap(on), '移動家具時對齊 5 公分網格'),
+    toggleButton('剖面', false, setCutaway, '把牆降到 1.1 公尺，方便看家具配置'),
+  );
+}
+
+function setupHistoryButtons(store, editor) {
+  const undo = $('#undo-btn');
+  const redo = $('#redo-btn');
+  undo.addEventListener('click', () => editor.undo());
+  redo.addEventListener('click', () => editor.redo());
+  const refresh = () => {
+    undo.disabled = !store.canUndo();
+    redo.disabled = !store.canRedo();
+  };
+  store.subscribe(refresh);
+  refresh();
 }
 
 async function main() {
@@ -116,21 +176,28 @@ async function main() {
     return;
   }
   const store = createStore({ ceilingHeight: 2.8, rooms: {}, furniture: [] });
+  const getSolids = makeSolidsGetter(floorplan, store);
   const viewer = new Viewer($('#stage'), floorplan.bounds);
-  viewer.canWalkTo = makeWalkCollision(floorplan, store);
+  viewer.canWalkTo = makeWalkCollision(getSolids);
   setupViewSwitch(viewer);
-  setupHouse(floorplan, viewer, store);
+  const setCutaway = setupHouse(floorplan, viewer, store);
   setupFloorPanel(floorplan, store);
+
+  // 圖層要比編輯器先訂閱：編輯器更新選取與衝突外框時，物件必須已經同步好
   const furnitureLayer = new FurnitureLayer(viewer.scene);
   store.subscribe((design) => furnitureLayer.sync(design.furniture));
+  furnitureLayer.sync(store.getState().furniture);
+  const editor = new Editor({ viewer, store, furnitureLayer, getSolids });
   renderCatalog({
     onAdd: (type) => {
-      const design = store.getState();
-      const item = createFurniture(type, { id: crypto.randomUUID(), x: floorplan.bounds.width / 2, y: floorplan.bounds.depth / 2 });
-      store.commit({ ...design, furniture: [...design.furniture, item] });
+      editor.add(type);
+      document.body.classList.remove('sidebar-open');
     },
   });
-  window.__app = { store, viewer, floorplan, furnitureLayer };
+  setupInspector(editor, getSolids);
+  setupStageTools(editor, setCutaway);
+  setupHistoryButtons(store, editor);
+  window.__app = { store, viewer, floorplan, furnitureLayer, editor };
 }
 
 main();
