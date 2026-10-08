@@ -40,6 +40,7 @@ test('createDesign 帶入版本、名稱、時間與預設室內淨高 3.05 m', 
     rooms: {},
     doors: {},
     cabinets: [],
+    ceilings: {},
     furniture: [],
   });
 });
@@ -58,6 +59,8 @@ for (const [name, mutate, fragment] of [
   ['門的開關不是布林值', (d) => (d.doors = { 'FD2-1': { type: 'hinged', open: 'yes', flip: false, out: false } }), 'doors.FD2-1.open'],
   ['擺放的系統櫃找不到設計', (d) => d.furniture.push({ id: 'f9', type: 'custom-cabinet', cabinetId: 'ghost', x: 1, y: 1, rotation: 0, size: { w: 60, d: 60, h: 90 }, color: '#e9e4dc' }), 'furniture[1].cabinetId'],
   ['櫃子設計格式錯誤', (d) => (d.cabinets = [{ id: 'c1', name: '櫃', size: { w: 60, d: 60, h: 90 }, columns: 'x' }]), 'cabinets[0].columns'],
+  ['天花板形式未知', (d) => (d.ceilings = { living: { type: 'dome', height: 2.6 } }), 'ceilings.living.type'],
+  ['天花板高度不合理', (d) => (d.ceilings = { living: { type: 'flat', height: 9 } }), 'ceilings.living.height'],
   ['門的內外開不是布林值', (d) => (d.doors = { 'FD2-1': { type: 'hinged', open: false, flip: false, out: 1 } }), 'doors.FD2-1.out'],
   ['地板顏色不是色碼', (d) => (d.rooms.living.floorColor = 'red'), 'rooms.living.floorColor'],
   ['地板材質未知', (d) => (d.rooms.living.floorMaterial = 'lava'), 'rooms.living.floorMaterial'],
@@ -183,6 +186,7 @@ test('第 1 版設計檔讀取時自動升到目前版本，補上預設天花�
   delete v1.ceilingColor;
   delete v1.doors;
   delete v1.cabinets;
+  delete v1.ceilings;
 
   // Act
   const design = parseDesign(v1);
@@ -199,6 +203,7 @@ test('第 2 版設計檔讀取時補上空的門設定（全部用預設門型�
   v2.schemaVersion = 2;
   delete v2.doors;
   delete v2.cabinets;
+  delete v2.ceilings;
 
   // Act
   const design = parseDesign(v2);
@@ -214,6 +219,7 @@ test('第 3 版設計檔讀取時補上空的櫃子清單', () => {
   const v3 = sampleDesign();
   v3.schemaVersion = 3;
   delete v3.cabinets;
+  delete v3.ceilings;
 
   // Act
   const design = parseDesign(v3);
@@ -221,4 +227,18 @@ test('第 3 版設計檔讀取時補上空的櫃子清單', () => {
   // Assert
   assert.equal(design.schemaVersion, SCHEMA_VERSION);
   assert.deepEqual(design.cabinets, []);
+});
+
+test('第 4 版設計檔讀取時補上空的天花板設定', () => {
+  // Arrange
+  const v4 = sampleDesign();
+  v4.schemaVersion = 4;
+  delete v4.ceilings;
+
+  // Act
+  const design = parseDesign(v4);
+
+  // Assert
+  assert.equal(design.schemaVersion, SCHEMA_VERSION);
+  assert.deepEqual(design.ceilings, {});
 });

@@ -1,9 +1,10 @@
 // 設計檔格式：版本、建立、遷移、驗證；不依賴瀏覽器 API，可在 node 測試
+import { CEILING_TYPES } from '../core/ceilings.js';
 import { DOOR_TYPES } from '../core/doors.js';
 import { getFloorMaterial } from '../core/materials.js';
 import { getCatalogItem, SIZE_LIMITS } from '../furniture/catalog.js';
 
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 // 層高 320 cm 扣掉樓板約 15 cm
 export const DEFAULT_CEILING = 3.05;
 export const DEFAULT_CEILING_COLOR = '#f4f2ee';
@@ -26,6 +27,8 @@ export const MIGRATIONS = {
   2: (d) => ({ ...d, schemaVersion: 3, doors: {} }),
   // 第 4 版加入自己設計的系統櫃
   3: (d) => ({ ...d, schemaVersion: 4, cabinets: [] }),
+  // 第 5 版加入各區天花板形式；空物件＝全部用預設（廚房平釘、其他不包）
+  4: (d) => ({ ...d, schemaVersion: 5, ceilings: {} }),
 };
 
 export function createDesign({ id, name, now, floorplanRef = null }) {
@@ -41,6 +44,7 @@ export function createDesign({ id, name, now, floorplanRef = null }) {
     rooms: {},
     doors: {},
     cabinets: [],
+    ceilings: {},
     furniture: [],
   };
 }
@@ -61,6 +65,21 @@ function validateDoors(doors, errors) {
     if (!DOOR_TYPE_IDS.has(door?.type)) errors.push(`doors.${id}.type 必須是 ${[...DOOR_TYPE_IDS].join('／')}`);
     for (const key of ['open', 'flip', 'out']) {
       if (typeof door?.[key] !== 'boolean') errors.push(`doors.${id}.${key} 必須是 true 或 false`);
+    }
+  }
+}
+
+const CEILING_TYPE_IDS = new Set(CEILING_TYPES.map((t) => t.id));
+
+function validateCeilings(ceilings, errors) {
+  if (!isPlainObject(ceilings)) {
+    errors.push('ceilings 必須是物件');
+    return;
+  }
+  for (const [zone, setting] of Object.entries(ceilings)) {
+    if (!CEILING_TYPE_IDS.has(setting?.type)) errors.push(`ceilings.${zone}.type 必須是 ${[...CEILING_TYPE_IDS].join('／')}`);
+    if (setting?.height !== undefined && !(isNum(setting.height) && setting.height >= 2 && setting.height <= CEILING_LIMITS.max)) {
+      errors.push(`ceilings.${zone}.height 必須是 2～${CEILING_LIMITS.max} 公尺`);
     }
   }
 }
@@ -145,6 +164,7 @@ export function validateDesign(design) {
   }
   validateDoors(design.doors, errors);
   validateCabinets(design.cabinets, errors);
+  validateCeilings(design.ceilings, errors);
   validateFurniture(design.furniture, errors, new Set((Array.isArray(design.cabinets) ? design.cabinets : []).map((c) => c?.id)));
   return errors;
 }

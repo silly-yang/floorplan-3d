@@ -15,6 +15,7 @@ LAYER_KEYS = {
     "window": "window",
     "door": "door",
     "barrier": "barrier",
+    "beam": "beam",
 }
 
 
@@ -37,6 +38,7 @@ class LayerMap:
     window: list[str]
     door: list[str]
     barrier: list[str]
+    beam: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -61,6 +63,13 @@ class FixtureSeed:
 
 
 @dataclass(frozen=True)
+class CeilingZone:
+    id: str
+    name: str
+    rect: tuple[float, float, float, float]  # 圖面單位 x0, y0, x1, y1
+
+
+@dataclass(frozen=True)
 class Config:
     unit_scale: float
     clip: Box
@@ -73,6 +82,7 @@ class Config:
     rooms: list[RoomSeed]
     ignore_openings: list[str]
     fixtures: list[FixtureSeed] = field(default_factory=list)
+    ceiling_zones: list[CeilingZone] = field(default_factory=list)
 
 
 def _is_number(value: object) -> bool:
@@ -203,6 +213,32 @@ def _fixtures(raw: dict[str, Any], problems: list[str]) -> list[FixtureSeed]:
     return result
 
 
+def _ceiling_zones(raw: dict[str, Any], problems: list[str]) -> list[CeilingZone]:
+    zones = raw.get("ceilingZones", [])
+    if not isinstance(zones, list):
+        problems.append(f"ceilingZones：必須是陣列，收到 {zones!r}")
+        return []
+    result: list[CeilingZone] = []
+    for i, z in enumerate(zones):
+        rect = z.get("rect") if isinstance(z, dict) else None
+        ok_rect = isinstance(rect, list) and len(rect) == 4 and all(_is_number(v) for v in rect)
+        if not (
+            isinstance(z, dict)
+            and isinstance(z.get("id"), str)
+            and isinstance(z.get("name"), str)
+            and ok_rect
+        ):
+            problems.append(f"ceilingZones[{i}]：需要 id、name 與 rect [x0, y0, x1, y1]")
+            continue
+        assert isinstance(rect, list)
+        result.append(
+            CeilingZone(
+                z["id"], z["name"], (float(rect[0]), float(rect[1]), float(rect[2]), float(rect[3]))
+            )
+        )
+    return result
+
+
 # raw 來自 json.load，結構未知，驗證完才轉成具型別的 Config
 def parse_config(raw: Any) -> Config:
     if not isinstance(raw, dict):
@@ -220,6 +256,7 @@ def parse_config(raw: Any) -> Config:
         problems.append(f"gapMax：必須大於 gapMin（{gap_min}），收到 {gap_max}")
     rooms = _rooms(raw, problems)
     fixtures = _fixtures(raw, problems)
+    ceiling_zones = _ceiling_zones(raw, problems)
     ignore = raw.get("ignoreOpenings", [])
     if not isinstance(ignore, list) or not all(isinstance(i, str) for i in ignore):
         problems.append(f"ignoreOpenings：必須是字串陣列，收到 {ignore!r}")
@@ -240,4 +277,5 @@ def parse_config(raw: Any) -> Config:
         rooms=rooms,
         ignore_openings=list(ignore),
         fixtures=fixtures,
+        ceiling_zones=ceiling_zones,
     )

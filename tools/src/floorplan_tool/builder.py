@@ -4,6 +4,7 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
+from floorplan_tool.beams import find_beams
 from floorplan_tool.config import Box, Config
 from floorplan_tool.dxf import DxfDocument
 from floorplan_tool.geometry import Point, Polygon, centroid
@@ -101,6 +102,23 @@ def build_floorplan(doc: DxfDocument, config: Config) -> BuildResult:
             for o in openings
         ],
         "rooms": rooms,
+        # 大樑：平面範圍與樑深（公尺）；樑的代號不輸出
+        "beams": [
+            {
+                "rect": [*pt((b.rect[0], b.rect[1])), *pt((b.rect[2], b.rect[3]))],
+                "depth": round(b.depth * scale, DECIMALS),
+            }
+            for b in find_beams(doc, config)
+        ],
+        # 建商已經做好天花板的區域（例如廚房）
+        "ceilingZones": [
+            {
+                "id": z.id,
+                "name": z.name,
+                "rect": [*pt((z.rect[0], z.rect[1])), *pt((z.rect[2], z.rect[3]))],
+            }
+            for z in config.ceiling_zones
+        ],
         # 建商附的廚具、衛浴；新方案會以此為預設家具
         "fixtures": [
             {

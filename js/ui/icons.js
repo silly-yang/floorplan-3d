@@ -52,6 +52,10 @@ export const ICONS = {
   // ---------- 鏡頭與畫質 ----------
   'split-v': 'M4 4h16v16H4zM12 4v16M9 10l-2 2 2 2M15 10l2 2-2 2',
   'split-h': 'M4 4h16v16H4zM4 12h16M10 9l2-2 2 2M10 15l2 2 2-2',
+  'ceiling-exposed': 'M3 5h18M6 5v5h4V5M15 5v3M18 5v3M4 14h16M7 14v2M12 14v2M17 14v2',
+  'ceiling-beam': 'M3 5h18M7 5v5h5V5M3 12h18',
+  'ceiling-flat': 'M3 5h18M3 10h18M3 5v5M21 5v5M8 13v1M16 13v1',
+  'ceiling-cove': 'M3 5h18M3 10h4V7h10v3h4M7 10h10M9 13v1M15 13v1',
   focus: 'M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
   'full-view': 'M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5M8 8l3 3M16 8l-3 3M16 16l-3-3M8 16l3-3',
   'high-quality': 'M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z',

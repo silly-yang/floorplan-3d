@@ -8,6 +8,7 @@ import { Editor } from './interact/editor.js';
 import { DoorLayer } from './scene/doorLayer.js';
 import { exportGlb, exportPng } from './scene/exporters.js';
 import { FurnitureLayer } from './scene/furnitureLayer.js';
+import { CEILING_TYPES, ceilingStateOf, ceilingZones } from './core/ceilings.js';
 import { FLOOR_MATERIALS, floorMaterialOf } from './core/materials.js';
 import { buildHouse, disposeObject, floorColorOf } from './scene/house.js';
 import { textureThumbnail } from './scene/textures.js';
@@ -201,6 +202,47 @@ function setupFloorPanel(floorplan, store) {
   render(store.getState());
 }
 
+// 「空間」分頁的天花板：每一區選形式；平釘與造型可調高度
+function setupCeilingPanel(floorplan, store, showCeiling) {
+  const list = $('#ceiling-list');
+  const zones = ceilingZones(floorplan);
+  const update = (zoneId, patch) => {
+    const design = store.getState();
+    const current = ceilingStateOf(design.ceilings, zoneId, floorplan);
+    store.commit({ ...design, ceilings: { ...design.ceilings, [zoneId]: { ...current, ...patch } } });
+    showCeiling();
+  };
+  const render = (design) => {
+    list.replaceChildren(
+      ...zones.map((zone) => {
+        const state = ceilingStateOf(design.ceilings, zone.id, floorplan);
+        const height = el('input', { type: 'number', min: '2', max: String(design.ceilingHeight), step: '0.05', value: String(state.height) });
+        height.addEventListener('change', () => {
+          const value = Number(height.value);
+          if (value >= 2 && value <= design.ceilingHeight) update(zone.id, { height: value });
+          else height.value = state.height;
+        });
+        const types = el('div', { class: 'row' }, CEILING_TYPES.map((t) => {
+          const b = el('button', { type: 'button', class: `btn small ${t.id === state.type ? 'primary' : ''}`, title: t.name, onclick: () => update(zone.id, { type: t.id }) });
+          b.innerHTML = iconSvg(t.icon);
+          b.append(el('span', {}, t.name.replace(/（.*）/, '')));
+          return b;
+        }));
+        const needsHeight = state.type === 'flat' || state.type === 'cove';
+        return el('li', { class: 'room-floor' },
+          el('strong', {}, `${zone.name}${zone.builtIn ? '（建商已做）' : ''}`),
+          types,
+          needsHeight ? el('label', { class: 'field' }, el('span', {}, '天花板高度（公尺）'), height) : null,
+        );
+      }),
+    );
+  };
+  store.subscribe((design, { source }) => {
+    if (source !== 'preview') render(design);
+  });
+  render(store.getState());
+}
+
 // 回傳 { setCutaway, setCeiling }：只改顯示，不改設計內容
 // 天花板：漫遊時一定顯示；3D／俯視預設隱藏（會擋住視線），可手動打開；剖面時一律隱藏
 function setupHouse(floorplan, viewer, store) {
@@ -214,14 +256,20 @@ function setupHouse(floorplan, viewer, store) {
   const sync = () => {
     const design = store.getState();
     const height = cutaway ? Math.min(CUTAWAY_HEIGHT, design.ceilingHeight) : design.ceilingHeight;
-    const key = JSON.stringify([height, design.rooms, design.ceilingColor]);
+    const key = JSON.stringify([height, design.rooms, design.ceilingColor, design.ceilings]);
     if (key === lastKey) return;
     lastKey = key;
     if (house) {
       viewer.scene.remove(house.group);
       disposeObject(house.group);
     }
-    house = buildHouse(floorplan, { ceilingHeight: height, rooms: design.rooms, ceilingColor: design.ceilingColor });
+    house = buildHouse(floorplan, {
+      ceilingHeight: height,
+      slabHeight: design.ceilingHeight,
+      rooms: design.rooms,
+      ceilingColor: design.ceilingColor,
+      ceilings: design.ceilings,
+    });
     viewer.scene.add(house.group);
     applyCeiling();
   };
@@ -322,7 +370,7 @@ async function main() {
     await alertDialog('無法載入平面圖', error.message);
     return;
   }
-  const store = createStore({ ceilingHeight: 3.05, ceilingColor: '#f4f2ee', rooms: {}, doors: {}, cabinets: [], furniture: [] });
+  const store = createStore({ ceilingHeight: 3.05, ceilingColor: '#f4f2ee', rooms: {}, doors: {}, cabinets: [], ceilings: {}, furniture: [] });
   let exportAll = () => {};
   const defaultFurniture = () => fixturesToFurniture(floorplan.fixtures, () => crypto.randomUUID());
   const { session, warnings, persistent } = openSession(store, floorplanRef, makeStatusHandler(() => exportAll), defaultFurniture);
@@ -355,6 +403,11 @@ async function main() {
   setupInspector(editor, getSolids, { editCabinet: cabinetPanel.edit });
   setupDoorPanel(editor, floorplan);
   setupStageTools(editor, houseView);
+  // 改了天花板就自動打開天花板顯示，才看得到改了什麼
+  setupCeilingPanel(floorplan, store, () => {
+    const toggle = [...document.querySelectorAll('#stage-tools button')].find((b) => b.textContent.includes('天花板'));
+    if (toggle && toggle.getAttribute('aria-pressed') !== 'true') toggle.click();
+  });
   setupFixtureActions(floorplan, store);
   setupHistoryButtons(store, editor);
   ({ exportAll } = setupSessionUi({

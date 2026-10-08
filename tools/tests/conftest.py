@@ -76,6 +76,7 @@ def _base_raw_config() -> dict[str, Any]:
             "window": ["OPEN-Window"],
             "door": ["OPEN-Door"],
             "barrier": ["L23"],
+            "beam": [],
         },
         "windowTypes": {"W5": {"sill": 0.9, "head": 2.1}},
         "doorHead": 2.1,

@@ -175,3 +175,78 @@ def test_build_floorplan_without_fixtures_should_output_empty_list(
 
     # Assert
     assert floorplan["fixtures"] == []
+
+
+def test_build_floorplan_should_pair_beam_lines_and_read_depth_from_label(
+    dxf: DxfFactory, raw_config: dict[str, Any]
+) -> None:
+    # Arrange：一支寬 30 的樑，旁邊標 J10(30x50)；更近處有一個寬度不符的標註要忽略；樑的代號不能輸出
+    raw_config["layers"]["beam"] = ["S01"]
+    extra = [
+        dxf.line("S01", (OFFSET + 100, OFFSET + 20), (OFFSET + 100, OFFSET + 180)),
+        dxf.line("S01", (OFFSET + 130, OFFSET + 20), (OFFSET + 130, OFFSET + 180)),
+        dxf.text("S01", (OFFSET + 135, OFFSET + 100), "B99(60x90)"),
+        dxf.text("S01", (OFFSET + 160, OFFSET + 100), "J10(30x50)"),
+    ]
+
+    # Act
+    floorplan = _build(dxf, raw_config, extra).floorplan
+
+    # Assert
+    assert floorplan["beams"] == [{"rect": [1.0, 0.2, 1.3, 1.8], "depth": 0.5}]
+    assert "J10" not in json.dumps(floorplan)
+
+
+def test_build_floorplan_with_unlabeled_beam_should_use_default_depth(
+    dxf: DxfFactory, raw_config: dict[str, Any]
+) -> None:
+    # Arrange
+    raw_config["layers"]["beam"] = ["S01"]
+    extra = [
+        dxf.line("S01", (OFFSET + 20, OFFSET + 100), (OFFSET + 280, OFFSET + 100)),
+        dxf.line("S01", (OFFSET + 20, OFFSET + 140), (OFFSET + 280, OFFSET + 140)),
+    ]
+
+    # Act
+    floorplan = _build(dxf, raw_config, extra).floorplan
+
+    # Assert
+    assert floorplan["beams"][0]["depth"] == 0.6
+
+
+def test_build_floorplan_should_convert_ceiling_zones(
+    dxf: DxfFactory, raw_config: dict[str, Any]
+) -> None:
+    # Arrange
+    raw_config["ceilingZones"] = [
+        {
+            "id": "kitchen",
+            "name": "廚房",
+            "rect": [OFFSET + 50, OFFSET + 15, OFFSET + 200, OFFSET + 120],
+        }
+    ]
+
+    # Act
+    floorplan = _build(dxf, raw_config).floorplan
+
+    # Assert
+    assert floorplan["ceilingZones"] == [
+        {"id": "kitchen", "name": "廚房", "rect": [0.5, 0.15, 2.0, 1.2]}
+    ]
+
+
+def test_build_floorplan_should_not_pair_beam_lines_too_far_apart(
+    dxf: DxfFactory, raw_config: dict[str, Any]
+) -> None:
+    # Arrange：兩條平行線相距 150，比任何樑都寬，是兩支樑各自的一邊，不能配成一支
+    raw_config["layers"]["beam"] = ["S01"]
+    extra = [
+        dxf.line("S01", (OFFSET + 50, OFFSET + 20), (OFFSET + 50, OFFSET + 180)),
+        dxf.line("S01", (OFFSET + 200, OFFSET + 20), (OFFSET + 200, OFFSET + 180)),
+    ]
+
+    # Act
+    floorplan = _build(dxf, raw_config, extra).floorplan
+
+    # Assert
+    assert floorplan["beams"] == []

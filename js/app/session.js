@@ -12,6 +12,7 @@ const contentOf = (design) => ({
   rooms: design.rooms,
   doors: design.doors,
   cabinets: design.cabinets,
+  ceilings: design.ceilings,
   furniture: design.furniture,
 });
 
@@ -44,6 +45,7 @@ export function createSession({ designStore, store, now, newId, floorplanRef = n
     delete meta.ceilingColor;
     delete meta.doors;
     delete meta.cabinets;
+    delete meta.ceilings;
     delete meta.rooms;
     delete meta.furniture;
     designStore.setActive(design.id);

@@ -24,6 +24,9 @@
     ],
     "barrier": [
       "L23"
+    ],
+    "beam": [
+      "S01-RC大梁"
     ]
   },
   "windowTypes": {
@@ -140,6 +143,18 @@
         200
       ],
       "rotation": 90
+    }
+  ],
+  "ceilingZones": [
+    {
+      "id": "kitchen",
+      "name": "廚房",
+      "rect": [
+        3618.48,
+        1429,
+        3818.48,
+        1589
+      ]
     }
   ]
 }

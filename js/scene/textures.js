@@ -77,7 +77,7 @@ function drawConcrete(ctx, base) {
     const r = 20 + rand() * 90;
     const g = ctx.createRadialGradient(rand() * SIZE, rand() * SIZE, 0, rand() * SIZE, rand() * SIZE, r);
     const dark = rand() > 0.5;
-    g.addColorStop(0, dark ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)');
+    g.addColorStop(0, dark ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.04)');
     g.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, SIZE, SIZE);
