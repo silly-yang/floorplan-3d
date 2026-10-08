@@ -33,9 +33,10 @@ for (const [kind, expected] of [
 }
 
 for (const [name, distance, expected] of [
+  // 住宅室內的距離衰減係數取 28（ITU-R P.1238），比自由空間的 20 更貼近實際
   ['1 公尺為 40 dB', 1, 40],
-  ['10 公尺為 60 dB', 10, 60],
-  ['不到 0.5 公尺以 0.5 公尺計，不會無限大', 0, 40 + 20 * Math.log10(0.5)],
+  ['10 公尺為 68 dB', 10, 68],
+  ['不到 0.5 公尺以 0.5 公尺計，不會無限大', 0, 40 + 28 * Math.log10(0.5)],
 ]) {
   test(`pathLoss ${name}`, () => {
     // Act
@@ -50,8 +51,8 @@ test('signalAt 沒有牆時為發射功率減去路徑損失', () => {
   // Act
   const rssi = signalAt([10, 0], device(), []);
 
-  // Assert
-  assert.ok(close(rssi, -40), `got ${rssi}`);
+  // Assert：測試用設備發射功率 20 dBm
+  assert.ok(close(rssi, 20 - pathLoss(10)), `got ${rssi}`);
 });
 
 test('signalAt 距離越遠訊號越弱', () => {
@@ -85,7 +86,7 @@ test('signalAt 沒擋在路徑上的牆不扣分', () => {
   const rssi = signalAt([10, 0], device(), [wall('rc', rect(4.9, 2, 5.1, 4))]);
 
   // Assert
-  assert.ok(close(rssi, -40), `got ${rssi}`);
+  assert.ok(close(rssi, 20 - pathLoss(10)), `got ${rssi}`);
 });
 
 test('signalAt 穿過 L 形牆的兩段要扣兩次', () => {
@@ -96,7 +97,7 @@ test('signalAt 穿過 L 形牆的兩段要扣兩次', () => {
   const rssi = signalAt([10, 0], device(), [wall('rc', u)]);
 
   // Assert
-  assert.ok(close(rssi, -40 - 24), `got ${rssi}`);
+  assert.ok(close(rssi, 20 - pathLoss(10) - 24), `got ${rssi}`);
 });
 
 test('wallsBetween 只數牆、柱，不數窗戶', () => {
@@ -204,9 +205,11 @@ for (const [name, walls, suggested] of [
   });
 }
 
+// 發射功率由路徑損失反推，讓房間最弱處剛好落在 −75 dBm 下方或上方 3 dB
+const txForMin = (target) => target + pathLoss(Math.hypot(10.05, 0.05));
 for (const [name, txPower, suggested] of [
-  ['最低訊號低於 −75 dBm 就建議', -20, true],
-  ['最低訊號在 −75 dBm 以上不建議', -10, false],
+  ['最低訊號低於 −75 dBm 就建議', txForMin(-78), true],
+  ['最低訊號在 −75 dBm 以上不建議', txForMin(-72), false],
 ]) {
   test(`roomRatings ${name}`, () => {
     // Arrange：房間離設備約 10 公尺、中間沒有牆
@@ -222,11 +225,13 @@ for (const [name, txPower, suggested] of [
 }
 
 test('roomRatings 等級看平均訊號，不是最弱處', () => {
-  // Arrange：細長房間，近端 −34 dBm、遠端約 −74 dBm，平均約 −66 dBm
+  // Arrange：細長房間，設備在一端；發射功率反推成平均約 −65 dBm，遠端會低於 −70
   const rooms = [{ id: 'r', name: '走廊', rects: [[0, -0.25, 30, 0.25]] }];
+  const samples = Array.from({ length: 60 }, (_, i) => pathLoss(Math.hypot(0.25 + i * 0.5, 0)));
+  const txPower = -65 + samples.reduce((a, b) => a + b, 0) / samples.length;
 
   // Act
-  const [rating] = roomRatings(rooms, [device({ txPower: -5 })], [], { step: 0.5 });
+  const [rating] = roomRatings(rooms, [device({ txPower })], [], { step: 0.5 });
 
   // Assert
   assert.ok(rating.min < -70 && rating.avg > -70, `min ${rating.min} avg ${rating.avg}`);

@@ -138,8 +138,10 @@ select {
   overflow: hidden;
 }
 
+/* 分頁多，排成每列 5 個 */
 .tabs {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
   border-bottom: 1px solid var(--line);
 }
 

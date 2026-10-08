@@ -1,5 +1,5 @@
 // WiFi 訊號估算（純邏輯）：多牆模型，2.4 GHz
-// RSSI = 發射功率 − 自由空間路徑損失（1 公尺 40 dB，距離每 10 倍多 20 dB）− 穿過的牆損失總和
+// RSSI = 發射功率 − 路徑損失（1 公尺 40 dB，距離每 10 倍多 28 dB，住宅室內值）− 穿過的牆損失總和
 // 只算平面、不算樓層高度差與反射，用來比較擺放位置的相對好壞，不是實測值
 import { getCatalogItem } from '../furniture/catalog.js';
 import { segmentPolygonCrossings } from './geometry2d.js';
@@ -7,6 +7,7 @@ import { segmentPolygonCrossings } from './geometry2d.js';
 export const WALL_LOSS = { rc: 12, partition: 4, column: 15, window: 3 };
 const WALL_KINDS = new Set(['rc', 'partition', 'column']);
 const MIN_DISTANCE = 0.5; // 公尺；太靠近設備時 log 會趨近無限大
+const DISTANCE_EXPONENT = 28; // ITU-R P.1238 住宅；自由空間是 20，會讓評分過度樂觀
 
 export const GRADES = [
   { id: 'excellent', label: '優', min: -60 },
@@ -23,7 +24,7 @@ export function wallLoss(kind) {
 }
 
 export function pathLoss(distance) {
-  return 40 + 20 * Math.log10(Math.max(MIN_DISTANCE, distance));
+  return 40 + DISTANCE_EXPONENT * Math.log10(Math.max(MIN_DISTANCE, distance));
 }
 
 // 只數牆與柱（窗戶不算「一道牆」）
