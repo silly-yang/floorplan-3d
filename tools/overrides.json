@@ -1,0 +1,27 @@
+{
+  "unitScale": 0.01,
+  "clip": { "xMin": 3200, "yMin": 1270, "xMax": 4150, "yMax": 2130 },
+  "layers": {
+    "rcWall": ["L3"],
+    "partition": ["WALL2"],
+    "column": ["L12"],
+    "window": ["OPEN-Window"],
+    "door": ["OPEN-Door"],
+    "barrier": ["L23"]
+  },
+  "windowTypes": {
+    "W5": { "sill": 0.9, "head": 2.1 },
+    "DW4": { "sill": 0, "head": 2.2 }
+  },
+  "doorHead": 2.1,
+  "doorwayHead": 2.2,
+  "gapMin": 30,
+  "gapMax": 250,
+  "rooms": [
+    { "id": "living", "name": "客餐廳", "seed": [3724, 1754] },
+    { "id": "bedroom", "name": "臥室", "seed": [3954, 1804] },
+    { "id": "bath", "name": "浴室", "seed": [3914, 1504] },
+    { "id": "balcony", "name": "陽台", "seed": [3454, 1954] }
+  ],
+  "ignoreOpenings": []
+}

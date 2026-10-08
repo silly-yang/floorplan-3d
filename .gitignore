@@ -1,0 +1,20 @@
+# 原始圖檔：私人住家平面圖，絕對不可上傳
+source/
+*.dwg
+*.DWG
+*.dxf
+*.DXF
+
+# 個人設計檔：避免誤傳到公開 repo
+*.design.json
+
+# 系統檔
+.DS_Store
+Thumbs.db
+
+# Python 工具的本機環境與快取
+.venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
