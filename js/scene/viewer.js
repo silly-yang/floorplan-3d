@@ -126,6 +126,8 @@ export class Viewer {
     this.walk.dispose();
     this.composer?.dispose();
     this.renderer.dispose();
+    // 立刻釋放 WebGL context；等垃圾回收的話，連續切換平面圖會碰到瀏覽器的 context 上限
+    this.renderer.forceContextLoss();
     this.renderer.domElement.remove();
   }
 

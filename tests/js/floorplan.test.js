@@ -45,6 +45,23 @@ test('validateFloorplan 欄位錯誤時逐一指出路徑', () => {
   assert.ok(errors.some((e) => e.includes('openings[0].sill')));
 });
 
+for (const [name, key, value] of [
+  ['walls 是字串', 'walls', 'abc'],
+  ['openings 是物件', 'openings', { a: 1 }],
+  ['rooms 是數字', 'rooms', 3],
+]) {
+  test(`validateFloorplan ${name}時回報錯誤，不會丟例外`, () => {
+    // Arrange
+    const fp = { ...samplePlan(), [key]: value };
+
+    // Act
+    const errors = validateFloorplan(fp);
+
+    // Assert
+    assert.deepEqual(errors, [`${key} 必須是陣列`]);
+  });
+}
+
 test('validateFloorplan 不是物件時回傳單一錯誤', () => {
   // Act
   const errors = validateFloorplan(null);

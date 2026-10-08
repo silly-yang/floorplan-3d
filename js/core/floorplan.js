@@ -8,6 +8,9 @@ const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 const isPolygon = (p) =>
   Array.isArray(p) && p.length >= 3 && p.every((pt) => Array.isArray(pt) && pt.length === 2 && pt.every(isNum));
 
+// 欄位型別錯了照樣回報錯誤清單，不要在走訪時丟例外
+const listOf = (v) => (Array.isArray(v) ? v : []);
+
 export function validateFloorplan(fp) {
   if (!fp || typeof fp !== 'object') return ['平面圖資料不是物件'];
   const errors = [];
@@ -16,10 +19,10 @@ export function validateFloorplan(fp) {
   for (const key of ['walls', 'openings', 'rooms']) {
     if (!Array.isArray(fp[key])) errors.push(`${key} 必須是陣列`);
   }
-  (fp.walls ?? []).forEach((w, i) => {
+  listOf(fp.walls).forEach((w, i) => {
     if (!isPolygon(w?.polygon)) errors.push(`walls[${i}].polygon 至少要 3 個 [x, y] 點`);
   });
-  (fp.openings ?? []).forEach((o, i) => {
+  listOf(fp.openings).forEach((o, i) => {
     if (!isPolygon(o?.polygon)) errors.push(`openings[${i}].polygon 至少要 3 個 [x, y] 點`);
     for (const k of ['sill', 'head']) {
       if (!isNum(o?.[k])) errors.push(`openings[${i}].${k} 必須是數字`);
@@ -32,7 +35,7 @@ export function validateFloorplan(fp) {
       errors.push(`fixtures[${i}] 需要 type、x、y、rotation 與正數 size`);
     }
   });
-  (fp.rooms ?? []).forEach((r, i) => {
+  listOf(fp.rooms).forEach((r, i) => {
     const ok = Array.isArray(r?.rects) && r.rects.every((rc) => Array.isArray(rc) && rc.length === 4 && rc.every(isNum));
     if (!ok) errors.push(`rooms[${i}].rects 必須是 [x0, y0, x1, y1] 陣列`);
   });
