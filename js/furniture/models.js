@@ -109,10 +109,18 @@ const BUILDERS = {
     box(g, [w, h - 0.05, d], [0, (h - 0.05) / 2 + 0.05, 0], c.main);
     legs(g, w, d, 0.05, 0.04, 0.05, METAL);
     for (let i = 1; i < 3; i++) box(g, [0.005, (h - 0.05) * 0.9, 0.004], [-w / 2 + (w / 3) * i, (h - 0.05) / 2 + 0.05, d / 2], c.dark);
-    // 電視本體放在櫃子上，尺寸跟著櫃寬
-    const tvW = Math.min(w * 0.75, 1.45);
-    box(g, [tvW, tvW * 0.56, 0.04], [0, h + 0.06 + (tvW * 0.56) / 2, -d * 0.1], '#1d1f22', 0.3);
-    box(g, [0.3, 0.06, 0.18], [0, h + 0.03, -d * 0.1], METAL);
+  },
+
+  // 壁掛：整個深度就是機身、背面貼牆；放櫃上：機身立在中央，底下 6 cm 是腳座（與 core/tv.js 的尺寸一致）
+  tv: (g, w, d, h, c, options = {}) => {
+    const panelD = Math.min(0.04, d);
+    const lift = options.mount === 'wall' ? 0 : 0.06;
+    const panelH = h - lift;
+    box(g, [w, panelH, panelD], [0, lift + panelH / 2, 0], c.main, 0.3);
+    box(g, [w - 0.02, panelH - 0.02, 0.002], [0, lift + panelH / 2, panelD / 2 + 0.001], '#0b0c0e', 0.15);
+    if (lift === 0) return;
+    box(g, [0.06, lift, 0.04], [0, lift / 2, 0], METAL);
+    box(g, [Math.min(w * 0.35, 0.4), 0.015, d], [0, 0.0075, 0], METAL);
   },
 
   fridge: (g, w, d, h, c) => {

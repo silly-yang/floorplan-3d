@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   DesignFormatError,
+  MIGRATIONS,
   SCHEMA_VERSION,
   createDesign,
   fingerprint,
@@ -10,6 +11,8 @@ import {
   uniqueName,
   validateDesign,
 } from '../../js/storage/schema.js';
+import { elevationOf } from '../../js/core/layout.js';
+import { TV_DEFAULTS, tvSize } from '../../js/core/tv.js';
 
 const NOW = '2026-10-08T09:00:00.000Z';
 
@@ -335,4 +338,117 @@ test('validateDesign 沒有 pegboards 欄位卻擺了洞洞板時指出 pegboard
   // Assert
   assert.equal(errors.length, 1, errors.join(' / '));
   assert.ok(errors[0].includes('furniture[1].pegboardId'), errors[0]);
+});
+
+// ---------- 電視與電視櫃拆開 ----------
+
+const stand = (id, x, y, rotation = 0) => ({ id, type: 'tv-stand', x, y, rotation, size: { w: 180, d: 40, h: 50 }, color: '#6f5a48' });
+const tvsOf = (design) => design.furniture.filter((f) => f.type === 'tv');
+
+test('目前格式為第 7 版', () => {
+  // Assert
+  assert.equal(SCHEMA_VERSION, 7);
+});
+
+test('第 6 版設計檔讀取時每個電視櫃上補一台 55 吋放櫃上的電視，位置在櫃子中心、同方向', () => {
+  // Arrange
+  const v6 = sampleDesign();
+  v6.schemaVersion = 6;
+  v6.furniture.push(stand('s1', 2, 1), stand('s2', 4, 3, 90));
+
+  // Act
+  const design = parseDesign(v6);
+
+  // Assert
+  const tvs = tvsOf(design);
+  assert.deepEqual(tvs.map((t) => [t.id, t.x, t.y, t.rotation]), [['s1-tv', 2, 1, 0], ['s2-tv', 4, 3, 90]]);
+  for (const tv of tvs) {
+    assert.deepEqual(tv.size, tvSize(55, 'stand'));
+    assert.deepEqual(tv.options, TV_DEFAULTS);
+    assert.equal(tv.elevation, undefined);
+    assert.equal(elevationOf(tv, design.furniture), 0.5);
+  }
+  assert.deepEqual(design.furniture.filter((f) => f.type !== 'tv'), v6.furniture);
+});
+
+test('第 6 版設計檔沒有電視櫃時家具不變', () => {
+  // Arrange
+  const v6 = sampleDesign();
+  v6.schemaVersion = 6;
+
+  // Act
+  const design = parseDesign(v6);
+
+  // Assert
+  assert.deepEqual(design.furniture, v6.furniture);
+});
+
+test('第 6 版遷移時電視櫃上已經有電視就不重複補', () => {
+  // Arrange：電視中心落在櫃子範圍內（不必剛好在中心）
+  const v6 = sampleDesign();
+  v6.schemaVersion = 6;
+  const existing = { id: 'tv0', type: 'tv', x: 2.5, y: 1.1, rotation: 0, size: tvSize(55, 'stand'), color: '#1d1f22' };
+  v6.furniture.push(stand('s1', 2, 1), existing);
+
+  // Act
+  const design = MIGRATIONS[6](structuredClone(v6));
+
+  // Assert
+  assert.deepEqual(tvsOf(design).map((t) => t.id), ['tv0']);
+});
+
+test('第 6 版遷移同一份檔案跑兩次，電視 id 相同、不重複補', () => {
+  // Arrange
+  const v6 = sampleDesign();
+  v6.schemaVersion = 6;
+  v6.furniture.push(stand('s1', 2, 1));
+
+  // Act
+  const once = MIGRATIONS[6](structuredClone(v6));
+  const twice = MIGRATIONS[6]({ ...once, schemaVersion: 6 });
+
+  // Assert
+  assert.deepEqual(tvsOf(once).map((t) => t.id), ['s1-tv']);
+  assert.deepEqual(tvsOf(twice).map((t) => t.id), ['s1-tv']);
+});
+
+test('第 6 版遷移時要用的電視 id 已被占用（電視已移離櫃子）就不補，避免 id 重複', () => {
+  // Arrange
+  const v6 = sampleDesign();
+  v6.schemaVersion = 6;
+  const moved = { id: 's1-tv', type: 'tv', x: 5, y: 5, rotation: 0, size: tvSize(55, 'stand'), color: '#1d1f22' };
+  v6.furniture.push(stand('s1', 2, 1), moved);
+
+  // Act
+  const design = MIGRATIONS[6](structuredClone(v6));
+
+  // Assert
+  assert.deepEqual(design.furniture.map((f) => f.id), ['f1', 's1', 's1-tv']);
+});
+
+test('第 6 版遷移不修改傳入的設計', () => {
+  // Arrange
+  const v6 = sampleDesign();
+  v6.schemaVersion = 6;
+  v6.furniture.push(stand('s1', 2, 1));
+  const before = structuredClone(v6);
+
+  // Act
+  MIGRATIONS[6](v6);
+
+  // Assert
+  assert.deepEqual(v6, before);
+});
+
+test('第 7 版設計檔讀取時不補電視（電視櫃上本來就可以不放）', () => {
+  // Arrange
+  const v7 = sampleDesign();
+  v7.schemaVersion = 7;
+  v7.furniture.push(stand('s1', 2, 1));
+
+  // Act
+  const design = parseDesign(v7);
+
+  // Assert
+  assert.deepEqual(design.furniture, v7.furniture);
 });

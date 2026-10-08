@@ -15,10 +15,11 @@ export const CATEGORIES = [
 // allowOverlap：地毯本來就壓在其他家具底下，不算重疊
 // power：電壓（110／220）與瓦數；vent：上方建議保留的散熱空間（公分），放進櫃子時檢查
 // mountHeight：掛牆家具（吊櫃）的固定離地高度（公分）
+// cabinetItem：檯面家電能不能放進系統櫃的格子（電視不行）
 // blocksWalk：隔間這類漫遊時會被擋住的東西；sizeLimits：與預設不同的尺寸範圍 { d: [min, max] }，h 上限另受室內淨高限制
 // light：燈具的光源參數（kind：spot 朝下聚光／point 四散／linear 長條；lumens 光通量；beam 光束角°）
-const item = (category, type, name, [w, d, h], color, { placement = 'floor', surface = false, allowOverlap = false, blocksWalk = false, sizeLimits, power, vent, mountHeight, light } = {}) => ({
-  category, type, name, size: { w, d, h }, color, placement, surface, allowOverlap, blocksWalk,
+const item = (category, type, name, [w, d, h], color, { placement = 'floor', surface = false, allowOverlap = false, blocksWalk = false, cabinetItem = true, sizeLimits, power, vent, mountHeight, light } = {}) => ({
+  category, type, name, size: { w, d, h }, color, placement, surface, allowOverlap, blocksWalk, cabinetItem,
   ...(sizeLimits ? { sizeLimits } : {}),
   ...(mountHeight ? { mountHeight } : {}),
   ...(light ? { light } : {}),
@@ -62,6 +63,8 @@ export const CATALOG = [
   item('appliance', 'air-purifier', '空氣清淨機', [30, 30, 65], '#f2f2f0', { power: [110, 50] }),
   item('appliance', 'fan', '電風扇', [40, 35, 110], '#e9ecef', { power: [110, 45] }),
   item('appliance', 'floor-lamp', '立燈', [35, 35, 160], '#3b3f45', { power: [110, 20] }),
+  // 電視：尺寸、瓦數依吋數與放置方式另算（core/tv.js），這裡是預設 55 吋放櫃上
+  item('appliance', 'tv', '電視', [123, 25, 75], '#1d1f22', { placement: 'surface', cabinetItem: false, power: [110, 120] }),
   // 自己設計的系統櫃：不出現在家具清單，從「櫃子」分頁擺放；尺寸與格子來自 design.cabinets
   item('custom', 'custom-cabinet', '系統櫃', [120, 60, 210], '#e9e4dc', { surface: true }),
   // 自己設計的洞洞板：從「洞洞板」分頁擺放；離地高度存在家具的 elevation（取設計的掛牆高度）

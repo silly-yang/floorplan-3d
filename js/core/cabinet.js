@@ -1,10 +1,15 @@
 // 系統櫃：欄（左右）× 格（上下）的格狀結構、每格的類型與插座、格內家電、檢查；單位公分，不依賴 Three.js
-import { getCatalogItem } from '../furniture/catalog.js';
+import { CATALOG, getCatalogItem } from '../furniture/catalog.js';
 
 export const PLINTH = 8; // 底部踢腳高度
 export const MIN_SPAN = 20; // 每欄最窄、每格最矮
 const BACK_PANEL = 2; // 背板與留縫，家電可用深度＝櫃深－這個值
 const SIDE_GAP = 2; // 同一格並排家電之間、與側板之間的留縫
+
+// 系統櫃設計器可以放進格子的家電：檯面家電，排除目錄標了 cabinetItem: false 的（電視）
+export function cabinetAppliances() {
+  return CATALOG.filter((c) => c.category === 'appliance' && c.placement === 'surface' && c.cabinetItem);
+}
 
 export const CELL_KINDS = [
   { id: 'door', name: '門片' },

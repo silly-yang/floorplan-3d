@@ -8,9 +8,9 @@ import { disposeObject } from './house.js';
 const SELECT_COLOR = '#2f6f62';
 const CONFLICT_COLOR = '#d64545';
 
-// 系統櫃、洞洞板的外觀取決於各自的設計，設計一改就要重建
+// 系統櫃、洞洞板的外觀取決於各自的設計，設計一改就要重建；電視的吋數、放置方式決定機身與腳座
 const modelKey = (item, design) =>
-  `${item.type}|${item.size.w}|${item.size.d}|${item.size.h}|${item.color}|${item.options?.top ?? ''}|${design ? JSON.stringify(design) : ''}`;
+  `${item.type}|${item.size.w}|${item.size.d}|${item.size.h}|${item.color}|${item.options?.top ?? ''}|${item.options?.inch ?? ''}|${item.options?.mount ?? ''}|${design ? JSON.stringify(design) : ''}`;
 
 function outline(item, color) {
   const w = item.size.w / 100;

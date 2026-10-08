@@ -500,3 +500,42 @@ test('powerIssues 開關被擋住時寫開關', () => {
   assert.deepEqual(issues.map((i) => [i.furnitureId, i.kind]), [['sw', 'blocked']]);
   assert.match(issues[0].message, /開關被「衣櫃」擋住/);
 });
+
+// ---------- 電視 ----------
+
+// 直接組物件，不經過 createFurniture
+const tvItem = (id, x, y, extra = {}) => ({ id, type: 'tv', x, y, rotation: 0, size: { w: 123, d: 25, h: 75 }, color: '#1d1f22', ...extra });
+const wallTv = (id, x, inch = 65) => {
+  const size = { 43: [96, 55], 55: [123, 69], 65: [145, 82] }[inch];
+  // 貼下牆（牆面 y = 0.15）、正面朝房間內；中心離地 110 cm
+  return tvItem(id, x, 0.17, { rotation: 180, size: { w: size[0], d: 4, h: size[1] }, elevation: (110 - size[1] / 2) / 100, options: { inch, mount: 'wall', centerHeight: 110 } });
+};
+
+test('powerIssues 放櫃上的電視附近沒有插座時提醒 110V', () => {
+  // Act
+  const issues = issuesOf([tvItem('t', 1.5, 1)]);
+
+  // Assert
+  assert.deepEqual(issues.map((i) => [i.furnitureId, i.kind]), [['t', 'no-outlet']]);
+  assert.match(issues[0].message, /附近沒有 110V 插座/);
+});
+
+test('powerIssues 壁掛電視正下方的插座：平面距離加上與電視中心的高度差，在 1.5 m 內不提醒', () => {
+  // Arrange：插座離地 30 cm，跟電視中心差 0.8 m
+  const furniture = [wallTv('t', 1.5), outlet('o', 1.5, 0.17)];
+
+  // Act & Assert
+  assert.deepEqual(issuesOf(furniture), []);
+});
+
+test('powerIssues 壁掛電視以電視中心為準：插座在機身範圍外 1.3 m 處、加上高度差超過 1.5 m 就提醒', () => {
+  // Arrange：以機身邊緣算只有 0.58 + 0.39 m，以中心算是 1.3 + 0.8 m
+  const furniture = [wallTv('t', 1.5), outlet('o', 0.2, 0.17)];
+
+  // Act
+  const issues = issuesOf(furniture);
+
+  // Assert
+  assert.deepEqual(issues.map((i) => [i.furnitureId, i.kind]), [['t', 'no-outlet']]);
+  assert.match(issues[0].message, /最近的在 2\.1 m/);
+});

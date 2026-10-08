@@ -4,6 +4,7 @@ import {
   CELL_KINDS,
   PLINTH,
   addItem,
+  cabinetAppliances,
   cabinetIssues,
   cellBox,
   createCabinet,
@@ -287,4 +288,14 @@ test('cabinetIssues 抽拉盤上方散熱不足時，提醒可以抽出使用', 
   // Assert
   assert.ok(vent);
   assert.match(vent.message, /抽出/);
+});
+
+test('cabinetAppliances 設計器可以放進格子的家電：檯面家電，電視不放進櫃格', () => {
+  // Act
+  const types = cabinetAppliances().map((c) => c.type);
+
+  // Assert
+  for (const type of ['microwave', 'rice-cooker', 'coffee-machine', 'steam-oven', 'kettle']) assert.ok(types.includes(type), type);
+  assert.equal(types.includes('tv'), false);
+  assert.equal(types.includes('fridge'), false);
 });

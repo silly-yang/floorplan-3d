@@ -1,10 +1,12 @@
 // 右側屬性面板：選取家具的尺寸、顏色、旋轉、重疊警示、到最近牆面的距離
 import { elevationOf, nearestWallDistance, supportOf } from '../core/layout.js';
+import { isWallTv } from '../core/tv.js';
 import { getCatalogItem, normalizeSizeValue, sizeLimitsOf } from '../furniture/catalog.js';
 import { $, el } from './dom.js';
 import { electricalFields, powerNotes, updateElectricalFields } from './electricalPanel.js';
 import { iconSvg } from './icons.js';
 import { lightControls } from './lightControls.js';
+import { tvControls } from './tvControls.js';
 
 // 帶 icon 的小按鈕
 function iconButton(icon, label, title, onclick, extra = '') {
@@ -110,6 +112,7 @@ export function setupInspector(editor, getSolids, { editCabinet, editPegboard } 
       ...lightControls(editor, item),
       ...electricalFields(editor, item),
       ...halfWallFields(editor, item),
+      ...tvControls(editor, item),
       el(
         'div',
         { class: 'field' },
@@ -150,13 +153,16 @@ export function setupInspector(editor, getSolids, { editCabinet, editPegboard } 
     panel.querySelector('.wall').textContent = Number.isFinite(distance)
       ? `離最近牆面 ${Math.round(distance * 100)} cm`
       : '附近沒有牆面';
-    const support = supportOf(item, editor.store.getState().furniture);
+    // 壁掛電視的高度由中心高度決定，底下的電視櫃不算支撐
+    const support = isWallTv(item) ? null : supportOf(item, editor.store.getState().furniture);
     const placement = getCatalogItem(item.type)?.placement;
     panel.querySelector('.support').textContent = support
       ? `放在「${getCatalogItem(support.type)?.name}」上（離地 ${support.size.h} cm）`
-      : placement === 'surface'
-        ? '放在地上；拖到桌面或櫃面上會自動放上去'
-        : '';
+      : isWallTv(item)
+        ? `壁掛，底部離地 ${Math.round(item.elevation * 100)} cm`
+        : placement === 'surface'
+          ? '放在地上；拖到桌面或櫃面上會自動放上去'
+          : '';
     panel.querySelector('.warn').textContent = editor.conflicts.has(item.id) ? '⚠ 與其他家具重疊' : '';
     DIMENSIONS.forEach(([key], i) => {
       const input = panel.querySelectorAll('input[type=number]')[i];
