@@ -11,8 +11,10 @@ export const CATEGORIES = [
 // placement：floor 只能放地上；surface 可以放地上，也可以放到有檯面（surface: true）的家具上
 // allowOverlap：地毯本來就壓在其他家具底下，不算重疊
 // power：電壓（110／220）與瓦數；vent：上方建議保留的散熱空間（公分），放進櫃子時檢查
-const item = (category, type, name, [w, d, h], color, { placement = 'floor', surface = false, allowOverlap = false, power, vent } = {}) => ({
+// mountHeight：掛牆家具（吊櫃）的固定離地高度（公分）
+const item = (category, type, name, [w, d, h], color, { placement = 'floor', surface = false, allowOverlap = false, power, vent, mountHeight } = {}) => ({
   category, type, name, size: { w, d, h }, color, placement, surface, allowOverlap,
+  ...(mountHeight ? { mountHeight } : {}),
   ...(power ? { power: { voltage: power[0], watts: power[1] }, vent: vent ?? 0 } : {}),
 });
 
@@ -50,6 +52,8 @@ export const CATALOG = [
   item('custom', 'custom-cabinet', '系統櫃', [120, 60, 210], '#e9e4dc', { surface: true }),
   item('fixture', 'kitchen-counter', '廚具', [225, 60, 90], '#f0ece4', { surface: true }),
   item('fixture', 'toilet', '馬桶', [40, 70, 75], '#fafafa'),
+  item('fixture', 'upper-cabinet', '吊櫃', [225, 35, 70], '#f0ece4', { placement: 'wall', mountHeight: 145 }),
+  item('fixture', 'shower-screen', '淋浴拉門', [105, 2, 200], '#cfe3ee'),
   item('fixture', 'basin', '洗手台', [60, 45, 85], '#f5f5f3'),
 ];
 

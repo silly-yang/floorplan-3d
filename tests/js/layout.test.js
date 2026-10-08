@@ -246,3 +246,21 @@ test('hitsWalls 抬高的家電只跟它那個高度範圍內的量體比較', (
   assert.equal(hitsWalls(target, sill, 0.75), false);
   assert.equal(hitsWalls(target, sill, 0), true);
 });
+
+test('elevationOf 吊櫃不管下面有什麼，都掛在固定高度', () => {
+  // Arrange
+  const upper = item({ id: 'upper', type: 'upper-cabinet', x: 2, y: 2, size: { w: 225, d: 35, h: 70 } });
+
+  // Act & Assert
+  assert.equal(elevationOf(upper, [upper]), 1.45);
+  assert.equal(elevationOf(upper, [table(), upper]), 1.45);
+});
+
+test('findConflicts 吊櫃掛在流理台上方不算重疊', () => {
+  // Arrange
+  const counter = item({ id: 'counter', type: 'kitchen-counter', x: 2, y: 2, size: { w: 225, d: 60, h: 90 } });
+  const upper = item({ id: 'upper', type: 'upper-cabinet', x: 2, y: 2.1, size: { w: 225, d: 35, h: 70 } });
+
+  // Act & Assert
+  assert.equal(findConflicts([counter, upper]).size, 0);
+});

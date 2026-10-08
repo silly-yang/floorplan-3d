@@ -114,6 +114,32 @@
         75
       ],
       "rotation": 180
+    },
+    {
+      "type": "upper-cabinet",
+      "center": [
+        3720.75,
+        1446.5
+      ],
+      "size": [
+        225,
+        35,
+        70
+      ],
+      "rotation": 180
+    },
+    {
+      "type": "shower-screen",
+      "center": [
+        3985.5,
+        1541.5
+      ],
+      "size": [
+        105,
+        2,
+        200
+      ],
+      "rotation": 90
     }
   ]
 }

@@ -11,7 +11,7 @@ const REQUIRED_APPLIANCES = [
   'robot-vacuum', 'washing-machine', 'air-purifier', 'fan', 'floor-lamp',
   'air-fryer', 'oven', 'steam-oven', 'kettle', 'dishwasher',
 ];
-const REQUIRED_FIXTURES = ['kitchen-counter', 'toilet', 'basin'];
+const REQUIRED_FIXTURES = ['kitchen-counter', 'toilet', 'basin', 'upper-cabinet', 'shower-screen'];
 const REQUIRED = [...REQUIRED_FURNITURE, ...REQUIRED_APPLIANCES, ...REQUIRED_FIXTURES];
 
 test('目錄包含需求列出的家具與家電，每種都有中文名稱與正數尺寸', () => {
@@ -68,7 +68,7 @@ for (const [name, input, expected] of [
   });
 }
 
-test('每個項目都分到家具、家電或廚衛，且放置方式只有地面或檯面兩種', () => {
+test('每個項目都分到家具、家電或廚衛，放置方式只有地面、檯面、掛牆三種', () => {
   // Act
   const byCategory = (cat) => CATALOG.filter((c) => c.category === cat).map((c) => c.type).sort();
 
@@ -76,7 +76,7 @@ test('每個項目都分到家具、家電或廚衛，且放置方式只有地�
   assert.deepEqual(byCategory('furniture'), [...REQUIRED_FURNITURE].sort());
   assert.deepEqual(byCategory('appliance'), [...REQUIRED_APPLIANCES].sort());
   assert.deepEqual(byCategory('fixture'), [...REQUIRED_FIXTURES].sort());
-  for (const item of CATALOG) assert.ok(['floor', 'surface'].includes(item.placement), item.type);
+  for (const item of CATALOG) assert.ok(['floor', 'surface', 'wall'].includes(item.placement), item.type);
 });
 
 for (const [type, placement] of [
@@ -128,4 +128,13 @@ test('自己設計的系統櫃有獨立類型，不混進家具清單', () => {
   // Assert
   assert.equal(custom.category, 'custom');
   assert.equal(custom.surface, true);
+});
+
+test('吊櫃掛在牆上、有固定的掛牆高度', () => {
+  // Act
+  const upper = getCatalogItem('upper-cabinet');
+
+  // Assert
+  assert.equal(upper.placement, 'wall');
+  assert.ok(upper.mountHeight >= 130 && upper.mountHeight <= 170);
 });

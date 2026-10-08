@@ -128,11 +128,42 @@ const BUILDERS = {
 
   'kitchen-counter': (g, w, d, h, c) => {
     counterBody(g, w, d, h, c, { top: '#cfcac2' });
-    // 水槽、爐台、抽油煙機：位置依檯面寬度比例放
-    box(g, [Math.min(0.55, w * 0.25), 0.012, d * 0.6], [-w * 0.22, h + 0.004, 0.02], '#9aa2aa', 0.3);
-    box(g, [0.03, 0.22, 0.03], [-w * 0.22, h + 0.11, -d / 2 + 0.08], METAL);
-    box(g, [Math.min(0.6, w * 0.27), 0.012, d * 0.6], [w * 0.24, h + 0.004, 0.02], '#202225', 0.3);
-    box(g, [Math.min(0.75, w * 0.32), 0.35, 0.45], [w * 0.24, h + 0.75, -d / 2 + 0.22], '#c9cdd1', 0.4);
+    // 洗碗槽（含龍頭）、爐台：位置依檯面寬度比例放；面向 +z
+    const sinkX = -w * 0.22;
+    box(g, [Math.min(0.55, w * 0.25), 0.012, d * 0.6], [sinkX, h + 0.004, 0.02], '#9aa2aa', 0.25);
+    box(g, [0.03, 0.24, 0.03], [sinkX, h + 0.12, -d / 2 + 0.08], METAL);
+    box(g, [0.03, 0.03, 0.14], [sinkX, h + 0.24, -d / 2 + 0.14], METAL);
+    box(g, [Math.min(0.6, w * 0.27), 0.012, d * 0.6], [w * 0.24, h + 0.004, 0.02], '#202225', 0.25);
+    // 水槽旁的嵌入式洗碗機：不鏽鋼面板＋上緣把手
+    const dw = Math.min(0.6, w * 0.27);
+    const dwX = sinkX + Math.min(0.55, w * 0.25) / 2 + dw / 2 + 0.01;
+    box(g, [dw - 0.006, h - 0.13, 0.02], [dwX, 0.08 + (h - 0.13) / 2, d / 2 + 0.012], '#b9bec4', 0.25);
+    box(g, [dw * 0.7, 0.015, 0.025], [dwX, h - 0.09, d / 2 + 0.03], METAL);
+    box(g, [dw * 0.5, 0.02, 0.003], [dwX, h - 0.13, d / 2 + 0.023], '#2a2d31');
+    // 隱藏式排油煙機：薄型，藏在吊櫃下緣
+    box(g, [Math.min(0.75, w * 0.32), 0.07, 0.42], [w * 0.24, 1.38, -d / 2 + 0.21], '#c9cdd1', 0.35);
+  },
+
+  'upper-cabinet': (g, w, d, h, c) => {
+    box(g, [w, h, d], [0, h / 2, 0], c.main);
+    const doors = Math.max(2, Math.round(w / 0.45));
+    for (let i = 0; i < doors; i++) {
+      const dw = w / doors;
+      box(g, [dw - 0.006, h - 0.01, 0.018], [-w / 2 + dw * (i + 0.5), h / 2, d / 2 + 0.009], c.light);
+      box(g, [0.012, 0.12, 0.02], [-w / 2 + dw * (i + 0.5) + (i % 2 ? -1 : 1) * (dw / 2 - 0.04), 0.1, d / 2 + 0.025], '#4a4d52');
+    }
+  },
+
+  'shower-screen': (g, w, d, h) => {
+    const glass = new THREE.Mesh(
+      new THREE.BoxGeometry(w, h - 0.02, Math.max(d, 0.01)),
+      new THREE.MeshPhysicalMaterial({ color: '#d6e9f2', transparent: true, opacity: 0.3, roughness: 0.05, depthWrite: false }),
+    );
+    glass.position.y = h / 2;
+    g.add(glass);
+    for (const y of [0.01, h - 0.01]) box(g, [w, 0.02, 0.04], [0, y, 0], METAL, 0.3);
+    for (const x of [-w / 2, w / 2]) box(g, [0.02, h, 0.04], [x, h / 2, 0], METAL, 0.3);
+    box(g, [0.02, 0.3, 0.03], [w * 0.2, 1.05, 0.025], METAL, 0.3);
   },
 
   toilet: (g, w, d, h, c) => {

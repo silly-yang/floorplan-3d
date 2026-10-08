@@ -36,6 +36,8 @@ export const ICONS = {
   // ---------- 廚衛 ----------
   'custom-cabinet': 'M4 3h16v18H4zM12 3v18M4 10h8M4 15h8M12 12h8M8 6.5h.01M8 12.5h.01M15 16h2M7 18h2',
   'kitchen-counter': 'M2 10h20v10H2zM2 13h20M6 7h3v3M5 7h5M15 10.5h4M14 16h2M8 16h2',
+  'upper-cabinet': 'M3 4h18v8H3zM12 4v8M9.5 9h.01M14.5 9h.01M3 20h18M5 16h14',
+  'shower-screen': 'M5 3v18M19 3v18M5 4h14M5 20h14M9 7l4 4M9 11l6 6M16 8h.01',
   toilet: 'M7 3h7v6H7zM5 9h11c0 4-3 6-5.5 6S5 13 5 9zM8 15l-1 6h8l-1-6',
   basin: 'M4 9h16a8 5 0 0 1-16 0zM12 9V5h3M9 14v7M15 14v7',
   // ---------- 門 ----------
