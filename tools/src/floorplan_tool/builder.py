@@ -9,6 +9,7 @@ from floorplan_tool.config import Box, Config
 from floorplan_tool.dxf import DxfDocument
 from floorplan_tool.geometry import Point, Polygon, centroid
 from floorplan_tool.openings import find_openings
+from floorplan_tool.outlets import find_outlets
 from floorplan_tool.rooms import DEFAULT_CELL, trace_room
 from floorplan_tool.walls import extract_walls
 
@@ -56,6 +57,8 @@ def build_floorplan(doc: DxfDocument, config: Config) -> BuildResult:
     if wall_result.open_chains:
         warnings.append(f"有 {wall_result.open_chains} 段牆線沒有封閉，請對照檢查圖確認是否缺牆")
     openings = find_openings(doc, walls, config)
+    outlet_result = find_outlets(doc, config)
+    warnings += outlet_result.warnings
 
     points = [p for w in walls for p in w.polygon]
     x0, y0 = min(x for x, _ in points), min(y for _, y in points)
@@ -129,6 +132,11 @@ def build_floorplan(doc: DxfDocument, config: Config) -> BuildResult:
                 "size": {"w": f.size[0], "d": f.size[1], "h": f.size[2]},
             }
             for f in config.fixtures
+        ],
+        # 插座、開關、弱電出口：只有類型代碼、座標與離地高度（公尺）
+        "outlets": [
+            {"type": o.type, "x": pt(o.at)[0], "y": pt(o.at)[1], "height": o.height}
+            for o in outlet_result.outlets
         ],
     }
     return BuildResult(floorplan=floorplan, warnings=warnings)

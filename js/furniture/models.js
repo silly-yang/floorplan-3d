@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { PLINTH, cellBox } from '../core/cabinet.js';
 import { getCatalogItem } from './catalog.js';
+import { ELECTRICAL_BUILDERS } from './electricalModels.js';
 
 const materialCache = new Map();
 
@@ -263,6 +264,7 @@ const BUILDERS = {
       g.add(mesh);
     }
   },
+  ...ELECTRICAL_BUILDERS,
 };
 
 // 櫃體＋踢腳內縮＋檯面＋門板分隔；中島櫃與廚具共用

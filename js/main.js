@@ -9,6 +9,7 @@ import { DoorLayer } from './scene/doorLayer.js';
 import { exportGlb, exportPng } from './scene/exporters.js';
 import { FurnitureLayer } from './scene/furnitureLayer.js';
 import { CEILING_TYPES, ceilingStateOf, ceilingZones } from './core/ceilings.js';
+import { mountSurfaces, outletsToFurniture } from './core/electrical.js';
 import { FLOOR_MATERIALS, floorMaterialOf } from './core/materials.js';
 import { buildHouse, disposeObject, floorColorOf } from './scene/house.js';
 import { textureThumbnail } from './scene/textures.js';
@@ -19,6 +20,7 @@ import { renderCatalog } from './ui/catalogPanel.js';
 import { $, alertDialog, el, toast } from './ui/dom.js';
 import { setupCabinetPanel } from './ui/cabinetPanel.js';
 import { setupDoorPanel } from './ui/doorPanel.js';
+import { setupElectricalPanel } from './ui/electricalPanel.js';
 import { iconSvg } from './ui/icons.js';
 import { setupInspector } from './ui/inspector.js';
 import { makeStatusHandler, setupSessionUi } from './ui/sessionUi.js';
@@ -372,7 +374,10 @@ async function main() {
   }
   const store = createStore({ ceilingHeight: 3.05, ceilingColor: '#f4f2ee', rooms: {}, doors: {}, cabinets: [], ceilings: {}, furniture: [] });
   let exportAll = () => {};
-  const defaultFurniture = () => fixturesToFurniture(floorplan.fixtures, () => crypto.randomUUID());
+  const defaultFurniture = () => [
+    ...fixturesToFurniture(floorplan.fixtures, () => crypto.randomUUID()),
+    ...outletsToFurniture(floorplan.outlets, mountSurfaces(floorplan), () => crypto.randomUUID()),
+  ];
   const { session, warnings, persistent } = openSession(store, floorplanRef, makeStatusHandler(() => exportAll), defaultFurniture);
   const getSolids = makeSolidsGetter(floorplan, store);
   const viewer = new Viewer($('#stage'), floorplan.bounds);
@@ -409,6 +414,7 @@ async function main() {
     if (toggle && toggle.getAttribute('aria-pressed') !== 'true') toggle.click();
   });
   setupFixtureActions(floorplan, store);
+  setupElectricalPanel({ store, editor, floorplan });
   setupHistoryButtons(store, editor);
   ({ exportAll } = setupSessionUi({
     session,

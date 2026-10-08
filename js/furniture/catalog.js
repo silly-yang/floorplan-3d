@@ -1,4 +1,5 @@
 // 家具目錄：類型、預設尺寸（公分）、預設顏色；不依賴 Three.js
+import { ELECTRICAL_ITEMS } from './electricalCatalog.js';
 
 export const SIZE_LIMITS = { min: 1, max: 600 };
 
@@ -6,6 +7,7 @@ export const CATEGORIES = [
   { id: 'furniture', name: '家具' },
   { id: 'appliance', name: '家電' },
   { id: 'fixture', name: '廚衛' },
+  { id: 'electrical', name: '水電' },
 ];
 
 // placement：floor 只能放地上；surface 可以放地上，也可以放到有檯面（surface: true）的家具上
@@ -55,6 +57,7 @@ export const CATALOG = [
   item('fixture', 'upper-cabinet', '吊櫃', [225, 35, 70], '#f0ece4', { placement: 'wall', mountHeight: 145 }),
   item('fixture', 'shower-screen', '淋浴拉門', [105, 2, 200], '#cfe3ee'),
   item('fixture', 'basin', '洗手台', [60, 45, 85], '#f5f5f3'),
+  ...ELECTRICAL_ITEMS,
 ];
 
 const BY_TYPE = new Map(CATALOG.map((item) => [item.type, item]));

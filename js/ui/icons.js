@@ -40,6 +40,14 @@ export const ICONS = {
   'shower-screen': 'M5 3v18M19 3v18M5 4h14M5 20h14M9 7l4 4M9 11l6 6M16 8h.01',
   toilet: 'M7 3h7v6H7zM5 9h11c0 4-3 6-5.5 6S5 13 5 9zM8 15l-1 6h8l-1-6',
   basin: 'M4 9h16a8 5 0 0 1-16 0zM12 9V5h3M9 14v7M15 14v7',
+  // ---------- 水電 ----------
+  'outlet-110': 'M5 4h14v16H5zM10 9v3M14 9v3M10.5 15.5h3',
+  'outlet-220': 'M5 4h14v16H5zM9 10l2 2M15 10l-2 2M12 15v1.5',
+  'outlet-dedicated': 'M5 4h14v16H5zM10 8v3M14 8v3M13 13l-2 3h2l-2 3',
+  switch: 'M6 3h12v18H6zM9.5 7h5v10h-5zM9.5 12h5',
+  'tv-jack': 'M5 4h14v16H5zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 12h.01',
+  'lan-jack': 'M5 4h14v16H5zM9 10h6v5H9zM10.5 10V8.5h3V10M11 12.5v1M13 12.5v1',
+  'tab-electrical': 'M13 3L6 13h5l-1 8 7-10h-5z',
   // ---------- 門 ----------
   'door-none': 'M5 21V4h14v17M3 21h18M9 9l6 6M15 9l-6 6',
   'door-hinged': 'M5 21V4h10v17M3 21h18M15 4l4 2v15M12 12v1.5',

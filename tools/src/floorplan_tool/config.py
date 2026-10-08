@@ -16,6 +16,8 @@ LAYER_KEYS = {
     "door": "door",
     "barrier": "barrier",
     "beam": "beam",
+    "outlet": "outlet",
+    "wallDevice": "wall_device",
 }
 
 
@@ -39,6 +41,9 @@ class LayerMap:
     door: list[str]
     barrier: list[str]
     beam: list[str] = field(default_factory=list)
+    # 插座圖層：上面的圖塊都是插座；開關、電視、網路所在的圖層還有燈具等，只取認得的圖塊
+    outlet: list[str] = field(default_factory=list)
+    wall_device: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -83,6 +88,8 @@ class Config:
     ignore_openings: list[str]
     fixtures: list[FixtureSeed] = field(default_factory=list)
     ceiling_zones: list[CeilingZone] = field(default_factory=list)
+    # 水電圖是建築平面圖的複本、畫在旁邊；這是它相對建築平面圖的位移（圖面單位）
+    electrical_offset: tuple[float, float] = (0.0, 0.0)
 
 
 def _is_number(value: object) -> bool:
@@ -239,6 +246,14 @@ def _ceiling_zones(raw: dict[str, Any], problems: list[str]) -> list[CeilingZone
     return result
 
 
+def _electrical_offset(raw: dict[str, Any], problems: list[str]) -> tuple[float, float]:
+    offset = raw.get("electricalOffset", [0, 0])
+    if not (isinstance(offset, list) and len(offset) == 2 and all(_is_number(v) for v in offset)):
+        problems.append(f"electricalOffset：必須是 [dx, dy] 兩個數字（圖面單位），收到 {offset!r}")
+        return (0.0, 0.0)
+    return (float(offset[0]), float(offset[1]))
+
+
 # raw 來自 json.load，結構未知，驗證完才轉成具型別的 Config
 def parse_config(raw: Any) -> Config:
     if not isinstance(raw, dict):
@@ -257,6 +272,7 @@ def parse_config(raw: Any) -> Config:
     rooms = _rooms(raw, problems)
     fixtures = _fixtures(raw, problems)
     ceiling_zones = _ceiling_zones(raw, problems)
+    electrical_offset = _electrical_offset(raw, problems)
     ignore = raw.get("ignoreOpenings", [])
     if not isinstance(ignore, list) or not all(isinstance(i, str) for i in ignore):
         problems.append(f"ignoreOpenings：必須是字串陣列，收到 {ignore!r}")
@@ -278,4 +294,5 @@ def parse_config(raw: Any) -> Config:
         ignore_openings=list(ignore),
         fixtures=fixtures,
         ceiling_zones=ceiling_zones,
+        electrical_offset=electrical_offset,
     )

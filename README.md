@@ -106,6 +106,9 @@ cd tools && uv run dxf-to-floorplan ../source/plan.dxf \
 | `layers.beam` | — | 大樑圖層；兩條平行線配成一支樑，深度讀旁邊的「(寬x深)」標註 |
 | `ceilingZones` | 圖面單位 | 建商已做天花板的區域（例如廚房），預設平釘 |
 | `fixtures` | 圖面單位／公分 | 建商附的廚衛：類型、中心點、尺寸 `[寬, 深, 高]`、旋轉角；新方案會預先擺好 |
+| `layers.outlet` | — | 插座圖層；上面的圖塊都當插座，類型與高度依圖塊名稱關鍵字判斷（對照表在 `outlets.py` 的 `RULES`），認不出的當一般插座並在轉檔時警告 |
+| `layers.wallDevice` | — | 開關、電視、網路出口所在圖層；只取認得的圖塊，燈具、資訊箱略過 |
+| `electricalOffset` | 圖面單位 | 水電圖相對建築平面圖的位移 `[dx, dy]`；扣掉後再套 `clip`，與牆同一原點 |
 
 `floorplan.json` 座標單位公尺、y 軸朝上；**不含任何圖面文字**，門窗編號只接受 `W5`、`FD2` 這類代號。
 
