@@ -340,7 +340,10 @@ async function main() {
   const doorLayer = new DoorLayer(viewer.scene, floorplan);
   store.subscribe((design) => doorLayer.sync(design.doors));
   doorLayer.sync(store.getState().doors);
-  viewer.onFrame((dt) => doorLayer.update(dt));
+  viewer.onFrame((dt) => {
+    doorLayer.update(dt);
+    furnitureLayer.update(dt);
+  });
   const editor = new Editor({ viewer, store, furnitureLayer, doorLayer, floorplan, getSolids });
   renderCatalog({
     onAdd: (type) => {

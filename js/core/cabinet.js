@@ -11,6 +11,7 @@ export const CELL_KINDS = [
   { id: 'drawer', name: '抽屜' },
   { id: 'open', name: '開放層板' },
   { id: 'appliance', name: '家電格' },
+  { id: 'pullout', name: '抽拉盤' },
 ];
 export const OUTLETS = [
   { id: 'none', name: '無插座' },
@@ -148,7 +149,8 @@ export function cabinetIssues(cab) {
       for (const { index, spec } of appliances) {
         if (spec.size.h > c.height) add('too-tall', `${spec.name}高 ${spec.size.h} cm，格子只有 ${c.height} cm（差 ${spec.size.h - c.height} cm）`, index);
         else if (c.height - spec.size.h < (spec.vent ?? 0)) {
-          add('vent', `${spec.name}上方建議留 ${spec.vent} cm 散熱，目前只剩 ${c.height - spec.size.h} cm`, index);
+          const hint = c.kind === 'pullout' ? '；使用時抽出來可以改善' : '';
+          add('vent', `${spec.name}上方建議留 ${spec.vent} cm 散熱，目前只剩 ${c.height - spec.size.h} cm${hint}`, index);
         }
         const usable = cab.size.d - BACK_PANEL;
         if (spec.size.d > usable) add('too-deep', `${spec.name}深 ${spec.size.d} cm，櫃內可用深度只有 ${usable} cm（差 ${spec.size.d - usable} cm）`, index);

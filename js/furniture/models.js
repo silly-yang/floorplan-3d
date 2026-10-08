@@ -370,14 +370,27 @@ export function buildCabinetModel(cab) {
       if (cell.outlet !== 'none') {
         box(group, [0.07, 0.07, 0.01], [cx, y0 + ch - 0.08, -d / 2 + 0.013], OUTLET_COLORS[cell.outlet] ?? '#ffffff', 0.4);
       }
-      // 格內家電由左往右排，貼著格子底板、靠前緣
+      // 抽拉盤：托盤＋前擋板＋上面的家電包成一組，主畫面點一下整組滑出
+      let holder = group;
+      let floorY = y0 + (index > 0 ? PANEL / 2 : PANEL);
+      if (cell.kind === 'pullout') {
+        holder = new THREE.Group();
+        holder.name = 'pullout';
+        holder.userData.pullout = { travel: d * 0.7, open: false, progress: 0 };
+        box(holder, [cw - 0.04, 0.018, d - 0.06], [cx, floorY + 0.009, 0.01], '#cfc9bf');
+        box(holder, [cw - 0.04, 0.05, 0.015], [cx, floorY + 0.025, d / 2 - 0.03], c.light);
+        box(holder, [Math.min(0.14, cw * 0.4), 0.012, 0.02], [cx, floorY + 0.03, d / 2 - 0.012], '#4a4d52');
+        floorY += 0.018;
+        group.add(holder);
+      }
+      // 格內家電由左往右排，貼著格子底板（或托盤）、靠前緣
       let cursor = x0 + 0.02;
       for (const it of cell.items) {
         const spec = getCatalogItem(it.type);
         if (!spec) continue;
         const model = buildFurnitureModel({ type: it.type, size: spec.size, color: spec.color });
-        model.position.set(cursor + spec.size.w / 200, y0 + (index > 0 ? PANEL / 2 : PANEL), d / 2 - spec.size.d / 200 - 0.01);
-        group.add(model);
+        model.position.set(cursor + spec.size.w / 200, floorY, d / 2 - spec.size.d / 200 - 0.04);
+        holder.add(model);
         cursor += spec.size.w / 100 + 0.02;
       }
     });

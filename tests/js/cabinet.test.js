@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  CELL_KINDS,
   PLINTH,
   addItem,
   cabinetIssues,
@@ -260,4 +261,30 @@ test('deleteCabinetDesign 刪掉櫃子設計時，場景裡用到它的櫃子一
   // Assert
   assert.deepEqual(after.cabinets, []);
   assert.deepEqual(after.furniture.map((f) => f.id), ['sofa']);
+});
+
+test('格子類型包含抽拉盤', () => {
+  // Assert
+  assert.ok(CELL_KINDS.some((k) => k.id === 'pullout' && k.name === '抽拉盤'));
+});
+
+test('cabinetIssues 電鍋放在抽拉盤上不算「放在有門的格子」', () => {
+  // Arrange
+  const cab = addItem(applianceCell({ kind: 'pullout' }), 0, 0, 'rice-cooker');
+
+  // Act & Assert
+  assert.ok(!kinds(cab).includes('closed-cell'));
+});
+
+test('cabinetIssues 抽拉盤上方散熱不足時，提醒可以抽出使用', () => {
+  // Arrange：電鍋高 28、建議上方留 20；格高調成 35 只剩 7
+  const tight = setCellHeight(splitCell(applianceCell({ kind: 'pullout' }), 0, 0), 0, 0, 35);
+  const cab = addItem(tight, 0, 0, 'rice-cooker');
+
+  // Act
+  const vent = cabinetIssues(cab).find((i) => i.kind === 'vent');
+
+  // Assert
+  assert.ok(vent);
+  assert.match(vent.message, /抽出/);
 });

@@ -22,7 +22,7 @@ import { iconSvg } from './icons.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const APPLIANCE_MIME = 'application/x-cabinet-appliance';
-const KIND_FILL = { door: '#efe9df', drawer: '#ece4d6', open: '#faf8f4', appliance: '#f3f6f8' };
+const KIND_FILL = { door: '#efe9df', drawer: '#ece4d6', open: '#faf8f4', appliance: '#f3f6f8', pullout: '#eef3ef' };
 
 const svg = (tag, attrs = {}, ...children) => {
   const node = document.createElementNS(SVG_NS, tag);
@@ -61,6 +61,10 @@ export function cabinetElevation(cab, { selected = null, issues = [], onCell = n
       if (cell.kind === 'drawer') {
         const count = Math.max(1, Math.round(b.h / 22));
         for (let k = 1; k < count; k++) g.append(svg('line', { x1: b.x, x2: b.x + b.w, y1: flipY(b.y, b.h) + (b.h / count) * k, y2: flipY(b.y, b.h) + (b.h / count) * k, stroke: '#8a7f70' }));
+      }
+      if (cell.kind === 'pullout') {
+        // 托盤：格子底部一條較粗的線＋前緣把手
+        g.append(svg('rect', { x: b.x + 2, y: flipY(b.y, 2.5), width: b.w - 4, height: 2.5, fill: '#b9b2a6' }));
       }
       if (cell.outlet !== 'none') {
         const ox = b.x + b.w / 2 - 6;

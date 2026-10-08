@@ -139,6 +139,33 @@ export class FurnitureLayer {
     this.#refreshDecorations();
   }
 
+  // 射線打到的是系統櫃的抽拉盤（或盤上的家電）時回傳那個托盤群組
+  pickTray(raycaster) {
+    const models = [...this.entries.values()].map((e) => e.model).filter(Boolean);
+    let node = raycaster.intersectObjects(models, true)[0]?.object;
+    while (node && !node.userData.pullout) node = node.parent;
+    return node ?? null;
+  }
+
+  toggleTray(tray) {
+    tray.userData.pullout.open = !tray.userData.pullout.open;
+  }
+
+  // 每幀把抽拉盤往目標位置推（約 0.4 秒拉開）
+  update(dt) {
+    for (const entry of this.entries.values()) {
+      entry.model?.traverse((node) => {
+        const p = node.userData.pullout;
+        if (!p) return;
+        const target = p.open ? 1 : 0;
+        if (p.progress === target) return;
+        p.progress = target > p.progress ? Math.min(1, p.progress + dt * 2.5) : Math.max(0, p.progress - dt * 2.5);
+        const eased = p.progress * p.progress * (3 - 2 * p.progress);
+        node.position.z = p.travel * eased;
+      });
+    }
+  }
+
   // 回傳射線打到的第一件家具 id
   pick(raycaster) {
     const models = [...this.entries.values()].map((e) => e.model).filter(Boolean);

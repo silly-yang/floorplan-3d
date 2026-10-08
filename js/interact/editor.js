@@ -188,6 +188,13 @@ export class Editor {
     }
     this.down = { x: e.clientX, y: e.clientY };
     const ray = this.#ray(e.clientX, e.clientY);
+    // 點到系統櫃的抽拉盤：抽出或推回，不選取、不拖曳
+    const tray = this.layer.pickTray(ray);
+    if (tray) {
+      this.layer.toggleTray(tray);
+      this.down = null;
+      return;
+    }
     const id = this.layer.pick(ray);
     if (!id) {
       const door = this.doorLayer.pick(ray);
