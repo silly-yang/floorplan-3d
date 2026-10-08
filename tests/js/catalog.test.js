@@ -12,7 +12,8 @@ const REQUIRED_APPLIANCES = [
   'air-fryer', 'oven', 'steam-oven', 'kettle', 'dishwasher',
 ];
 const REQUIRED_FIXTURES = ['kitchen-counter', 'toilet', 'basin', 'upper-cabinet', 'shower-screen'];
-const REQUIRED = [...REQUIRED_FURNITURE, ...REQUIRED_APPLIANCES, ...REQUIRED_FIXTURES];
+const REQUIRED_NETWORK = ['wifi-router', 'mesh-node', 'ceiling-ap', 'network-panel'];
+const REQUIRED = [...REQUIRED_FURNITURE, ...REQUIRED_APPLIANCES, ...REQUIRED_FIXTURES, ...REQUIRED_NETWORK];
 
 test('目錄包含需求列出的家具與家電，每種都有中文名稱與正數尺寸', () => {
   // Act：自己設計的系統櫃（custom）不在一般清單裡，另外檢查
@@ -137,4 +138,36 @@ test('吊櫃掛在牆上、有固定的掛牆高度', () => {
   // Assert
   assert.equal(upper.placement, 'wall');
   assert.ok(upper.mountHeight >= 130 && upper.mountHeight <= 170);
+});
+
+for (const [type, placement] of [
+  ['wifi-router', 'surface'],
+  ['mesh-node', 'surface'],
+  ['ceiling-ap', 'ceiling'],
+  ['network-panel', 'wall'],
+]) {
+  test(`網路設備 ${type} 歸在網路分類、放置方式是 ${placement}、用 110V 有瓦數`, () => {
+    // Act
+    const item = getCatalogItem(type);
+
+    // Assert
+    assert.equal(item.category, 'network');
+    assert.equal(item.placement, placement);
+    assert.equal(item.power.voltage, 110);
+    assert.ok(item.power.watts > 0);
+  });
+}
+
+test('路由器、Mesh、吸頂 AP 有發射功率，弱電箱沒有無線', () => {
+  // Assert
+  for (const type of ['wifi-router', 'mesh-node', 'ceiling-ap']) {
+    const tx = getCatalogItem(type).wireless?.txPower;
+    assert.ok(tx >= 10 && tx <= 30, `${type} ${tx}`);
+  }
+  assert.equal(getCatalogItem('network-panel').wireless, undefined);
+});
+
+test('弱電箱掛牆高度 150 公分', () => {
+  // Act & Assert
+  assert.equal(getCatalogItem('network-panel').mountHeight, 150);
 });

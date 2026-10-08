@@ -40,6 +40,11 @@ export const ICONS = {
   'shower-screen': 'M5 3v18M19 3v18M5 4h14M5 20h14M9 7l4 4M9 11l6 6M16 8h.01',
   toilet: 'M7 3h7v6H7zM5 9h11c0 4-3 6-5.5 6S5 13 5 9zM8 15l-1 6h8l-1-6',
   basin: 'M4 9h16a8 5 0 0 1-16 0zM12 9V5h3M9 14v7M15 14v7',
+  // ---------- 網路 ----------
+  'wifi-router': 'M3 14h18v5H3zM6 14V5M18 14V5M7 16.5h.01M10 16.5h.01M15 16.5h3',
+  'mesh-node': 'M8 5h8v15H8zM8 5a4 2 0 0 1 8 0M12 15v.01M10 10a3 3 0 0 1 4 0',
+  'ceiling-ap': 'M3 4h18M5 7h14a7 3 0 0 1-14 0zM12 9v.01M8 15a6 6 0 0 1 8 0M10 18a3 3 0 0 1 4 0',
+  'network-panel': 'M5 3h14v18H5zM8 7h8M8 11h8M8 15h2M12 15h2M16 15h.01',
   // ---------- 門 ----------
   'door-none': 'M5 21V4h14v17M3 21h18M9 9l6 6M15 9l-6 6',
   'door-hinged': 'M5 21V4h10v17M3 21h18M15 4l4 2v15M12 12v1.5',
@@ -83,6 +88,8 @@ export const ICONS = {
   'tab-fixture': 'M4 9h16a8 5 0 0 1-16 0zM12 9V5h3M9 14v7M15 14v7',
   'tab-floor': 'M3 9l9-5 9 5-9 5zM3 14l9 5 9-5',
   'tab-files': 'M3 6h6l2 2h10v11H3z',
+  'tab-network': 'M2 9a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5v.01',
+  'wifi-heatmap': 'M4 4h16v16H4zM4 12h16M12 4v16M7 7.5h.01M16 16.5h.01M8 16a4 4 0 0 1 3-1.5',
   close: 'M6 6l12 12M18 6L6 18',
   open: 'M5 12h14M13 6l6 6-6 6',
 };

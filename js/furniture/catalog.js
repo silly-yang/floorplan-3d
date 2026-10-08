@@ -6,15 +6,18 @@ export const CATEGORIES = [
   { id: 'furniture', name: '家具' },
   { id: 'appliance', name: '家電' },
   { id: 'fixture', name: '廚衛' },
+  { id: 'network', name: '網路' },
 ];
 
 // placement：floor 只能放地上；surface 可以放地上，也可以放到有檯面（surface: true）的家具上
 // allowOverlap：地毯本來就壓在其他家具底下，不算重疊
 // power：電壓（110／220）與瓦數；vent：上方建議保留的散熱空間（公分），放進櫃子時檢查
 // mountHeight：掛牆家具（吊櫃）的固定離地高度（公分）
-const item = (category, type, name, [w, d, h], color, { placement = 'floor', surface = false, allowOverlap = false, power, vent, mountHeight } = {}) => ({
+// wireless：無線設備的發射功率（txPower，dBm，2.4 GHz），WiFi 熱圖用
+const item = (category, type, name, [w, d, h], color, { placement = 'floor', surface = false, allowOverlap = false, power, vent, mountHeight, wireless } = {}) => ({
   category, type, name, size: { w, d, h }, color, placement, surface, allowOverlap,
   ...(mountHeight ? { mountHeight } : {}),
+  ...(wireless ? { wireless } : {}),
   ...(power ? { power: { voltage: power[0], watts: power[1] }, vent: vent ?? 0 } : {}),
 });
 
@@ -55,6 +58,10 @@ export const CATALOG = [
   item('fixture', 'upper-cabinet', '吊櫃', [225, 35, 70], '#f0ece4', { placement: 'wall', mountHeight: 145 }),
   item('fixture', 'shower-screen', '淋浴拉門', [105, 2, 200], '#cfe3ee'),
   item('fixture', 'basin', '洗手台', [60, 45, 85], '#f5f5f3'),
+  item('network', 'wifi-router', '路由器', [26, 16, 20], '#2f3237', { placement: 'surface', power: [110, 15], wireless: { txPower: 20 } }),
+  item('network', 'mesh-node', 'Mesh 節點', [11, 11, 18], '#f2f2f0', { placement: 'surface', power: [110, 10], wireless: { txPower: 18 } }),
+  item('network', 'ceiling-ap', '吸頂 AP', [20, 20, 5], '#f4f4f2', { placement: 'ceiling', power: [110, 13], wireless: { txPower: 20 } }),
+  item('network', 'network-panel', '弱電箱', [40, 12, 50], '#d9dbde', { placement: 'wall', mountHeight: 150, power: [110, 20] }),
 ];
 
 const BY_TYPE = new Map(CATALOG.map((item) => [item.type, item]));
