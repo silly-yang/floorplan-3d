@@ -1,6 +1,6 @@
 // 方案相關畫面：頂部方案切換與儲存狀態、「檔案」分頁、匯入流程（含拖放檔案）
 import { StorageFullError, StorageUnavailableError } from '../storage/localStore.js';
-import { buildExport, exportFileName, findConflict, ImportError, parseImportText, resolveImport } from '../storage/transfer.js';
+import { assignFloorplans, buildExport, exportFileName, findConflict, ImportError, parseImportText, resolveImport } from '../storage/transfer.js';
 import { $, alertDialog, chooseDialog, confirmDialog, downloadBlob, el, promptDialog, toast } from './dom.js';
 import { iconSvg } from './icons.js';
 
@@ -13,6 +13,7 @@ function iconButton(icon, label, attrs) {
 
 const timeOf = (iso) => new Date(iso).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });
 const dateTimeOf = (iso) => new Date(iso).toLocaleString('zh-TW', { dateStyle: 'short', timeStyle: 'short', hour12: false });
+const dateOf = (iso) => new Date(iso).toLocaleDateString('zh-TW');
 
 const jsonBlob = (data) => new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
 
@@ -43,10 +44,12 @@ export function makeStatusHandler(getExportAll) {
   };
 }
 
-export function setupSessionUi({ session, onFloorplanMismatch, exportPng, exportGlb, onImportDxf }) {
+// floorplans：平面圖清單與操作（見 main.js），current 是目前使用中的平面圖
+export function setupSessionUi({ session, onFloorplanMismatch, exportPng, exportGlb, floorplans }) {
+  // 用到匯入平面圖的方案，平面圖一起帶走
   const exportDesigns = (designs) => {
     const now = new Date().toISOString();
-    downloadBlob(jsonBlob(buildExport(designs, now)), exportFileName(designs, now));
+    downloadBlob(jsonBlob(buildExport(designs, now, floorplans.exportBundle(designs))), exportFileName(designs, now));
   };
 
   const exportCurrent = () => {
@@ -54,10 +57,11 @@ export function setupSessionUi({ session, onFloorplanMismatch, exportPng, export
     exportDesigns([session.current]);
   };
 
+  // 全部平面圖的方案都匯出，換電腦時一次帶走
   const exportAll = () => {
     session.flush();
     const designs = [];
-    for (const { id } of session.list()) {
+    for (const { id } of floorplans.allDesigns()) {
       try {
         designs.push(id === session.current.id ? session.current : session.load(id));
       } catch (error) {
@@ -68,7 +72,7 @@ export function setupSessionUi({ session, onFloorplanMismatch, exportPng, export
     toast(`已匯出 ${designs.length} 個方案`);
   };
 
-  // 名稱衝突逐一詢問：覆蓋、另存或略過
+  // 先還原平面圖，再匯入方案；名稱衝突（同一張平面圖內）逐一詢問：覆蓋、另存或略過
   const importText = async (text) => {
     let parsed;
     try {
@@ -78,14 +82,24 @@ export function setupSessionUi({ session, onFloorplanMismatch, exportPng, export
       await alertDialog('無法匯入', error.message);
       return;
     }
-    const { designs, errors } = parsed;
+    try {
+      floorplans.restore(parsed.floorplans);
+    } catch (error) {
+      await alertDialog('無法匯入平面圖', error.message);
+      return;
+    }
+    const assigned = assignFloorplans(parsed, { hasFloorplan: floorplans.hasFloorplan, defaultRef: floorplans.defaultRef });
+    const designs = assigned.designs;
+    const errors = [...parsed.errors, ...assigned.errors];
     if (errors.length) {
       const detail = errors.map((e) => `${e.label}\n${e.problems.map((p) => `  ・${p}`).join('\n')}`).join('\n\n');
       await alertDialog(designs.length ? '部分方案格式錯誤，已略過' : '設計檔格式錯誤', detail);
     }
     let imported = 0;
+    let elsewhere = 0;
     for (const design of designs) {
-      const existing = session.list();
+      const key = floorplans.keyOf(design.floorplanRef);
+      const existing = floorplans.designsOf(key);
       const conflict = findConflict(design, existing);
       let decision = null;
       if (conflict) {
@@ -98,11 +112,13 @@ export function setupSessionUi({ session, onFloorplanMismatch, exportPng, export
       try {
         session.importDesign(resolveImport(design, decision, existing, { newId: () => crypto.randomUUID() }));
         imported++;
+        if (key !== floorplans.current.key) elsewhere++;
       } catch (error) {
         toast(`匯入「${design.name}」失敗：${error.message}`, { error: true });
       }
     }
-    if (imported) toast(`已匯入 ${imported} 個方案`);
+    if (imported) toast(`已匯入 ${imported} 個方案${elsewhere ? `（其中 ${elsewhere} 個在其他平面圖，到「檔案」→「平面圖」切換）` : ''}`, { duration: 6000 });
+    refresh();
   };
 
   const importFile = async (file) => {
@@ -174,11 +190,7 @@ export function setupSessionUi({ session, onFloorplanMismatch, exportPng, export
         iconButton('add', '新增方案', { class: 'btn small', onclick: () => guard(() => session.createNew()) }),
         iconButton('duplicate', '複製目前方案', { class: 'btn small', onclick: () => guard(() => session.duplicate()) }),
       ),
-      el('h2', { class: 'panel-title' }, '平面圖'),
-      el('div', { class: 'stack' },
-        iconButton('tab-floor', '匯入平面圖（DXF）', { class: 'btn', onclick: onImportDxf }),
-      ),
-      el('p', { class: 'note' }, '從建商或設計師給的 CAD 圖建立自己的平面圖；檔案只在這台裝置的瀏覽器裡處理，不會上傳。'),
+      ...floorplanSection(),
       el('h2', { class: 'panel-title' }, '匯出／匯入設計檔'),
       el('div', { class: 'stack' },
         iconButton('export', '匯出目前方案（.design.json）', { class: 'btn', onclick: exportCurrent }),
@@ -197,6 +209,52 @@ export function setupSessionUi({ session, onFloorplanMismatch, exportPng, export
       ),
       el('p', { class: 'note' }, '設計會自動存在這個瀏覽器裡。清除瀏覽器資料或換電腦前，請先匯出備份。'),
     );
+  };
+
+  // ---------- 平面圖 ----------
+  const currentKey = floorplans.current.key;
+  const resetButton = (attrs = {}) =>
+    iconButton('reset', '重置回預設版本', { class: 'btn small', title: '切回預設平面圖；匯入的平面圖會留著，之後還能切回來', onclick: () => guard(() => floorplans.switchTo(null)), ...attrs });
+  const floorplanSection = () => {
+    const entries = floorplans.entries();
+    return [
+      el('h2', { class: 'panel-title' }, '平面圖'),
+      el('ul', { class: 'cloud-list floorplan-list' }, entries.map((f) => {
+        const current = f.key === currentKey;
+        const detail = `${f.isDefault ? '內建' : `建立於 ${dateOf(f.createdAt)}`}・${f.designCount} 個方案`;
+        return el('li', { 'data-floorplan': f.key ?? 'default' },
+          el('span', {}, current ? el('strong', {}, `▸ ${f.name}（使用中）`) : f.name, el('div', { class: 'note' }, detail)),
+          el('span', { class: 'row' },
+            current ? null : iconButton('open', '切換', { class: 'btn small', onclick: () => guard(() => floorplans.switchTo(f.key)) }),
+            f.isDefault ? null : iconButton('rename', '', { class: 'btn small icon-only', title: '重新命名', 'aria-label': `重新命名「${f.name}」`, onclick: () => guard(async () => {
+              const name = await promptDialog('重新命名平面圖', '新的平面圖名稱', f.name);
+              if (name) floorplans.rename(f.key, name);
+            }) }),
+            f.isDefault ? null : iconButton('delete', '', { class: 'btn small icon-only', title: '刪除平面圖與它的方案', 'aria-label': `刪除「${f.name}」`, onclick: () => guard(() => floorplans.remove(f.key)) }),
+          ),
+        );
+      })),
+      el('div', { class: 'row' },
+        iconButton('tab-floor', '匯入平面圖（DXF）', { class: 'btn small', onclick: floorplans.importDxf }),
+        currentKey === null ? null : resetButton(),
+      ),
+      el('p', { class: 'note' }, '從建商或設計師給的 CAD 圖建立自己的平面圖；檔案只在這台裝置的瀏覽器裡處理，不會上傳。預設平面圖不會被覆蓋。'),
+    ];
+  };
+
+  // 使用匯入的平面圖時，頂部顯示名稱與回預設的入口
+  let banner = null;
+  const renderBanner = () => {
+    banner?.remove();
+    banner = null;
+    document.body.classList.toggle('on-imported-floorplan', currentKey !== null);
+    if (currentKey === null) return;
+    const name = floorplans.entries().find((f) => f.key === currentKey)?.name ?? floorplans.current.name;
+    banner = el('div', { class: 'floorplan-banner', role: 'status' },
+      el('span', {}, '目前使用匯入的平面圖：', el('strong', {}, name)),
+      resetButton({ 'data-banner-reset': '' }),
+    );
+    $('.topbar').after(banner);
   };
 
   // ---------- 拖放檔案匯入 ----------
@@ -232,6 +290,7 @@ export function setupSessionUi({ session, onFloorplanMismatch, exportPng, export
   const refresh = () => {
     renderSelect();
     renderFilesPanel();
+    renderBanner();
     const current = session.current;
     if (current && current.id !== lastId) {
       lastId = current.id;
@@ -248,5 +307,10 @@ export function setupSessionUi({ session, onFloorplanMismatch, exportPng, export
     if (document.visibilityState === 'hidden') session.flush();
   }, { signal });
 
-  return { exportAll, importText, dispose: () => abort.abort() };
+  const dispose = () => {
+    abort.abort();
+    banner?.remove();
+    document.body.classList.remove('on-imported-floorplan');
+  };
+  return { exportAll, importText, refresh, dispose };
 }

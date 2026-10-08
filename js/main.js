@@ -1,4 +1,5 @@
 // 進入點：載入平面圖、建立 3D 場景、串起各面板
+import { createFloorplanCatalog, floorplanRefOf } from './app/floorplans.js';
 import { createSession } from './app/session.js';
 import { createStore } from './app/store.js';
 import { blocksPassage, doorStateOf } from './core/doors.js';
@@ -20,10 +21,10 @@ import { buildGrid } from './scene/gridLayer.js';
 import { buildHouse, disposeObject, floorColorOf } from './scene/house.js';
 import { textureThumbnail } from './scene/textures.js';
 import { Viewer } from './scene/viewer.js';
-import { DesignStore, StorageUnavailableError } from './storage/localStore.js';
-import { fingerprint } from './storage/schema.js';
+import { FloorplanStore } from './storage/floorplanStore.js';
+import { DesignStore } from './storage/localStore.js';
 import { renderCatalog } from './ui/catalogPanel.js';
-import { $, alertDialog, el, toast } from './ui/dom.js';
+import { $, alertDialog, confirmDialog, el, toast } from './ui/dom.js';
 import { setupCabinetPanel } from './ui/cabinetPanel.js';
 import { setupPegboardPanel } from './ui/pegboardPanel.js';
 import { setupDoorPanel } from './ui/doorPanel.js';
@@ -43,9 +44,6 @@ const pristine = PRISTINE_SELECTORS.map((selector) => $(selector).cloneNode(true
 function restoreDom() {
   PRISTINE_SELECTORS.forEach((selector, i) => $(selector).replaceWith(pristine[i].cloneNode(true)));
 }
-
-// 指紋只看格局（牆、門窗、房間），新增預設廚衛這類變動不算換了平面圖
-const floorplanRefOf = (floorplan) => fingerprint(JSON.stringify([floorplan.bounds, floorplan.walls, floorplan.openings, floorplan.rooms]));
 
 async function loadFloorplan() {
   const response = await fetch('data/floorplan.json', { cache: 'no-cache' });
@@ -84,29 +82,14 @@ class MemoryStorage {
   }
 }
 
-// memoryOnly：預覽匯入的平面圖時不碰 localStorage，原本的方案才不會被覆蓋
-function openSession(store, floorplanRef, onStatus, defaultFurniture, { memoryOnly = false } = {}) {
-  const make = (storage) =>
-    createSession({
-      designStore: new DesignStore(storage),
-      store,
-      now: () => new Date().toISOString(),
-      newId: () => crypto.randomUUID(),
-      floorplanRef,
-      onStatus,
-      defaultFurniture,
-    });
-  if (memoryOnly) {
-    const session = make(new MemoryStorage());
-    return { session, ...session.init(), persistent: false };
-  }
+// 瀏覽器不給用 localStorage（部分無痕模式）時改用記憶體；換平面圖時沿用同一個
+function pickStorage() {
   try {
-    const session = make(window.localStorage);
-    return { session, ...session.init(), persistent: true };
-  } catch (error) {
-    if (!(error instanceof StorageUnavailableError) && error?.name !== 'SecurityError') throw error;
-    const session = make(new MemoryStorage());
-    return { session, ...session.init(), persistent: false };
+    const storage = window.localStorage;
+    storage.getItem('fp3d.index');
+    return { storage, persistent: true };
+  } catch {
+    return { storage: new MemoryStorage(), persistent: false };
   }
 }
 
@@ -406,20 +389,10 @@ function setupHistoryButtons(store, editor) {
   refresh();
 }
 
-// 匯入的平面圖還沒有地方存，只在記憶體裡預覽；重新載入頁面就回到預設平面圖
-function showPreviewBanner() {
-  const back = el('button', { class: 'btn small', onclick: () => location.reload() }, '回到預設平面圖');
-  const banner = el('div', { class: 'preview-banner', role: 'status' },
-    el('span', {}, el('strong', {}, '預覽中：'), '匯入的平面圖尚未儲存（下一版支援）'),
-    back,
-  );
-  $('.topbar').after(banner);
-  document.body.classList.add('previewing');
-}
-
 // 用指定的平面圖建立場景與各面板；回傳 dispose，換平面圖前呼叫
-// preview：{ name }，匯入的平面圖只放記憶體、不寫入方案
-function startApp(floorplan, floorplanRef, { preview = null, onImportDxf }) {
+// entry：catalog.open() 的結果；floorplans：平面圖區塊與頂部提示條要用的資料與操作
+function startApp(entry, { storage, catalog, floorplans }) {
+  const { floorplan, ref: floorplanRef } = entry;
   hydrateIcons();
   setupTabs();
   const store = createStore({ ceilingHeight: 3.05, ceilingColor: '#f4f2ee', rooms: {}, doors: {}, cabinets: [], ceilings: {}, furniture: [], pegboards: [] });
@@ -428,11 +401,22 @@ function startApp(floorplan, floorplanRef, { preview = null, onImportDxf }) {
     ...fixturesToFurniture(floorplan.fixtures, () => crypto.randomUUID()),
     ...outletsToFurniture(floorplan.outlets, mountSurfaces(floorplan), () => crypto.randomUUID()),
   ];
-  const { session, warnings, persistent } = openSession(store, floorplanRef, makeStatusHandler(() => exportAll), defaultFurniture, { memoryOnly: Boolean(preview) });
-  if (preview) {
-    session.rename(preview.name);
-    showPreviewBanner();
-  }
+  const session = createSession({
+    designStore: new DesignStore(storage),
+    store,
+    now: () => new Date().toISOString(),
+    newId: () => crypto.randomUUID(),
+    floorplanRef,
+    ownsRef: (ref) => catalog.keyOf(ref) === entry.key,
+    preferredId: catalog.preferredDesign(entry.key),
+    onStatus: makeStatusHandler(() => exportAll),
+    defaultFurniture,
+  });
+  const { warnings } = session.init();
+  // 每張平面圖記住最後開的方案，切回來時開同一個
+  const remember = () => session.current && catalog.rememberDesign(entry.key, session.current.id);
+  session.onChange(remember);
+  remember();
   const getSolids = makeSolidsGetter(floorplan, store);
   const viewer = new Viewer($('#stage'), floorplan.bounds);
   viewer.walkStart = walkStart(floorplan.rooms);
@@ -480,7 +464,7 @@ function startApp(floorplan, floorplanRef, { preview = null, onImportDxf }) {
     session,
     exportPng: () => exportPng(viewer, furnitureLayer),
     exportGlb: () => exportGlb(viewer, furnitureLayer),
-    onImportDxf,
+    floorplans: { ...floorplans, current: entry },
     onFloorplanMismatch: (design) => {
       if (design.floorplanRef && design.floorplanRef !== floorplanRef) {
         toast(`「${design.name}」是在舊版平面圖上做的，家具位置可能需要調整`, { duration: 6000 });
@@ -496,35 +480,98 @@ function startApp(floorplan, floorplanRef, { preview = null, onImportDxf }) {
     editor.dispose();
     viewer.dispose();
   };
-  return { dispose, warnings, persistent };
+  return { dispose, warnings, entry, refresh: sessionUi.refresh };
 }
 
 async function main() {
-  let floorplan;
-  let floorplanRef;
+  let defaultFloorplan;
+  let defaultRef;
   try {
-    ({ floorplan, ref: floorplanRef } = await loadFloorplan());
+    ({ floorplan: defaultFloorplan, ref: defaultRef } = await loadFloorplan());
   } catch (error) {
     hydrateIcons();
     setupTabs();
     await alertDialog('無法載入平面圖', error.message);
     return;
   }
+  const { storage, persistent } = pickStorage();
+  const designStore = new DesignStore(storage);
+  const catalog = createFloorplanCatalog({ floorplanStore: new FloorplanStore(storage), designStore, defaultFloorplan, defaultRef });
   let app = null;
-  // 舊場景先存檔再拆掉，畫面換回原樣後用匯入的平面圖重建
-  const switchTo = (imported, name) => {
-    app.dispose();
+
+  // 舊場景要先 dispose（存檔、拿掉監聽），畫面換回原樣後用新的平面圖重建
+  const mount = (entry) => {
     restoreDom();
     document.body.classList.remove('sidebar-open');
-    app = startApp(imported, floorplanRefOf(imported), { preview: { name }, onImportDxf });
-    toast(`已建立「${name}」的預覽`);
+    catalog.setCurrent(entry.key);
+    app = startApp(entry, { storage, catalog, floorplans });
+    return app;
   };
-  const onImportDxf = () => openImportWizard({ onCreate: switchTo });
-  app = startApp(floorplan, floorplanRef, { onImportDxf });
-  const { warnings, persistent } = app;
+
+  const switchFloorplan = (key) => {
+    const entry = catalog.open(key);
+    app.dispose();
+    return mount(entry);
+  };
+
+  const onCreate = (floorplan, name) => {
+    let result;
+    try {
+      result = catalog.add(floorplan, name, new Date().toISOString());
+    } catch (error) {
+      alertDialog('無法儲存平面圖', error.message);
+      return;
+    }
+    const { entry } = switchFloorplan(result.key);
+    toast(result.existed ? `已經有相同的平面圖「${entry.name}」，直接切換過去` : `已建立平面圖「${name}」`, { duration: 5000 });
+  };
+
+  const floorplans = {
+    entries: () => catalog.entries(),
+    keyOf: (ref) => catalog.keyOf(ref),
+    defaultRef,
+    designsOf: (key) => designStore.list().designs.filter((d) => catalog.keyOf(d.floorplanRef) === key),
+    allDesigns: () => designStore.list().designs,
+    exportBundle: (designs) => catalog.exportBundle(designs),
+    // 匯入設計檔時先還原平面圖；回傳新增幾張
+    restore: (records) => catalog.restore(records),
+    hasFloorplan: (ref) => catalog.keyOf(ref) !== null,
+    importDxf: () => openImportWizard({ onCreate }),
+    switchTo: (key) => {
+      switchFloorplan(key);
+      toast(key === null ? '已切回預設平面圖' : `已切換到「${app.entry.name}」`);
+    },
+    rename: (key, name) => {
+      catalog.rename(key, name);
+      app.refresh();
+    },
+    remove: async (key) => {
+      const target = catalog.entries().find((e) => e.key === key);
+      const ok = await confirmDialog(
+        '刪除平面圖',
+        `確定要刪除平面圖「${target.name}」嗎？用它的 ${target.designCount} 個方案會一起刪除，無法復原，建議先匯出備份。`,
+        { okLabel: '刪除', danger: true },
+      );
+      if (!ok) return;
+      // 刪的是使用中的平面圖：先存檔拆掉場景，再刪，最後開預設平面圖
+      if (key === app.entry.key) {
+        app.dispose();
+        catalog.remove(key);
+        mount(catalog.open(null));
+      } else {
+        catalog.remove(key);
+        app.refresh();
+      }
+      toast(`已刪除平面圖「${target.name}」`);
+    },
+  };
+
+  const { entry, warning } = catalog.startup();
+  const { warnings } = mount(entry);
   if (!persistent) {
     await alertDialog('無法自動儲存', '瀏覽器不允許這個網頁使用儲存空間（可能是無痕模式或隱私設定）。這次的設計只會留在這個分頁，關閉前請到「檔案」匯出。');
   }
+  if (warning) await alertDialog('找不到上次的平面圖', warning);
   if (warnings.length) await alertDialog('部分方案無法讀取', warnings.join('\n'));
 }
 

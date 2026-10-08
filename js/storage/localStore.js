@@ -23,7 +23,7 @@ export class DesignNotFoundError extends Error {
 }
 
 // 各瀏覽器表示「容量不足」的方式不一樣
-const isQuotaError = (error) =>
+export const isQuotaError = (error) =>
   error?.name === 'QuotaExceededError' || error?.name === 'NS_ERROR_DOM_QUOTA_REACHED' || error?.code === 22 || error?.code === 1014;
 
 export class DesignStore {
@@ -94,7 +94,7 @@ export class DesignStore {
     for (const id of ids) {
       try {
         const design = this.load(id);
-        designs.push({ id, name: design.name, updatedAt: design.updatedAt });
+        designs.push({ id, name: design.name, updatedAt: design.updatedAt, floorplanRef: design.floorplanRef });
       } catch (error) {
         if (error instanceof StorageUnavailableError) throw error;
         broken.push({ id, error });

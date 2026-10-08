@@ -1,4 +1,5 @@
 // 匯入精靈：步驟狀態與每一步的計算；不碰 DOM，介面在 js/ui/importWizard.js
+import { pointInPolygon, pointSegmentDistance } from '../core/geometry2d.js';
 import { DxfFormatError, FloorplanError } from './errors.js';
 import { guessLayerRoles } from './layers.js';
 import { labels } from './openings.js';
@@ -241,6 +242,7 @@ export function buildConfig({ clip, roles, unitScale, beamLabelScale, windowLabe
     clip,
     layers: rolesToLayers(roles),
     windowTypes: Object.fromEntries(windowNames.map((label) => [label, { ...(label.startsWith('D') ? FLOOR_WINDOW_TYPE : WINDOW_TYPE) }])),
+    unlabeledWindow: { ...WINDOW_TYPE },
     doorHead: DOOR_HEAD,
     doorwayHead: DOORWAY_HEAD,
     gapMin: toDrawingUnits(GAP_MIN, unitScale),
@@ -263,6 +265,29 @@ export function applyRoomEdits(floorplan, { names = {}, removed = [] }) {
 export function roomAt(rooms, [x, y]) {
   const hit = rooms.find((room) => room.rects.some(([x0, y0, x1, y1]) => x >= x0 && x <= x1 && y >= y0 && y <= y1));
   return hit ? hit.id : null;
+}
+
+// 點擊位置的窗 id；窗只有牆厚那麼窄，離邊 tolerance（公尺）以內也算點到
+export function windowAt(openings, point, tolerance) {
+  const near = (polygon) =>
+    pointInPolygon(point, polygon) || polygon.some((a, i) => pointSegmentDistance(point, a, polygon[(i + 1) % polygon.length]) <= tolerance);
+  return openings.find((o) => o.kind === 'window' && near(o.polygon))?.id ?? null;
+}
+
+export const WINDOW_HEIGHT_MAX = 3;
+
+export function windowHeightError(sill, head) {
+  const inRange = (v) => Number.isFinite(v) && v >= 0 && v <= WINDOW_HEIGHT_MAX;
+  if (!inRange(sill)) return `窗台要在 0～${WINDOW_HEIGHT_MAX} m 之間`;
+  if (!inRange(head)) return `窗頂要在 0～${WINDOW_HEIGHT_MAX} m 之間`;
+  if (sill >= head) return '窗台要低於窗頂';
+  return null;
+}
+
+// edits：{ 開口 id: { sill, head } }；只改窗
+export function applyWindowEdits(floorplan, edits) {
+  const openings = floorplan.openings.map((o) => (o.kind === 'window' && edits[o.id] ? { ...o, sill: edits[o.id].sill, head: edits[o.id].head } : o));
+  return { ...floorplan, openings };
 }
 
 export function summarizeFloorplan(floorplan) {

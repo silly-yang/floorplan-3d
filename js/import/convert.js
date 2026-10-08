@@ -46,12 +46,13 @@ function resolveConfig(raw) {
     layers[key] = names;
   }
 
+  const isWindowSpec = (spec) => isNum(spec?.sill) && isNum(spec?.head) && spec.sill >= 0 && spec.sill < spec.head;
   const windowTypes = raw.windowTypes ?? {};
   for (const [label, spec] of Object.entries(windowTypes)) {
-    if (!(isNum(spec?.sill) && isNum(spec?.head) && spec.sill >= 0 && spec.sill < spec.head)) {
-      problems.push(`windowTypes.${label}：需要 0 ≤ sill < head（公尺）`);
-    }
+    if (!isWindowSpec(spec)) problems.push(`windowTypes.${label}：需要 0 ≤ sill < head（公尺）`);
   }
+  // 選填：沒有編號的窗用的高度；沒給就照舊視為錯誤
+  if (raw.unlabeledWindow !== undefined && !isWindowSpec(raw.unlabeledWindow)) problems.push('unlabeledWindow：需要 0 ≤ sill < head（公尺）');
 
   const rooms = raw.rooms ?? [];
   if (!Array.isArray(rooms)) problems.push('rooms：必須是陣列');
@@ -147,6 +148,11 @@ export function convertDxf(doc, config) {
   const { config: cfg, wallResult, walls, openings, box, scale, pt } = analysis;
   const warnings = [];
   if (wallResult.openChains) warnings.push(`有 ${wallResult.openChains} 段牆線沒有封閉，請對照檢查圖確認是否缺牆`);
+  const unlabeled = openings.filter((o) => o.kind === 'window' && !o.label).length;
+  if (unlabeled) {
+    const { sill, head } = cfg.unlabeledWindow;
+    warnings.push(`有 ${unlabeled} 個窗沒有編號，用預設高度（窗台 ${sill} m、窗頂 ${head} m），可以在預覽時點窗修改`);
+  }
   const [x0, y0, x1, y1] = box;
   const floorplan = {
     version: FLOORPLAN_VERSION,

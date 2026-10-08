@@ -6,6 +6,7 @@ import { DxfFormatError, FloorplanError } from '../../../js/import/errors.js';
 import { summarizeLayers } from '../../../js/import/layers.js';
 import {
   applyRoomEdits,
+  applyWindowEdits,
   buildConfig,
   checkFile,
   clipFromCorners,
@@ -29,6 +30,8 @@ import {
   toScreen,
   unitHint,
   wallExtent,
+  windowAt,
+  windowHeightError,
   windowLabels,
   zoomAt,
 } from '../../../js/import/wizard.js';
@@ -452,6 +455,7 @@ test('buildConfig 組出 convertDxf 可用的設定，距離類依單位換算',
     clip,
     layers: { rcWall: ['L3'], partition: [], column: [], window: [], door: [], barrier: [], beam: ['S01'] },
     windowTypes: {},
+    unlabeledWindow: { sill: 0.9, head: 2.1 },
     doorHead: 2.1,
     doorwayHead: 2.2,
     gapMin: 300,
@@ -554,6 +558,57 @@ for (const [name, point, expected] of [
     assert.equal(id, expected);
   });
 }
+
+// 一扇窗：x 1～2、y 0～0.15；一個門洞在旁邊
+const openingsForEdit = () => [
+  { id: 'W5-1', kind: 'window', label: 'W5', polygon: [[1, 0], [2, 0], [2, 0.15], [1, 0.15]], sill: 0.9, head: 2.1 },
+  { id: 'doorway-1', kind: 'doorway', label: '', polygon: [[3, 0], [4, 0], [4, 0.15], [3, 0.15]], sill: 0, head: 2.2 },
+];
+
+for (const [name, point, tolerance, expected] of [
+  ['點在窗裡面', [1.5, 0.07], 0, 'W5-1'],
+  ['點在窗外但在容許距離內', [1.5, 0.3], 0.2, 'W5-1'],
+  ['點在窗外且超出容許距離', [1.5, 0.5], 0.2, null],
+  ['門洞不算窗', [3.5, 0.07], 0.2, null],
+]) {
+  test(`windowAt 找出點擊位置的窗：${name}`, () => {
+    // Act
+    const id = windowAt(openingsForEdit(), point, tolerance);
+
+    // Assert
+    assert.equal(id, expected);
+  });
+}
+
+for (const [name, sill, head, expected] of [
+  ['一般窗', 0.9, 2.1, null],
+  ['落地窗窗台 0', 0, 2.2, null],
+  ['窗頂剛好 3 m', 1, 3, null],
+  ['窗台低於 0', -0.1, 2.1, '窗台要在 0～3 m 之間'],
+  ['窗頂高於 3 m', 0.9, 3.1, '窗頂要在 0～3 m 之間'],
+  ['窗台不低於窗頂', 2.1, 2.1, '窗台要低於窗頂'],
+  ['不是數字', Number.NaN, 2.1, '窗台要在 0～3 m 之間'],
+]) {
+  test(`windowHeightError 檢查窗台與窗頂高度：${name}`, () => {
+    // Act
+    const error = windowHeightError(sill, head);
+
+    // Assert
+    assert.equal(error, expected);
+  });
+}
+
+test('applyWindowEdits 把改過的窗台、窗頂寫進平面圖，其他開口與原物件不動', () => {
+  // Arrange
+  const floorplan = { walls: [], rooms: [], openings: openingsForEdit() };
+
+  // Act
+  const edited = applyWindowEdits(floorplan, { 'W5-1': { sill: 1.2, head: 2.4 }, 'doorway-1': { sill: 1, head: 2 } });
+
+  // Assert
+  assert.deepEqual(edited.openings.map((o) => [o.id, o.sill, o.head]), [['W5-1', 1.2, 2.4], ['doorway-1', 0, 2.2]]);
+  assert.equal(floorplan.openings[0].sill, 0.9);
+});
 
 test('summarizeFloorplan 統計牆、門、窗、門洞、房間與樑的數量', () => {
   // Arrange

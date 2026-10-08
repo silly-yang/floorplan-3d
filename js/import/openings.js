@@ -131,8 +131,9 @@ export function findOpenings(doc, walls, config) {
     if (windowMarks.some((m) => insideBox(m, gap, windowMargin))) {
       kind = 'window';
       label = nearestLabel(center, windowLabels, labelRadius);
-      if (!label) throw new ConfigError([`位於 (${center.join(', ')}) 的窗沒有編號，無法決定窗台與窗頂高度`]);
-      const spec = config.windowTypes[label];
+      // 沒給 unlabeledWindow 時維持與 Python 工具相同：沒編號就停下
+      if (!label && !config.unlabeledWindow) throw new ConfigError([`位於 (${center.join(', ')}) 的窗沒有編號，無法決定窗台與窗頂高度`]);
+      const spec = label ? config.windowTypes[label] : config.unlabeledWindow;
       if (!spec) throw new ConfigError([`windowTypes 缺少 ${label} 的 sill／head 設定`]);
       ({ sill, head } = spec);
     } else if (doorGaps.has(index)) {

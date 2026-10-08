@@ -74,6 +74,47 @@ test('findOpenings 開口內有窗線時分類為窗並套用窗型高度', () =
   assert.deepEqual(openings.map(brief), [['W5-1', 'window', 'W5', 0.9, 2.1]]);
 });
 
+test('findOpenings 設定了 unlabeledWindow 時，沒有編號的窗改用它的高度、編號留空', () => {
+  // Arrange
+  const config = { ...baseConfig(), unlabeledWindow: { sill: 0.9, head: 2.1 } };
+  const { doc, walls } = setup([...twoWalls(160), dxf.line('OPEN-Window', [100, 7.5], [260, 7.5])], config);
+
+  // Act
+  const openings = findOpenings(doc, walls, config);
+
+  // Assert
+  assert.deepEqual(openings.map(brief), [['window-1', 'window', '', 0.9, 2.1]]);
+});
+
+test('findOpenings 設定了 unlabeledWindow 時，有編號的窗照樣用 windowTypes 的高度', () => {
+  // Arrange
+  const config = { ...baseConfig(), windowTypes: { W5: { sill: 1.2, head: 2.0 } }, unlabeledWindow: { sill: 0.9, head: 2.1 } };
+  const { doc, walls } = setup([
+    ...twoWalls(160),
+    dxf.line('OPEN-Window', [100, 7.5], [260, 7.5]),
+    dxf.attrib('OPEN-Window', [170, 60], 'NO.', 'W5'),
+  ], config);
+
+  // Act
+  const openings = findOpenings(doc, walls, config);
+
+  // Assert
+  assert.deepEqual(openings.map(brief), [['W5-1', 'window', 'W5', 1.2, 2.0]]);
+});
+
+test('findOpenings 設定了 unlabeledWindow 時，有編號但 windowTypes 沒有它的窗照樣丟出設定錯誤', () => {
+  // Arrange
+  const config = { ...baseConfig(), unlabeledWindow: { sill: 0.9, head: 2.1 } };
+  const { doc, walls } = setup([
+    ...twoWalls(160),
+    dxf.line('OPEN-Window', [100, 7.5], [260, 7.5]),
+    dxf.attrib('OPEN-Window', [170, 60], 'NO.', 'W9'),
+  ], config);
+
+  // Act & Assert
+  assert.throws(() => findOpenings(doc, walls, config), (err) => err instanceof ConfigError && /W9/.test(err.message));
+});
+
 test('findOpenings 窗編號不在 windowTypes 時丟出設定錯誤', () => {
   // Arrange
   const { doc, config, walls } = setup([

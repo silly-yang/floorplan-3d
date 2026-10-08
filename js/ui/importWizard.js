@@ -11,6 +11,7 @@ import {
   STEPS,
   UNITS,
   applyRoomEdits,
+  applyWindowEdits,
   buildConfig,
   checkFile,
   clipFromCorners,
@@ -33,6 +34,8 @@ import {
   unitHint,
   unitLabel,
   wallExtent,
+  windowAt,
+  windowHeightError,
   windowLabels,
   zoomAt,
 } from '../import/wizard.js';
@@ -53,6 +56,7 @@ const ROLE_COLORS = {
 const ROOM_COLORS = ['#f3d9a4', '#bfdcc9', '#c9d6ef', '#efc9c9', '#dccbe8', '#f0e1b8', '#c4e3e0', '#e6d2bf'];
 const OPENING_COLORS = { door: '#d07a1e', window: '#2f7fc1', doorway: '#9a948b' };
 const CLICK_SLOP = 4; // 像素；拖曳距離在此以內算點一下
+const WINDOW_PICK = 0.15; // 公尺；窗只有牆厚那麼窄，點在旁邊也算點到
 
 // ---------- 可縮放、平移、框選的 2D 畫布 ----------
 
@@ -264,6 +268,8 @@ export function openImportWizard({ onCreate }) {
     names: {},
     removed: [],
     selectedRoom: null,
+    windows: {}, // { 窗 id: { sill, head } }：預覽時改過的窗高
+    selectedWindow: null,
     name: '匯入的平面圖',
   };
 
@@ -332,7 +338,7 @@ export function openImportWizard({ onCreate }) {
         patch({ busy: '', error: converted.error });
         return;
       }
-      state = { ...state, busy: '', result: converted.result, names: {}, removed: [], selectedRoom: null };
+      state = { ...state, busy: '', result: converted.result, names: {}, removed: [], selectedRoom: null, windows: {}, selectedWindow: null };
     }
     if (id === 'finish') {
       create();
@@ -368,7 +374,7 @@ export function openImportWizard({ onCreate }) {
       patch({ error });
       return;
     }
-    const floorplan = applyRoomEdits(state.result.floorplan, { names: state.names, removed: state.removed });
+    const floorplan = editedFloorplan();
     close();
     onCreate(floorplan, state.name.trim());
   }
@@ -501,6 +507,8 @@ export function openImportWizard({ onCreate }) {
     );
   }
 
+  const editedFloorplan = () => applyWindowEdits(applyRoomEdits(state.result.floorplan, { names: state.names, removed: state.removed }), state.windows);
+
   // 房間清單、顏色、名稱都從目前的 state 算，畫布沿用時才不會畫到舊的
   const previewRooms = () => {
     const rooms = state.result.floorplan.rooms;
@@ -538,6 +546,13 @@ export function openImportWizard({ onCreate }) {
       strokePath(ctx, view, opening.polygon, true);
       ctx.fill();
     }
+    const pickedWindow = floorplan.openings.find((o) => o.id === state.selectedWindow);
+    if (pickedWindow) {
+      ctx.strokeStyle = '#e0218a';
+      ctx.lineWidth = 3;
+      strokePath(ctx, view, pickedWindow.polygon, true);
+      ctx.stroke();
+    }
     ctx.setLineDash([5, 4]);
     ctx.strokeStyle = '#b4423a';
     ctx.lineWidth = 1;
@@ -558,9 +573,15 @@ export function openImportWizard({ onCreate }) {
     const { rooms, kept } = previewRooms();
     const canvas = canvasFor('preview', {
       draw: drawPreview,
+      // 先看有沒有點到窗，沒有才選房間
       onClick: (p) => {
+        const windowId = windowAt(state.result.floorplan.openings, p, WINDOW_PICK);
+        if (windowId) {
+          patch({ selectedWindow: windowId, error: null });
+          return;
+        }
         const id = roomAt(previewRooms().kept, p);
-        if (id) patch({ selectedRoom: id });
+        if (id) patch({ selectedRoom: id, selectedWindow: null });
       },
     }, [0, 0, floorplan.bounds.width, floorplan.bounds.depth]);
 
@@ -601,6 +622,7 @@ export function openImportWizard({ onCreate }) {
       el('div', { class: 'wizard-side' },
         el('p', { class: 'note' }, `牆 ${summary.walls}、門 ${summary.doors}、窗 ${summary.windows}、門洞 ${summary.doorways}、樑 ${summary.beams}`),
         warnings.length ? el('ul', { class: 'wizard-warnings' }, warnings.map((w) => el('li', {}, w))) : null,
+        windowEditor(floorplan),
         quick,
         el('ul', { class: 'wizard-rooms' }, list),
       ),
@@ -608,8 +630,32 @@ export function openImportWizard({ onCreate }) {
     );
   }
 
+  // 點到的窗：改窗台、窗頂高度；不合理的值不寫入，顯示原因
+  function windowEditor(floorplan) {
+    const opening = floorplan.openings.find((o) => o.id === state.selectedWindow);
+    if (!opening) return summarizeFloorplan(floorplan).windows ? el('p', { class: 'note' }, '點平面圖上的窗（藍色）可以修改窗台與窗頂高度。') : null;
+    const current = state.windows[opening.id] ?? { sill: opening.sill, head: opening.head };
+    const input = (value, label) => el('input', { type: 'number', min: '0', max: '3', step: '0.05', value: String(value), 'aria-label': label });
+    const sill = input(current.sill, '窗台高度（公尺）');
+    const head = input(current.head, '窗頂高度（公尺）');
+    const apply = () => {
+      const next = { sill: Number(sill.value), head: Number(head.value) };
+      const error = windowHeightError(next.sill, next.head);
+      if (error) patch({ error });
+      else patch({ windows: { ...state.windows, [opening.id]: next }, error: null });
+    };
+    sill.addEventListener('change', apply);
+    head.addEventListener('change', apply);
+    return el('div', { class: 'wizard-window' },
+      el('strong', {}, `窗 ${opening.label || '（沒有編號）'}`),
+      el('label', { class: 'field' }, el('span', {}, '窗台（m）'), sill),
+      el('label', { class: 'field' }, el('span', {}, '窗頂（m）'), head),
+      el('button', { type: 'button', class: 'btn small', onclick: () => patch({ selectedWindow: null, error: null }) }, '完成'),
+    );
+  }
+
   function finishStep() {
-    const floorplan = applyRoomEdits(state.result.floorplan, { names: state.names, removed: state.removed });
+    const floorplan = editedFloorplan();
     const s = summarizeFloorplan(floorplan);
     const input = el('input', { type: 'text', value: state.name, maxlength: '40', oninput: () => (state = { ...state, name: input.value }) });
     return el('div', { class: 'wizard-page' },
@@ -619,7 +665,7 @@ export function openImportWizard({ onCreate }) {
           [['牆', s.walls], ['門', s.doors], ['窗', s.windows], ['門洞', s.doorways], ['房間', s.rooms], ['樑', s.beams]].map(([label, n]) =>
             el('tr', {}, el('th', {}, label), el('td', {}, String(n)))))),
       el('p', { class: 'note' }, `房間：${floorplan.rooms.map((r) => r.name).join('、')}`),
-      el('p', { class: 'note' }, '按「建立」會用這份平面圖重建 3D 場景。這一版還不能儲存匯入的平面圖，重新整理頁面就會回到預設平面圖。'),
+      el('p', { class: 'note' }, '按「建立」會把這份平面圖存在這個瀏覽器，切換過去並建立第一個方案。預設平面圖不會被覆蓋，之後可以在「檔案」→「平面圖」切回去。'),
     );
   }
 

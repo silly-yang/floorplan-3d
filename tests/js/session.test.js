@@ -339,3 +339,117 @@ test('重置方案：內容回到新方案的預設，名稱與 id 不變，可�
   store.undo();
   assert.deepEqual(store.getState(), edited);
 });
+
+// 同一個 storage 上開某張平面圖的頁面；ref 以 fp- 開頭的方案屬於對應的平面圖
+function openFloorplanPage(storage, floorplanRef, { preferredId } = {}) {
+  let ids = 0;
+  const store = createStore({ ceilingHeight: 2.8, rooms: {}, furniture: [] });
+  const session = createSession({
+    designStore: new DesignStore(storage),
+    store,
+    now: () => '2026-10-09T09:00:00.000Z',
+    newId: () => `${floorplanRef}-new-${++ids}`,
+    floorplanRef,
+    ownsRef: (ref) => ref === floorplanRef,
+    preferredId,
+    timers: fakeTimers(),
+  });
+  return { store, session };
+}
+
+const designOn = (id, floorplanRef) => createDesign({ id, name: `方案 ${id}`, now: '2026-10-09T09:00:00.000Z', floorplanRef });
+
+test('方案清單只列目前平面圖的方案', () => {
+  // Arrange
+  const storage = new MemoryStorage();
+  const designStore = new DesignStore(storage);
+  designStore.save(designOn('a1', 'fp-a'));
+  designStore.save(designOn('b1', 'fp-b'));
+  designStore.save(designOn('a2', 'fp-a'));
+  const { session } = openFloorplanPage(storage, 'fp-a');
+
+  // Act
+  session.init();
+
+  // Assert
+  assert.deepEqual(session.list().map((d) => d.id), ['a1', 'a2']);
+});
+
+test('上次開的方案屬於別張平面圖時不開它，改開這張平面圖的方案', () => {
+  // Arrange
+  const storage = new MemoryStorage();
+  const designStore = new DesignStore(storage);
+  designStore.save(designOn('a1', 'fp-a'));
+  designStore.save(designOn('b1', 'fp-b'));
+  designStore.setActive('b1');
+  const { session } = openFloorplanPage(storage, 'fp-a');
+
+  // Act
+  session.init();
+
+  // Assert
+  assert.equal(session.current.id, 'a1');
+});
+
+test('這張平面圖還沒有方案時建立第一個，記上這張平面圖的 ref', () => {
+  // Arrange
+  const storage = new MemoryStorage();
+  new DesignStore(storage).save(designOn('b1', 'fp-b'));
+  const { session } = openFloorplanPage(storage, 'fp-a');
+
+  // Act
+  session.init();
+
+  // Assert
+  assert.equal(session.current.floorplanRef, 'fp-a');
+  assert.equal(session.current.name, '方案 1');
+  assert.deepEqual(session.list().map((d) => d.id), [session.current.id]);
+  assert.equal(new DesignStore(storage).list().designs.length, 2);
+});
+
+test('有指定 preferredId 時優先開它', () => {
+  // Arrange
+  const storage = new MemoryStorage();
+  const designStore = new DesignStore(storage);
+  designStore.save(designOn('a1', 'fp-a'));
+  designStore.save(designOn('a2', 'fp-a'));
+  designStore.setActive('a1');
+  const { session } = openFloorplanPage(storage, 'fp-a', { preferredId: 'a2' });
+
+  // Act
+  session.init();
+
+  // Assert
+  assert.equal(session.current.id, 'a2');
+});
+
+test('刪除目前方案後只切到同一張平面圖的方案', () => {
+  // Arrange
+  const storage = new MemoryStorage();
+  const designStore = new DesignStore(storage);
+  designStore.save(designOn('b1', 'fp-b'));
+  designStore.save(designOn('a1', 'fp-a'));
+  const { session } = openFloorplanPage(storage, 'fp-a');
+  session.init();
+
+  // Act
+  session.remove('a1');
+
+  // Assert
+  assert.equal(session.current.floorplanRef, 'fp-a');
+  assert.notEqual(session.current.id, 'b1');
+});
+
+test('新方案的預設名稱只避開同一張平面圖的方案名稱', () => {
+  // Arrange
+  const storage = new MemoryStorage();
+  new DesignStore(storage).save({ ...designOn('b1', 'fp-b'), name: '方案 1' });
+  const { session } = openFloorplanPage(storage, 'fp-a');
+
+  // Act
+  session.init();
+
+  // Assert
+  assert.equal(session.current.floorplanRef, 'fp-a');
+  assert.equal(session.current.name, '方案 1');
+});
