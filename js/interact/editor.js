@@ -12,6 +12,7 @@ import {
   snapToGrid,
   updateFurniture,
 } from '../core/layout.js';
+import { createDoubleTapDetector } from '../core/cameraMath.js';
 import { doorStateOf } from '../core/doors.js';
 import { createFurniture } from '../furniture/catalog.js';
 import { FURNITURE_MIME } from '../ui/catalogPanel.js';
@@ -37,6 +38,7 @@ export class Editor {
     this.drag = null;
     this.listeners = new Set();
     this.raycaster = new THREE.Raycaster();
+    this.doubleTap = createDoubleTapDetector();
     this.floor = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     this.#bindPointer();
     this.#bindDrop();
@@ -141,6 +143,15 @@ export class Editor {
     return this.raycaster;
   }
 
+  // 雙擊的落點：先找打到的物件（牆、家具、門），都沒打到再用地板平面
+  #worldPointAt(clientX, clientY) {
+    const ray = this.#ray(clientX, clientY);
+    const targets = ['house', 'furniture', 'doors'].map((n) => this.viewer.scene.getObjectByName(n)).filter(Boolean);
+    const hit = ray.intersectObjects(targets, true).find((h) => h.object.visible && h.object.name !== 'ground');
+    if (hit) return hit.point;
+    return ray.ray.intersectPlane(this.floor, new THREE.Vector3());
+  }
+
   // 螢幕座標 → 平面座標 [x, y]；打不到地板（看向天空）回 null
   screenToPlan(clientX, clientY) {
     const hit = this.#ray(clientX, clientY).ray.intersectPlane(this.floor, new THREE.Vector3());
@@ -212,6 +223,12 @@ export class Editor {
 
   #onUp(e) {
     const wasClick = this.down && Math.hypot(e.clientX - this.down.x, e.clientY - this.down.y) < CLICK_TOLERANCE;
+    // 雙擊（手機雙點）放大到點擊處；拖曳過的不算
+    const moved = this.drag?.moved;
+    if (!moved && this.viewer.mode !== 'walk' && this.doubleTap.tap(e.clientX, e.clientY, e.timeStamp)) {
+      const point = this.#worldPointAt(e.clientX, e.clientY);
+      if (point) this.viewer.zoomAt(point);
+    }
     if (this.drag) {
       if (this.drag.moved) this.store.commit(this.store.getState(), { base: this.drag.base });
       if (this.drag.blocked && !this.drag.moved) toast('家具不能穿過牆面');

@@ -1,5 +1,5 @@
 // 右側屬性面板：選取家具的尺寸、顏色、旋轉、重疊警示、到最近牆面的距離
-import { nearestWallDistance, supportOf } from '../core/layout.js';
+import { elevationOf, nearestWallDistance, supportOf } from '../core/layout.js';
 import { getCatalogItem, normalizeSizeValue } from '../furniture/catalog.js';
 import { $, el } from './dom.js';
 import { iconSvg } from './icons.js';
@@ -88,6 +88,10 @@ export function setupInspector(editor, getSolids) {
       el(
         'div',
         { class: 'row' },
+        iconButton('focus', '聚焦', '鏡頭移到這件家具前面', () => {
+          const current = editor.selected;
+          if (current) editor.viewer.focus({ ...current, elevation: elevationOf(current, editor.store.getState().furniture) });
+        }),
         iconButton('duplicate', '複製', 'Ctrl+D', () => editor.duplicate()),
         iconButton('delete', '刪除', 'Delete', () => editor.remove(), 'danger'),
         iconButton('close', '取消選取', 'Esc', () => editor.select(null)),

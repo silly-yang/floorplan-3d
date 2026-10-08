@@ -1,6 +1,7 @@
 // 由 floorplan.json 建出房屋的 Three.js 物件：牆、窗台、楣樑、玻璃、地板
 import * as THREE from 'three';
-import { buildGlass, buildSolids } from '../core/floorplan.js';
+import { buildGlass, buildSolids, openingAxis } from '../core/floorplan.js';
+import { sizedTexture, proceduralTexture } from './textures.js';
 
 export const DEFAULT_FLOOR_COLORS = {
   living: '#c8a97e',
@@ -9,6 +10,18 @@ export const DEFAULT_FLOOR_COLORS = {
   balcony: '#a7a39a',
 };
 const FALLBACK_FLOOR = '#c8b49a';
+
+// 第 2 棒會開放各房間自選材質；這裡先依房間類型給一個合理的預設
+const DEFAULT_FLOOR_LOOK = {
+  living: { kind: 'wood', tile: 1.8, roughness: 0.62, options: { plankRows: 9 } },
+  bedroom: { kind: 'wood', tile: 1.8, roughness: 0.62, options: { plankRows: 9 } },
+  bath: { kind: 'tile', tile: 1.2, roughness: 0.35, options: { tiles: 4 } },
+  balcony: { kind: 'tile', tile: 1.2, roughness: 0.7, options: { tiles: 4, speckle: 0.12 } },
+};
+
+const BASEBOARD_HEIGHT = 0.08;
+const BASEBOARD_THICKNESS = 0.012;
+const FRAME_WIDTH = 0.045;
 
 const WALL_COLORS = { rc: '#f1ede6', partition: '#ece6dc', column: '#e3ddd3', sill: '#f1ede6', lintel: '#f1ede6' };
 
@@ -39,8 +52,12 @@ export function buildHouse(floorplan, { ceilingHeight, rooms, ceilingColor = '#f
   const group = new THREE.Group();
   group.name = 'house';
 
+  // 牆面用淡淡的乳膠漆紋理；ExtrudeGeometry 的 UV 以公尺計，紋理每 1.6 m 重複一次
+  const paint = proceduralTexture('paint', '#ffffff').clone();
+  paint.needsUpdate = true;
+  paint.repeat.set(1 / 1.6, 1 / 1.6);
   const wallMaterials = Object.fromEntries(
-    Object.entries(WALL_COLORS).map(([k, c]) => [k, new THREE.MeshStandardMaterial({ color: c, roughness: 0.9 })]),
+    Object.entries(WALL_COLORS).map(([k, c]) => [k, new THREE.MeshStandardMaterial({ color: c, roughness: 0.92, map: paint })]),
   );
   const wallMeshes = [];
   for (const solid of buildSolids(floorplan, ceilingHeight)) {
@@ -70,8 +87,13 @@ export function buildHouse(floorplan, { ceilingHeight, rooms, ceilingColor = '#f
 
   const floors = new Map();
   for (const room of floorplan.rooms) {
-    const material = new THREE.MeshStandardMaterial({ color: floorColorOf(room.id, rooms), roughness: 0.75 });
+    const color = floorColorOf(room.id, rooms);
+    const look = DEFAULT_FLOOR_LOOK[room.id] ?? DEFAULT_FLOOR_LOOK.living;
     const meshes = room.rects.map(([x0, y0, x1, y1]) => {
+      // 每塊地板依實際大小貼圖，木紋與磁磚的尺寸才不會被拉長；世界座標對齊，相鄰兩塊會接得起來
+      const map = sizedTexture(look.kind, '#ffffff', x1 - x0, y1 - y0, look.tile, look.options);
+      map.offset.set(x0 / look.tile, y0 / look.tile);
+      const material = new THREE.MeshStandardMaterial({ color, map, roughness: look.roughness, metalness: 0 });
       const mesh = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, y1 - y0), material);
       mesh.rotation.x = -Math.PI / 2;
       mesh.position.set((x0 + x1) / 2, 0.002, -(y0 + y1) / 2);
@@ -82,6 +104,9 @@ export function buildHouse(floorplan, { ceilingHeight, rooms, ceilingColor = '#f
     });
     floors.set(room.id, meshes);
   }
+
+  group.add(buildBaseboards(floorplan, ceilingHeight));
+  group.add(buildFrames(floorplan));
 
   // 天花板：面朝下，從上方看是透明的；不投影，免得室內一片黑
   const ceiling = new THREE.Group();
@@ -112,10 +137,71 @@ export function buildHouse(floorplan, { ceilingHeight, rooms, ceilingColor = '#f
   return { group, floors, wallMeshes, ceiling };
 }
 
+const edgesOf = (poly) => poly.map((p, i) => [p, poly[(i + 1) % poly.length]]);
+const signedArea = (poly) => edgesOf(poly).reduce((sum, [a, b]) => sum + a[0] * b[1] - b[0] * a[1], 0) / 2;
+
+// 踢腳板：沿每道牆的每條邊，往牆外側貼一條 8 cm 高的薄板
+function buildBaseboards(floorplan) {
+  const group = new THREE.Group();
+  group.name = 'baseboards';
+  const material = new THREE.MeshStandardMaterial({ color: '#f7f5f0', roughness: 0.5 });
+  for (const wall of floorplan.walls) {
+    if (wall.kind === 'column') continue;
+    const ccw = signedArea(wall.polygon) > 0;
+    for (const [a, b] of edgesOf(wall.polygon)) {
+      const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (length < 0.2) continue; // 牆端面（開口兩側）不貼
+      const dir = [(b[0] - a[0]) / length, (b[1] - a[1]) / length];
+      const out = ccw ? [dir[1], -dir[0]] : [-dir[1], dir[0]];
+      const mid = [(a[0] + b[0]) / 2 + (out[0] * BASEBOARD_THICKNESS) / 2, (a[1] + b[1]) / 2 + (out[1] * BASEBOARD_THICKNESS) / 2];
+      const board = new THREE.Mesh(new THREE.BoxGeometry(length, BASEBOARD_HEIGHT, BASEBOARD_THICKNESS), material);
+      board.position.set(mid[0], BASEBOARD_HEIGHT / 2, -mid[1]);
+      board.rotation.y = Math.atan2(dir[1], dir[0]);
+      board.receiveShadow = true;
+      group.add(board);
+    }
+  }
+  return group;
+}
+
+// 窗框（鋁色）與門框（白色）：開口兩側與上緣各一條，窗戶下緣也有
+function buildFrames(floorplan) {
+  const group = new THREE.Group();
+  group.name = 'frames';
+  const aluminium = new THREE.MeshStandardMaterial({ color: '#6b6e72', roughness: 0.35, metalness: 0.6 });
+  const casing = new THREE.MeshStandardMaterial({ color: '#f4f1ea', roughness: 0.55 });
+  for (const opening of floorplan.openings) {
+    const { start, dir, width, thickness } = openingAxis(opening.polygon);
+    const isWindow = opening.kind === 'window';
+    const material = isWindow ? aluminium : casing;
+    const depth = thickness + (isWindow ? -0.04 : 0.02);
+    const angle = Math.atan2(dir[1], dir[0]);
+    const place = (along, bottom, height, w) => {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, height, depth), material);
+      const p = [start[0] + dir[0] * along, start[1] + dir[1] * along];
+      mesh.position.set(p[0], bottom + height / 2, -p[1]);
+      mesh.rotation.y = angle;
+      mesh.castShadow = true;
+      group.add(mesh);
+    };
+    const span = opening.head - opening.sill;
+    place(FRAME_WIDTH / 2, opening.sill, span, FRAME_WIDTH);
+    place(width - FRAME_WIDTH / 2, opening.sill, span, FRAME_WIDTH);
+    place(width / 2, opening.head - FRAME_WIDTH, FRAME_WIDTH, width);
+    if (isWindow && opening.sill > 0) place(width / 2, opening.sill, FRAME_WIDTH, width);
+    if (isWindow) place(width / 2, opening.sill, span, 0.03); // 中間的分隔框
+  }
+  return group;
+}
+
 export function disposeObject(object) {
   object.traverse((child) => {
     child.geometry?.dispose();
     const materials = Array.isArray(child.material) ? child.material : [child.material];
-    materials.forEach((m) => m?.dispose());
+    // 貼圖都是從快取 clone 出來的，可以安全釋放；快取的原件不會掛在物件上
+    materials.forEach((m) => {
+      m?.map?.dispose();
+      m?.dispose();
+    });
   });
 }

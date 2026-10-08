@@ -2,8 +2,16 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { focusOn, zoomToward } from '../core/cameraMath.js';
 
 const EYE_HEIGHT = 1.6;
+const ANIMATION_SECONDS = 0.55;
+const MAX_TOP_ZOOM = 8;
 const WALK_SPEED = 1.6; // 公尺／秒
 const MOVE_KEYS = { KeyW: 'f', ArrowUp: 'f', KeyS: 'b', ArrowDown: 'b', KeyA: 'l', ArrowLeft: 'l', KeyD: 'r', ArrowRight: 'r' };
 
@@ -23,11 +31,22 @@ export class Viewer {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    // 電影常用的色調曲線：亮部不會一片死白，暗部保留細節
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 0.9;
     container.appendChild(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color('#eef1f4');
+    // 室內環境光反射：磁磚、金屬、玻璃才會有自然的反光
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    this.scene.environmentIntensity = 0.35;
+    pmrem.dispose();
     this.#addLights();
+    // 手機 GPU 較弱，環境光遮蔽預設關閉
+    this.highQuality = !window.matchMedia('(max-width: 760px)').matches;
+    this.animation = null;
 
     const center = new THREE.Vector3(bounds.width / 2, 0, -bounds.depth / 2);
     this.center = center;
@@ -37,6 +56,8 @@ export class Viewer {
     this.orbit.target.copy(center);
     this.orbit.maxPolarAngle = Math.PI * 0.48;
     this.orbit.enableDamping = true;
+    // 使用者自己動鏡頭時，取消進行中的鏡頭動畫
+    this.orbit.addEventListener('start', () => (this.animation = null));
 
     // 俯視：鏡頭在正上方、往南偏一點點，視線仍垂直向下，平面圖北方（-z）朝畫面上方
     // 不改 camera.up：OrbitControls 會把 up 當旋轉軸，改了畫面會歪
@@ -48,6 +69,7 @@ export class Viewer {
     this.topControls.screenSpacePanning = true;
     this.topControls.update();
     this.topControls.enabled = false;
+    this.topControls.addEventListener('start', () => (this.animation = null));
 
     this.walkCamera = new THREE.PerspectiveCamera(70, 1, 0.05, 200);
     this.walk = new PointerLockControls(this.walkCamera, this.renderer.domElement);
@@ -58,12 +80,13 @@ export class Viewer {
     new ResizeObserver(() => this.resize()).observe(container);
     this.resize();
     this.fitOrbit();
+    this.#rebuildComposer();
     this.renderer.setAnimationLoop(() => this.#tick());
   }
 
   #addLights() {
-    this.scene.add(new THREE.HemisphereLight('#ffffff', '#b8b0a4', 1.6));
-    const sun = new THREE.DirectionalLight('#fff6e8', 1.6);
+    this.scene.add(new THREE.HemisphereLight('#ffffff', '#b8b0a4', 0.75));
+    const sun = new THREE.DirectionalLight('#fff3e0', 2.4);
     const { width, depth } = this.bounds;
     // 太陽接近正上方，牆影才不會蓋掉大半地板
     sun.position.set(width / 2 - 2.5, 22, -depth / 2 + 3.5);
@@ -73,6 +96,8 @@ export class Viewer {
     const span = Math.max(width, depth);
     Object.assign(sun.shadow.camera, { left: -span, right: span, top: span, bottom: -span, near: 1, far: 60 });
     sun.shadow.bias = -0.0005;
+    sun.shadow.normalBias = 0.02;
+    sun.shadow.radius = 3;
     this.scene.add(sun, sun.target);
   }
 
@@ -130,7 +155,91 @@ export class Viewer {
       this.walkCamera.rotation.set(0, 0, 0);
     }
     this.resize();
+    this.#rebuildComposer();
     this.#emit();
+  }
+
+  // ---------- 畫質 ----------
+
+  setHighQuality(enabled) {
+    this.highQuality = enabled;
+    this.#rebuildComposer();
+  }
+
+  // 環境光遮蔽（牆角、家具底下的柔和陰影）；GTAO 綁定相機，換視角要重建
+  #rebuildComposer() {
+    this.composer?.dispose();
+    this.composer = null;
+    if (!this.highQuality) return;
+    const w = this.container.clientWidth || 1;
+    const h = this.container.clientHeight || 1;
+    this.composer = new EffectComposer(this.renderer);
+    this.composer.setPixelRatio(this.renderer.getPixelRatio());
+    this.composer.setSize(w, h);
+    this.composer.addPass(new RenderPass(this.scene, this.camera));
+    const ao = new GTAOPass(this.scene, this.camera, w, h);
+    ao.updateGtaoMaterial({ radius: 0.45, distanceExponent: 1.4, thickness: 1.2, scale: 1.1 });
+    ao.blendIntensity = 0.85;
+    this.composer.addPass(ao);
+    this.composer.addPass(new OutputPass());
+  }
+
+  // ---------- 鏡頭動畫：雙擊放大、全景、聚焦 ----------
+
+  #animateOrbit(view) {
+    this.animation = {
+      kind: 'orbit',
+      t: 0,
+      fromPos: this.perspective.position.clone(),
+      fromTarget: this.orbit.target.clone(),
+      toPos: new THREE.Vector3(view.position.x, view.position.y, view.position.z),
+      toTarget: new THREE.Vector3(view.target.x, view.target.y, view.target.z),
+    };
+  }
+
+  #animateTop(target, zoom) {
+    this.animation = {
+      kind: 'top',
+      t: 0,
+      fromTarget: this.topControls.target.clone(),
+      fromZoom: this.ortho.zoom,
+      toTarget: new THREE.Vector3(target.x, 0, target.z),
+      toZoom: zoom,
+    };
+  }
+
+  // point：世界座標；雙擊的位置
+  zoomAt(point) {
+    if (this.mode === 'orbit') this.#animateOrbit(zoomToward(this.perspective.position, this.orbit.target, point));
+    if (this.mode === 'top') this.#animateTop(point, Math.min(MAX_TOP_ZOOM, this.ortho.zoom * 2));
+  }
+
+  resetView() {
+    if (this.mode === 'top') this.#animateTop(this.center, 1);
+    else if (this.mode === 'orbit') this.#animateOrbit(this.#fitView());
+  }
+
+  // item 需含 x、y、elevation、size；俯視時先切回 3D 才看得到正面
+  focus(item) {
+    if (this.mode !== 'orbit') this.setMode('orbit');
+    this.#animateOrbit(focusOn(this.perspective.position, this.orbit.target, item));
+  }
+
+  #stepAnimation(dt) {
+    const a = this.animation;
+    if (!a) return;
+    a.t = Math.min(1, a.t + dt / ANIMATION_SECONDS);
+    const k = a.t * a.t * (3 - 2 * a.t);
+    if (a.kind === 'orbit') {
+      this.perspective.position.lerpVectors(a.fromPos, a.toPos, k);
+      this.orbit.target.lerpVectors(a.fromTarget, a.toTarget, k);
+    } else {
+      this.topControls.target.lerpVectors(a.fromTarget, a.toTarget, k);
+      this.ortho.position.set(this.topControls.target.x, 40, this.topControls.target.z + 1e-4);
+      this.ortho.zoom = a.fromZoom + (a.toZoom - a.fromZoom) * k;
+      this.ortho.updateProjectionMatrix();
+    }
+    if (a.t >= 1) this.animation = null;
   }
 
   lockWalk() {
@@ -157,27 +266,34 @@ export class Viewer {
     const halfH = Math.max(this.bounds.depth, this.bounds.width / aspect) * margin * 0.5;
     Object.assign(this.ortho, { left: -halfH * aspect, right: halfH * aspect, top: halfH, bottom: -halfH });
     this.ortho.updateProjectionMatrix();
+    this.composer?.setSize(w, h);
   }
 
   // 把房子外框的 8 個角投影到畫面上，調整距離直到最外側剛好落在畫面 90% 處；直式、橫式畫面都適用
-  fitOrbit() {
+  #fitView() {
     const { width, depth } = this.bounds;
     const corners = [];
     for (const x of [0, width]) for (const y of [0, 2.8]) for (const z of [0, -depth]) corners.push(new THREE.Vector3(x, y, z));
     const direction = new THREE.Vector3(-0.35, 0.95, 1).normalize();
+    const probe = this.perspective.clone();
     let distance = Math.hypot(width, depth) * 2;
     for (let i = 0; i < 12; i++) {
-      this.perspective.position.copy(this.center).addScaledVector(direction, distance);
-      this.perspective.lookAt(this.center);
-      this.perspective.updateMatrixWorld();
+      probe.position.copy(this.center).addScaledVector(direction, distance);
+      probe.lookAt(this.center);
+      probe.updateMatrixWorld();
       const extent = Math.max(...corners.map((c) => {
-        const p = c.clone().project(this.perspective);
+        const p = c.clone().project(probe);
         return Math.max(Math.abs(p.x), Math.abs(p.y));
       }));
       distance *= extent / 0.9;
     }
-    this.perspective.position.copy(this.center).addScaledVector(direction, distance);
-    this.orbit.target.copy(this.center);
+    return { position: this.center.clone().addScaledVector(direction, distance), target: this.center.clone() };
+  }
+
+  fitOrbit() {
+    const view = this.#fitView();
+    this.perspective.position.copy(view.position);
+    this.orbit.target.copy(view.target);
     this.orbit.update();
   }
 
@@ -207,13 +323,17 @@ export class Viewer {
     this.timer.update();
     const dt = Math.min(this.timer.getDelta(), 0.1);
     if (this.mode === 'walk') this.#moveWalker(dt);
+    this.#stepAnimation(dt);
     if (this.mode === 'orbit') this.orbit.update();
+    if (this.mode === 'top') this.topControls.update();
     this.frameListeners.forEach((l) => l(dt));
-    this.renderer.render(this.scene, this.camera);
+    if (this.composer) this.composer.render(dt);
+    else this.renderer.render(this.scene, this.camera);
   }
 
   screenshot() {
-    this.renderer.render(this.scene, this.camera);
+    if (this.composer) this.composer.render(0);
+    else this.renderer.render(this.scene, this.camera);
     return new Promise((resolve) => this.renderer.domElement.toBlob(resolve, 'image/png'));
   }
 }

@@ -242,7 +242,11 @@ function toggleButton(icon, label, initial, onToggle, title) {
 }
 
 function setupStageTools(editor, { setCutaway, setCeiling }) {
+  const fullView = el('button', { class: 'btn', title: '回到看得到整間房子的視角（也可以雙擊畫面放大）' }, iconLabel('full-view', '全景'));
+  fullView.addEventListener('click', () => editor.viewer.resetView());
   $('#stage-tools').replaceChildren(
+    fullView,
+    toggleButton('high-quality', '高畫質', editor.viewer.highQuality, (on) => editor.viewer.setHighQuality(on), '牆角、家具底下的柔和陰影；手機較慢可關閉'),
     toggleButton('grid', '網格 5 cm', true, (on) => editor.setSnap(on), '移動家具時對齊 5 公分網格'),
     toggleButton('cutaway', '剖面', false, setCutaway, '把牆降到 1.1 公尺，方便看家具配置'),
     toggleButton('ceiling', '天花板', false, setCeiling, '在 3D／俯視顯示天花板（漫遊時一定會顯示）'),
