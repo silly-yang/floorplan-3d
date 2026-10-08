@@ -16,6 +16,8 @@ import { FLOOR_MATERIALS, floorMaterialOf } from './core/materials.js';
 import { walkStart } from './core/cameraMath.js';
 import { footprint, walkBlockers } from './core/layout.js';
 import { occludingWalls } from './core/occlusion.js';
+import { sunDirection } from './core/sunlight.js';
+import { CurtainLayer } from './scene/curtainLayer.js';
 import { buildGrid } from './scene/gridLayer.js';
 import { buildHouse, disposeObject, floorColorOf } from './scene/house.js';
 import { textureThumbnail } from './scene/textures.js';
@@ -26,6 +28,7 @@ import { renderCatalog } from './ui/catalogPanel.js';
 import { $, alertDialog, el, toast } from './ui/dom.js';
 import { setupCabinetPanel } from './ui/cabinetPanel.js';
 import { setupPegboardPanel } from './ui/pegboardPanel.js';
+import { setupCurtainControls } from './ui/curtainControls.js';
 import { setupDoorPanel } from './ui/doorPanel.js';
 import { setupElectricalPanel } from './ui/electricalPanel.js';
 import { iconSvg } from './ui/icons.js';
@@ -411,6 +414,8 @@ async function main() {
   const getSolids = makeSolidsGetter(floorplan, store);
   const viewer = new Viewer($('#stage'), floorplan.bounds);
   viewer.walkStart = walkStart(floorplan.rooms);
+  const [sunX, sunY, sunUp] = sunDirection(floorplan);
+  viewer.setDaylight({ x: sunX, y: sunUp, z: -sunY });
   viewer.canWalkTo = makeWalkCollision(getSolids, floorplan, store);
   setupViewSwitch(viewer);
   const getHouse = setupHouse(floorplan, viewer, store);
@@ -427,6 +432,9 @@ async function main() {
   const lightLayer = new LightLayer(viewer.scene, furnitureLayer, floorplan);
   store.subscribe((design) => lightLayer.sync(design));
   lightLayer.sync(store.getState());
+  const curtainLayer = new CurtainLayer(viewer.scene, floorplan);
+  store.subscribe((design) => curtainLayer.sync(design));
+  curtainLayer.sync(store.getState());
   viewer.onFrame((dt) => {
     doorLayer.update(dt);
     furnitureLayer.update(dt);
@@ -444,8 +452,13 @@ async function main() {
   const pegboardPanel = setupPegboardPanel({ store, editor });
   setupInspector(editor, getSolids, { editCabinet: cabinetPanel.edit, editPegboard: pegboardPanel.edit });
   setupDoorPanel(editor, floorplan);
+  setupCurtainControls(curtainLayer);
   setupStageTools(editor);
-  $('#stage-tools').append(toggleButton('day-night', '夜晚', false, (on) => lightLayer.setNight(on), '關掉日光，看燈具開起來的效果'));
+  const setNight = (on) => {
+    lightLayer.setNight(on);
+    viewer.setNight(on);
+  };
+  $('#stage-tools').append(toggleButton('day-night', '夜晚', false, setNight, '關掉日光，看燈具開起來的效果'));
   // 改了天花板就自動打開天花板顯示，才看得到改了什麼
   setupCeilingPanel(floorplan, store);
   setupFixtureActions(floorplan, store);

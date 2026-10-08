@@ -3,13 +3,27 @@ import * as THREE from 'three';
 import { buildGlass, buildSolids, openingAxis } from '../core/floorplan.js';
 import { COVE_MARGIN, COVE_RECESS, ceilingStateOf, ceilingZones, clipRect } from '../core/ceilings.js';
 import { floorMaterialOf } from '../core/materials.js';
+import { clipRuns, wallFaceRuns } from '../core/trim.js';
 import { buildCeilingServices } from './ceilingServices.js';
 import { sizedTexture, proceduralTexture } from './textures.js';
+import { trimMesh } from './trimGeometry.js';
 
 
 const BASEBOARD_HEIGHT = 0.08;
 const BASEBOARD_THICKNESS = 0.012;
 const FRAME_WIDTH = 0.045;
+// 踢腳板斷面：上緣外側倒一個小斜角，打光時看得出板子的厚度
+const BASEBOARD_PROFILE = [[0, 0], [BASEBOARD_THICKNESS, 0], [BASEBOARD_THICKNESS, BASEBOARD_HEIGHT - 0.006], [BASEBOARD_THICKNESS - 0.004, BASEBOARD_HEIGHT], [0, BASEBOARD_HEIGHT]];
+// 天花板線板：牆與平釘天花板交接處的內凹弧形，高、深各 6 cm；h 從天花板往下量
+const CROWN_SIZE = 0.06;
+const CROWN_PROFILE = [
+  [0, -CROWN_SIZE],
+  ...Array.from({ length: 7 }, (_, i) => {
+    const t = Math.PI - (Math.PI / 2) * (i / 6);
+    return [CROWN_SIZE + CROWN_SIZE * Math.cos(t), -CROWN_SIZE + CROWN_SIZE * Math.sin(t)];
+  }).slice(1),
+  [0, 0],
+];
 
 const WALL_COLORS = { rc: '#f1ede6', partition: '#ece6dc', column: '#e3ddd3', sill: '#f1ede6', lintel: '#f1ede6' };
 
@@ -58,11 +72,13 @@ export function buildHouse(floorplan, { ceilingHeight, rooms, ceilingColor = '#f
   }
   const wallFade = wallFader(wallMeshes, paint);
 
+  // 玻璃：本身偏淡、反射加強，看得到窗外也看得到室內的倒影
   const glassMaterial = new THREE.MeshPhysicalMaterial({
-    color: '#bcd7e6',
+    color: '#b4cddb',
     transparent: true,
-    opacity: 0.28,
-    roughness: 0.05,
+    opacity: 0.24,
+    roughness: 0.03,
+    envMapIntensity: 2.5,
     depthWrite: false,
   });
   for (const glass of buildGlass(floorplan)) {
@@ -96,7 +112,7 @@ export function buildHouse(floorplan, { ceilingHeight, rooms, ceilingColor = '#f
     floors.set(room.id, meshes);
   }
 
-  group.add(buildBaseboards(floorplan, ceilingHeight));
+  group.add(buildBaseboards(floorplan));
   group.add(buildFrames(floorplan));
 
   // 天花板（含大樑、天花板設備）：剖面模式時牆變矮，天花板一律依真正的樓板高度建，整組由 visible 控制
@@ -190,6 +206,7 @@ function buildCeilings(floorplan, { slabHeight, ceilingColor, ceilings }) {
   const paint = new THREE.MeshStandardMaterial({ color: ceilingColor, roughness: 0.95, side: THREE.DoubleSide });
   const concrete = new THREE.MeshStandardMaterial({ color: '#ffffff', map: proceduralTexture('concrete', '#c4c0b9'), roughness: 0.9, side: THREE.DoubleSide });
   const led = new THREE.MeshBasicMaterial({ color: '#ffe2b0' });
+  const flatZones = [];
   for (const zone of ceilingZones(floorplan)) {
     const state = ceilingStateOf(ceilings, zone.id, floorplan);
     const exposed = state.type === 'exposed';
@@ -209,6 +226,7 @@ function buildCeilings(floorplan, { slabHeight, ceilingColor, ceilings }) {
       if (state.type === 'flat') {
         group.add(plane(rect, lowered, paint));
         group.add(bulkhead(rect, lowered, slabHeight, paint));
+        flatZones.push({ rect, height: lowered });
       }
       if (state.type === 'cove') {
         // 四周一圈下降帶在 lowered，中間內凹往上 COVE_RECESS，交界處嵌一條暖色燈帶
@@ -231,34 +249,36 @@ function buildCeilings(floorplan, { slabHeight, ceilingColor, ceilings }) {
       }
     }
   }
+  group.add(buildCrownMolding(floorplan, flatZones, paint));
   group.add(buildCeilingServices(floorplan, { slabHeight, ceilings }));
+  // 漫遊時天花板才顯示，這時要擋住從上面來的陽光，光只從窗戶進來
+  group.traverse((o) => {
+    if (o.isMesh && !o.material.isMeshBasicMaterial) o.castShadow = true;
+  });
   return group;
 }
 
-const edgesOf = (poly) => poly.map((p, i) => [p, poly[(i + 1) % poly.length]]);
-const signedArea = (poly) => edgesOf(poly).reduce((sum, [a, b]) => sum + a[0] * b[1] - b[0] * a[1], 0) / 2;
+// 窗戶上方的楣樑也是牆面，線板要接著通過；楣樑比線板還低才算
+function buildCrownMolding(floorplan, zones, material) {
+  const lintels = floorplan.openings.map((o) => ({ id: o.id, kind: 'lintel', polygon: o.polygon, head: o.head }));
+  const pieces = clipRuns(wallFaceRuns([...floorplan.walls, ...lintels]), zones).filter((piece) => {
+    const lintel = lintels.find((l) => l.id === piece.wallId);
+    return !lintel || lintel.head <= piece.height - CROWN_SIZE;
+  });
+  const mesh = trimMesh(pieces, CROWN_PROFILE, (piece) => piece.height, material);
+  mesh.name = 'crown-molding';
+  return mesh;
+}
 
-// 踢腳板：沿每道牆的每條邊，往牆外側貼一條 8 cm 高的薄板
+// 踢腳板：沿每道牆的牆面（牆端面太短不貼），轉角斜切接合；窗台下的矮牆也要貼
 function buildBaseboards(floorplan) {
   const group = new THREE.Group();
   group.name = 'baseboards';
   const material = new THREE.MeshStandardMaterial({ color: '#f7f5f0', roughness: 0.5 });
-  for (const wall of floorplan.walls) {
-    if (wall.kind === 'column') continue;
-    const ccw = signedArea(wall.polygon) > 0;
-    for (const [a, b] of edgesOf(wall.polygon)) {
-      const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
-      if (length < 0.2) continue; // 牆端面（開口兩側）不貼
-      const dir = [(b[0] - a[0]) / length, (b[1] - a[1]) / length];
-      const out = ccw ? [dir[1], -dir[0]] : [-dir[1], dir[0]];
-      const mid = [(a[0] + b[0]) / 2 + (out[0] * BASEBOARD_THICKNESS) / 2, (a[1] + b[1]) / 2 + (out[1] * BASEBOARD_THICKNESS) / 2];
-      const board = new THREE.Mesh(new THREE.BoxGeometry(length, BASEBOARD_HEIGHT, BASEBOARD_THICKNESS), material);
-      board.position.set(mid[0], BASEBOARD_HEIGHT / 2, -mid[1]);
-      board.rotation.y = Math.atan2(dir[1], dir[0]);
-      board.receiveShadow = true;
-      group.add(board);
-    }
-  }
+  const sills = floorplan.openings.filter((o) => o.sill >= BASEBOARD_HEIGHT).map((o) => ({ id: o.id, kind: 'sill', polygon: o.polygon }));
+  const board = trimMesh(wallFaceRuns([...floorplan.walls, ...sills]), BASEBOARD_PROFILE, () => 0, material);
+  board.receiveShadow = true;
+  group.add(board);
   return group;
 }
 

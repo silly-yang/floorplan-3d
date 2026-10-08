@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DOOR_TYPES, blocksPassage, defaultDoor, doorOptions, doorPanels, doorStateOf, swingSide } from '../../js/core/doors.js';
+import { DOOR_TYPES, blocksPassage, defaultDoor, doorOptions, doorPanels, doorStateOf, doorStopPoint, swingSide } from '../../js/core/doors.js';
 
 const rect = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
 // 沿 x 軸、寬 0.9 m、牆厚 0.15 m 的開口
@@ -141,3 +141,25 @@ test('doorPanels 一般門往指定那一側開；out 時改往另一側', () =>
   assert.ok(inward.center[1] < 0.075 - 0.4, `${inward.center}`);
   assert.ok(outward.center[1] > 0.075 + 0.4, `${outward.center}`);
 });
+
+for (const [name, state, side, expected] of [
+  ['一般門：門全開時門片尾端的內側，地上放門檔', { type: 'hinged', open: false, flip: false, out: false }, 1, [0.97, 0.905]],
+  ['門軸換邊：門檔跟著到另一端', { type: 'hinged', open: false, flip: true, out: false }, 1, [1.93, 0.905]],
+  ['往外開：門檔在牆的另一側', { type: 'hinged', open: false, flip: false, out: true }, 1, [0.97, -0.755]],
+  ['房間在 across 反向：門檔跟著換側', { type: 'hinged', open: false, flip: false, out: false }, -1, [0.97, -0.755]],
+]) {
+  test(`doorStopPoint ${name}`, () => {
+    // Act
+    const point = doorStopPoint(opening(), state, side);
+
+    // Assert
+    assert.ok(point && close(point[0], expected[0]) && close(point[1], expected[1]), JSON.stringify(point));
+  });
+}
+
+for (const type of ['none', 'sliding', 'glass-sliding']) {
+  test(`doorStopPoint ${type} 沒有門檔`, () => {
+    // Act & Assert
+    assert.equal(doorStopPoint(opening(), { type, open: false, flip: false, out: false }), null);
+  });
+}
