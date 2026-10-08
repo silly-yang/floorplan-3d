@@ -4,7 +4,7 @@ import { CATALOG, SIZE_LIMITS, createFurniture, getCatalogItem, normalizeSizeVal
 
 const REQUIRED_FURNITURE = [
   'sofa', 'armchair', 'coffee-table', 'dining-table', 'dining-chair', 'double-bed', 'single-bed',
-  'wardrobe', 'desk', 'tv-stand', 'fridge', 'rug', 'plant', 'kitchen-island',
+  'wardrobe', 'desk', 'tv-stand', 'fridge', 'rug', 'plant', 'kitchen-island', 'cat-tree',
 ];
 const REQUIRED_APPLIANCES = [
   'coffee-machine', 'microwave', 'rice-cooker', 'laptop', 'desk-lamp',
@@ -170,4 +170,13 @@ test('路由器、Mesh、吸頂 AP 有發射功率，弱電箱沒有無線', () 
 test('弱電箱掛牆高度 150 公分', () => {
   // Act & Assert
   assert.equal(getCatalogItem('network-panel').mountHeight, 150);
+});
+
+test('自己設計的洞洞板有獨立類型、掛在牆上，不混進家具清單', () => {
+  // Act
+  const custom = getCatalogItem('custom-pegboard');
+
+  // Assert
+  assert.equal(custom.category, 'custom');
+  assert.equal(custom.placement, 'wall');
 });

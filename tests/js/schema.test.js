@@ -254,3 +254,70 @@ test('validateDesign 家具可以帶選填的 elevation 與 options', () => {
   // Act & Assert
   assert.deepEqual(validateDesign(design), []);
 });
+
+// ---------- 洞洞板（選填欄位） ----------
+
+const board = () => ({
+  id: 'p1', name: '洞洞板', size: { w: 120, h: 80 }, material: 'wood', color: '#c8a27a', pitch: 2.5, mountHeight: 90,
+  accessories: [{ id: 'a1', type: 'cat-step', x: 0, y: 0 }],
+});
+const placedBoard = { id: 'f9', type: 'custom-pegboard', pegboardId: 'p1', x: 1, y: 1, rotation: 0, size: { w: 120, d: 27, h: 80 }, color: '#c8a27a', elevation: 0.9 };
+
+test('validateDesign 沒有 pegboards 欄位的舊設計仍然合法', () => {
+  // Arrange
+  const design = sampleDesign();
+  delete design.pegboards;
+
+  // Act & Assert
+  assert.deepEqual(validateDesign(design), []);
+});
+
+test('validateDesign 有洞洞板設計並擺進場景時沒有錯誤', () => {
+  // Arrange
+  const design = { ...sampleDesign(), pegboards: [board()] };
+  design.furniture.push(placedBoard);
+
+  // Act & Assert
+  assert.deepEqual(validateDesign(design), []);
+});
+
+for (const [name, mutate, fragment] of [
+  // 這兩種連帶讓擺放的洞洞板找不到設計，先拿掉擺放的那件，只看設計本身的錯
+  ['pegboards 不是陣列', (d) => ((d.pegboards = {}), d.furniture.pop()), 'pegboards'],
+  ['洞洞板沒有 id', (d) => ((d.pegboards[0].id = ''), d.furniture.pop()), 'pegboards[0].id'],
+  ['洞洞板尺寸不是正數', (d) => (d.pegboards[0].size = { w: 0, h: 80 }), 'pegboards[0].size'],
+  ['洞洞板材質未知', (d) => (d.pegboards[0].material = 'glass'), 'pegboards[0].material'],
+  ['洞洞板顏色不是色碼', (d) => (d.pegboards[0].color = 'brown'), 'pegboards[0].color'],
+  ['孔距不是正數', (d) => (d.pegboards[0].pitch = 0), 'pegboards[0].pitch'],
+  ['掛牆高度不是數字', (d) => (d.pegboards[0].mountHeight = '90'), 'pegboards[0].mountHeight'],
+  ['配件類型未知', (d) => (d.pegboards[0].accessories[0].type = 'rocket'), 'pegboards[0].accessories[0].type'],
+  ['配件座標不是數字', (d) => (d.pegboards[0].accessories[0].x = null), 'pegboards[0].accessories[0]'],
+  ['擺放的洞洞板找不到設計', (d) => (d.furniture[1].pegboardId = 'ghost'), 'furniture[1].pegboardId'],
+]) {
+  test(`validateDesign ${name}時指出欄位路徑`, () => {
+    // Arrange
+    const design = { ...sampleDesign(), pegboards: [board()] };
+    design.furniture.push({ ...placedBoard });
+    mutate(design);
+
+    // Act
+    const errors = validateDesign(design);
+
+    // Assert
+    assert.equal(errors.length, 1, errors.join(' / '));
+    assert.ok(errors[0].includes(fragment), errors[0]);
+  });
+}
+
+test('validateDesign 沒有 pegboards 欄位卻擺了洞洞板時指出 pegboardId', () => {
+  // Arrange
+  const design = sampleDesign();
+  design.furniture.push({ ...placedBoard });
+
+  // Act
+  const errors = validateDesign(design);
+
+  // Assert
+  assert.equal(errors.length, 1, errors.join(' / '));
+  assert.ok(errors[0].includes('furniture[1].pegboardId'), errors[0]);
+});

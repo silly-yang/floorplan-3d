@@ -14,6 +14,8 @@ const contentOf = (design) => ({
   cabinets: design.cabinets,
   ceilings: design.ceilings,
   furniture: design.furniture,
+  // 選填：舊方案沒有這個欄位就不帶，讀的地方一律當空陣列
+  ...(design.pegboards ? { pegboards: design.pegboards } : {}),
 });
 
 // defaultFurniture：新方案預先擺好的家具（建商附的廚衛），每次呼叫要給新的 id
@@ -45,6 +47,7 @@ export function createSession({ designStore, store, now, newId, floorplanRef = n
     delete meta.ceilingColor;
     delete meta.doors;
     delete meta.cabinets;
+    delete meta.pegboards;
     delete meta.ceilings;
     delete meta.rooms;
     delete meta.furniture;

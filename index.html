@@ -36,6 +36,7 @@
           <button role="tab" data-tab="cabinet" data-icon="custom-cabinet"><span>櫃子</span></button>
           <button role="tab" data-tab="network" data-icon="tab-network"><span>網路</span></button>
           <button role="tab" data-tab="light" data-icon="ceiling-light"><span>照明</span></button>
+          <button role="tab" data-tab="pegboard" data-icon="custom-pegboard"><span>洞洞板</span></button>
           <button role="tab" data-tab="floors" data-icon="tab-floor"><span>空間</span></button>
           <button role="tab" data-tab="files" data-icon="tab-files"><span>檔案</span></button>
         </nav>
@@ -64,6 +65,7 @@
           <p class="hint-text">燈具會自動吸在該處天花板下方；按左下「夜晚」看開燈效果。嵌燈要裝在平釘或造型天花板。</p>
           <ul class="catalog" id="catalog-light"></ul>
         </section>
+        <section class="tab-panel" data-panel="pegboard" hidden id="pegboard-panel"></section>
         <section class="tab-panel" data-panel="floors" hidden>
           <label class="field">
             <span>室內淨高（公尺）</span>
@@ -102,6 +104,7 @@
     </div>
 
     <div class="designer" id="cabinet-designer" hidden></div>
+    <div class="designer" id="pegboard-designer" hidden></div>
     <div class="toast" id="toast" role="status" hidden></div>
     <dialog class="dialog" id="dialog"></dialog>
     <div class="drop-zone" id="drop-zone" hidden><p>放開以匯入 .design.json</p></div>

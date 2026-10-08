@@ -20,8 +20,8 @@ const DIMENSIONS = [
   ['h', '高'],
 ];
 
-// editCabinet：選到自己設計的系統櫃時，「編輯櫃子設計」要開設計器
-export function setupInspector(editor, getSolids, { editCabinet } = {}) {
+// editCabinet／editPegboard：選到自己設計的系統櫃／洞洞板時，「編輯設計」要開設計器
+export function setupInspector(editor, getSolids, { editCabinet, editPegboard } = {}) {
   const panel = $('#inspector');
   let colorBase = null;
   let renderedId = null;
@@ -71,9 +71,13 @@ export function setupInspector(editor, getSolids, { editCabinet } = {}) {
     // 系統櫃的尺寸、格子都在設計器裡改，這裡只給入口
     const cabinet = item.type === 'custom-cabinet' ? editor.store.getState().cabinets.find((c) => c.id === item.cabinetId) : null;
     if (cabinet) title.querySelector('span').textContent = cabinet.name;
+    const pegboard = item.type === 'custom-pegboard' ? (editor.store.getState().pegboards ?? []).find((p) => p.id === item.pegboardId) : null;
+    if (pegboard) title.querySelector('span').textContent = pegboard.name;
     const body = cabinet
       ? [iconButton('rename', '編輯櫃子設計', '尺寸、隔板、插座、格內家電', () => editCabinet?.(cabinet), 'primary block')]
-      : [...sizeInputs, el('label', { class: 'field' }, el('span', {}, '顏色'), color)];
+      : pegboard
+        ? [iconButton('rename', '編輯洞洞板設計', '尺寸、材質、掛牆高度、板上配件', () => editPegboard?.(pegboard), 'primary block')]
+        : [...sizeInputs, el('label', { class: 'field' }, el('span', {}, '顏色'), color)];
     panel.replaceChildren(
       title,
       ...body,

@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { PLINTH, cellBox } from '../core/cabinet.js';
+import { BOARD_THICKNESS, getAccessory, pegboardFootprint } from '../core/pegboard.js';
 import { getCatalogItem } from './catalog.js';
 
 const materialCache = new Map();
@@ -279,6 +280,24 @@ const BUILDERS = {
     box(g, [0.02, 0.06, 0.012], [w / 2 - 0.04, h / 2, d / 2 + 0.012], METAL);
   },
 
+  // 貓爬架：底座、左下貓窩方屋、兩支麻繩柱、中層跳台、頂層軟墊
+  'cat-tree': (g, w, d, h, c) => {
+    const sisal = '#d8c49b';
+    const base = 0.04;
+    box(g, [w, base, d], [0, base / 2, 0], c.dark);
+    const houseW = w * 0.5;
+    const houseH = Math.min(0.35, h * 0.24);
+    box(g, [houseW, houseH, d * 0.85], [-w / 2 + houseW / 2, base + houseH / 2, 0], c.main);
+    box(g, [houseW * 0.5, houseH * 0.55, 0.01], [-w / 2 + houseW / 2, base + houseH * 0.38, d * 0.425 + 0.005], '#3a3029');
+    const midY = h * 0.55;
+    const topY = h * 0.9;
+    cylinder(g, [0.045, 0.045, midY - base, 10], [w * 0.22, base + (midY - base) / 2, 0], sisal);
+    cylinder(g, [0.045, 0.045, topY - base - houseH, 10], [-w * 0.22, base + houseH + (topY - base - houseH) / 2, 0], sisal);
+    box(g, [w * 0.6, 0.025, d * 0.8], [w * 0.18, midY, 0], c.main);
+    box(g, [w * 0.75, 0.025, d * 0.9], [-w * 0.1, topY, 0], c.main);
+    box(g, [w * 0.7, Math.max(0.02, h - topY - 0.0125), d * 0.85], [-w * 0.1, (topY + 0.0125 + h) / 2, 0], c.light, 0.95);
+  },
+
   plant: (g, w, d, h, c) => {
     const r = Math.min(w, d) / 2;
     cylinder(g, [r * 0.7, r * 0.55, h * 0.3, 12], [0, h * 0.15, 0], '#b6866a');
@@ -472,15 +491,116 @@ export function buildCabinetModel(cab) {
   return group;
 }
 
+// ---------- 洞洞板 ----------
+
+const FINISH = { wood: { roughness: 0.75, metalness: 0 }, metal: { roughness: 0.4, metalness: 0.55 }, plastic: { roughness: 0.45, metalness: 0 } };
+const MAX_HOLES = 4000; // 孔距很密時隔幾孔畫一個，避免一塊板子上萬個實例
+
+function finishMat(color, material) {
+  const { roughness, metalness } = FINISH[material] ?? FINISH.wood;
+  const key = `${color}|${roughness}|${metalness}`;
+  if (!materialCache.has(key)) materialCache.set(key, new THREE.MeshStandardMaterial({ color, roughness, metalness }));
+  return materialCache.get(key);
+}
+
+// 板上配件：(x0, y0) 是配件左下角、z0 是板子正面；配件往 +z 凸出
+function accessoryModel(g, type, spec, [x0, y0, z0]) {
+  const w = spec.size.w / 100;
+  const h = spec.size.h / 100;
+  const d = spec.size.d / 100;
+  const cx = x0 + w / 2;
+  const cz = z0 + d / 2;
+  const c = shades(spec.color);
+  switch (type) {
+    case 'shelf':
+    case 'cat-step':
+      box(g, [w, Math.min(h, 0.02), d], [cx, y0 + h - Math.min(h, 0.02) / 2, cz], c.main, 0.6);
+      for (const sx of [0.15, 0.85]) box(g, [0.01, 0.06, d * 0.7], [x0 + w * sx, y0 + h - 0.05, z0 + d * 0.35], '#5b5f66');
+      if (type === 'cat-step') box(g, [w * 0.92, 0.01, d * 0.9], [cx, y0 + h + 0.005, cz], '#e9e1d2', 0.95);
+      break;
+    case 'hook':
+      box(g, [0.006, 0.006, d], [cx, y0 + h * 0.3, cz], c.main, 0.4);
+      box(g, [0.006, h * 0.5, 0.006], [cx, y0 + h * 0.5, z0 + d - 0.003], c.main, 0.4);
+      break;
+    case 'pen-holder':
+      cylinder(g, [Math.min(w, d) / 2, Math.min(w, d) / 2, h, 12], [cx, y0 + h / 2, cz], spec.color);
+      break;
+    case 'tool-rack':
+      box(g, [w, 0.015, d], [cx, y0 + h - 0.0075, cz], c.main, 0.4);
+      for (let k = 1; k <= 4; k++) box(g, [0.005, h - 0.015, 0.005], [x0 + (w / 5) * k, y0 + (h - 0.015) / 2, z0 + d - 0.01], c.dark, 0.4);
+      break;
+    case 'cat-bed':
+      box(g, [w, h, d], [cx, y0 + h / 2, cz], c.main);
+      box(g, [w * 0.5, h * 0.6, 0.01], [cx, y0 + h * 0.4, z0 + d + 0.005], '#3a3029');
+      break;
+    case 'cat-scratcher':
+      box(g, [w, h, d], [cx, y0 + h / 2, cz], '#d8c49b', 0.95);
+      box(g, [w, 0.02, d + 0.004], [cx, y0 + h - 0.01, cz], c.dark);
+      box(g, [w, 0.02, d + 0.004], [cx, y0 + 0.01, cz], c.dark);
+      break;
+    case 'cat-bridge': {
+      const slats = Math.max(3, Math.round(w / 0.08));
+      for (let k = 0; k < slats; k++) box(g, [(w / slats) * 0.75, 0.02, d], [x0 + (w / slats) * (k + 0.5), y0 + 0.01, cz], c.main);
+      for (const z of [z0 + 0.01, z0 + d - 0.01]) box(g, [w, 0.008, 0.008], [cx, y0 + h, z], '#d8c49b');
+      break;
+    }
+    case 'cat-lookout':
+      box(g, [w, 0.02, d], [cx, y0 + 0.01, cz], c.main);
+      box(g, [w, h, 0.015], [cx, y0 + h / 2, z0 + d - 0.0075], c.dark);
+      for (const sx of [-1, 1]) box(g, [0.015, h, d], [cx + sx * (w / 2 - 0.0075), y0 + h / 2, cz], c.dark);
+      break;
+    default: // 收納盒、置物籃
+      box(g, [w, h, d], [cx, y0 + h / 2, cz], c.main);
+      box(g, [w - 0.01, 0.002, d - 0.01], [cx, y0 + h + 0.001, cz], c.dark);
+  }
+}
+
+// 自己設計的洞洞板：原點在外框底面中心，板子貼外框背面、配件往正面凸出；離地高度由家具的 elevation 處理
+export function buildPegboardModel(board) {
+  const group = new THREE.Group();
+  const w = board.size.w / 100;
+  const h = board.size.h / 100;
+  const t = BOARD_THICKNESS / 100;
+  const back = -pegboardFootprint(board).d / 200;
+  const panel = new THREE.Mesh(new THREE.BoxGeometry(w, h, t), finishMat(board.color, board.material));
+  panel.position.set(0, h / 2, back + t / 2);
+  group.add(panel);
+
+  let stride = 1;
+  while ((board.size.w / (board.pitch * stride)) * (board.size.h / (board.pitch * stride)) > MAX_HOLES) stride++;
+  const step = board.pitch * stride;
+  const holes = [];
+  for (let x = step; x < board.size.w - 1e-6; x += step) for (let y = step; y < board.size.h - 1e-6; y += step) holes.push([x, y]);
+  if (holes.length) {
+    const radius = Math.min(0.003, (board.pitch / 100) * 0.22);
+    const mesh = new THREE.InstancedMesh(new THREE.CircleGeometry(radius, 8), mat('#2b2a28', 0.9), holes.length);
+    const dummy = new THREE.Object3D();
+    holes.forEach(([x, y], i) => {
+      dummy.position.set(-w / 2 + x / 100, y / 100, back + t + 0.0006);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+    });
+    group.add(mesh);
+  }
+
+  for (const a of board.accessories) {
+    const spec = getAccessory(a.type);
+    if (spec) accessoryModel(group, a.type, spec, [-w / 2 + a.x / 100, a.y / 100, back + t]);
+  }
+  return group;
+}
+
 // 回傳家具的 Three.js 群組；外部模型若已載入就用外部模型
-// cabinet：custom-cabinet 對應的櫃子設計
-export function buildFurnitureModel(item, externalTemplate = null, cabinet = null) {
+// cabinet：custom-cabinet 對應的櫃子設計；pegboard：custom-pegboard 對應的洞洞板設計
+export function buildFurnitureModel(item, externalTemplate = null, cabinet = null, pegboard = null) {
   const group = new THREE.Group();
   const w = item.size.w / 100;
   const d = item.size.d / 100;
   const h = item.size.h / 100;
   if (item.type === 'custom-cabinet' && cabinet) {
     group.add(buildCabinetModel(cabinet));
+  } else if (item.type === 'custom-pegboard' && pegboard) {
+    group.add(buildPegboardModel(pegboard));
   } else if (externalTemplate) {
     group.add(fitExternal(externalTemplate, w, d, h));
   } else {

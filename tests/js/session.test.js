@@ -296,3 +296,21 @@ test('新方案會帶入預設家具（建商附的廚衛），每次 id 都不�
   assert.equal(secondIds.length, 1);
   assert.notDeepEqual(firstIds, secondIds);
 });
+
+test('洞洞板設計會跟著方案存檔，重新整理後還在', () => {
+  // Arrange
+  const storage = new MemoryStorage();
+  const page1 = openPage(storage);
+  page1.session.init();
+  const pegboards = [{ id: 'p1', name: '洞洞板', size: { w: 120, h: 80 }, material: 'wood', color: '#c8a27a', pitch: 2.5, mountHeight: 90, accessories: [] }];
+  page1.store.commit({ ...page1.store.getState(), pegboards });
+  page1.timers.run();
+
+  // Act
+  const page2 = openPage(storage);
+  page2.session.init();
+
+  // Assert
+  assert.deepEqual(page2.store.getState().pegboards, pegboards);
+  assert.deepEqual(page2.session.current.pegboards, pegboards);
+});
