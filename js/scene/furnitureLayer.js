@@ -8,9 +8,9 @@ import { disposeObject } from './house.js';
 const SELECT_COLOR = '#2f6f62';
 const CONFLICT_COLOR = '#d64545';
 
-// 系統櫃的外觀取決於櫃子設計，設計一改就要重建
-const modelKey = (item, cabinet) =>
-  `${item.type}|${item.size.w}|${item.size.d}|${item.size.h}|${item.color}|${cabinet ? JSON.stringify(cabinet) : ''}`;
+// 系統櫃、洞洞板的外觀取決於各自的設計，設計一改就要重建
+const modelKey = (item, design) =>
+  `${item.type}|${item.size.w}|${item.size.d}|${item.size.h}|${item.color}|${design ? JSON.stringify(design) : ''}`;
 
 function outline(item, color) {
   const w = item.size.w / 100;
@@ -49,9 +49,10 @@ export class FurnitureLayer {
     this.lastFurniture = [];
   }
 
-  sync(furniture, cabinets = []) {
+  sync(furniture, cabinets = [], pegboards = []) {
     this.lastFurniture = furniture;
     this.cabinets = new Map(cabinets.map((c) => [c.id, c]));
+    this.pegboards = new Map((pegboards ?? []).map((p) => [p.id, p]));
     const alive = new Set(furniture.map((f) => f.id));
     for (const [id, entry] of this.entries) {
       if (!alive.has(id)) {
@@ -84,10 +85,11 @@ export class FurnitureLayer {
     entry.container.position.set(x, y, z);
     entry.container.rotation.y = (item.rotation * Math.PI) / 180;
     const cabinet = item.cabinetId ? this.cabinets.get(item.cabinetId) : null;
-    const key = modelKey(item, cabinet);
+    const pegboard = item.pegboardId ? this.pegboards.get(item.pegboardId) : null;
+    const key = modelKey(item, cabinet ?? pegboard);
     if (key !== entry.key) {
       entry.key = key;
-      this.#replaceModel(entry, buildFurnitureModel(item, null, cabinet));
+      this.#replaceModel(entry, buildFurnitureModel(item, null, cabinet, pegboard));
       // 有註冊外部模型時，載入完成再換上去；期間先顯示程式化模型
       loadExternalTemplate(item.type).then((template) => {
         if (template && entry.key === key && this.entries.get(item.id) === entry) {

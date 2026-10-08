@@ -2,6 +2,7 @@
 import { CEILING_TYPES } from '../core/ceilings.js';
 import { DOOR_TYPES } from '../core/doors.js';
 import { getFloorMaterial } from '../core/materials.js';
+import { getAccessory, PEGBOARD_MATERIALS } from '../core/pegboard.js';
 import { getCatalogItem, SIZE_LIMITS } from '../furniture/catalog.js';
 
 export const SCHEMA_VERSION = 5;
@@ -101,7 +102,35 @@ function validateCabinets(cabinets, errors) {
   });
 }
 
-function validateFurniture(list, errors, cabinetIds = new Set()) {
+const PEGBOARD_MATERIAL_IDS = new Set(PEGBOARD_MATERIALS.map((m) => m.id));
+
+// 選填欄位：舊方案沒有 pegboards，只在欄位存在時驗證
+function validatePegboards(pegboards, errors) {
+  if (pegboards === undefined) return;
+  if (!Array.isArray(pegboards)) {
+    errors.push('pegboards 必須是陣列');
+    return;
+  }
+  pegboards.forEach((board, i) => {
+    const at = `pegboards[${i}]`;
+    if (typeof board?.id !== 'string' || !board.id) errors.push(`${at}.id 必須是非空字串`);
+    if (!['w', 'h'].every((k) => isNum(board?.size?.[k]) && board.size[k] > 0)) errors.push(`${at}.size 需要正數 w、h`);
+    if (!PEGBOARD_MATERIAL_IDS.has(board?.material)) errors.push(`${at}.material 必須是 ${[...PEGBOARD_MATERIAL_IDS].join('／')}`);
+    if (!isColor(board?.color)) errors.push(`${at}.color 必須是 #rrggbb 色碼`);
+    if (!(isNum(board?.pitch) && board.pitch > 0)) errors.push(`${at}.pitch 必須是正數（公分）`);
+    if (!(isNum(board?.mountHeight) && board.mountHeight >= 0)) errors.push(`${at}.mountHeight 必須是不小於 0 的數字（公分）`);
+    if (!Array.isArray(board?.accessories)) {
+      errors.push(`${at}.accessories 必須是陣列`);
+      return;
+    }
+    board.accessories.forEach((a, j) => {
+      if (!getAccessory(a?.type)) errors.push(`${at}.accessories[${j}].type 是未知的配件（${a?.type}）`);
+      if (typeof a?.id !== 'string' || !isNum(a.x) || !isNum(a.y)) errors.push(`${at}.accessories[${j}] 需要字串 id 與數字 x、y`);
+    });
+  });
+}
+
+function validateFurniture(list, errors, cabinetIds = new Set(), pegboardIds = new Set()) {
   if (!Array.isArray(list)) {
     errors.push('furniture 必須是陣列');
     return;
@@ -118,6 +147,7 @@ function validateFurniture(list, errors, cabinetIds = new Set()) {
     seen.add(f.id);
     if (!getCatalogItem(f.type)) errors.push(`${at}.type 是未知的家具類型（${f.type}）`);
     if (f.type === 'custom-cabinet' && !cabinetIds.has(f.cabinetId)) errors.push(`${at}.cabinetId 找不到對應的櫃子設計（${f.cabinetId}）`);
+    if (f.type === 'custom-pegboard' && !pegboardIds.has(f.pegboardId)) errors.push(`${at}.pegboardId 找不到對應的洞洞板設計（${f.pegboardId}）`);
     for (const key of ['x', 'y', 'rotation']) {
       if (!isNum(f[key])) errors.push(`${at}.${key} 必須是數字`);
     }
@@ -170,7 +200,9 @@ export function validateDesign(design) {
   validateDoors(design.doors, errors);
   validateCabinets(design.cabinets, errors);
   validateCeilings(design.ceilings, errors);
-  validateFurniture(design.furniture, errors, new Set((Array.isArray(design.cabinets) ? design.cabinets : []).map((c) => c?.id)));
+  validatePegboards(design.pegboards, errors);
+  const idsOf = (list) => new Set((Array.isArray(list) ? list : []).map((c) => c?.id));
+  validateFurniture(design.furniture, errors, idsOf(design.cabinets), idsOf(design.pegboards));
   return errors;
 }
 

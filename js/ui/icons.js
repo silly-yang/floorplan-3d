@@ -16,6 +16,7 @@ export const ICONS = {
   'kitchen-island': 'M3 9h18v10H3zM3 12h18M8 15h2M14 15h2M12 12v7',
   fridge: 'M6 3h12v18H6zM6 10h12M9 6v2M9 13v3',
   rug: 'M4 6h16v12H4zM7 9h10v6H7zM4 4v2M8 4v2M12 4v2M16 4v2M20 4v2M4 18v2M8 18v2M12 18v2M16 18v2M20 18v2',
+  'cat-tree': 'M6 21h12M9 21V6M15 21v-9M5 6h8M12 12h7M13 15h4v-3M7 3.5c1-1 2-1 3 0M9 9v.01M9 13v.01M9 17v.01',
   plant: 'M8 15h8l-1 6H9zM12 15V9M12 11C9 11 7 9 7 6c3 0 5 2 5 5zM12 10c0-3 2-5 5-5 0 3-2 5-5 5z',
   // ---------- 家電 ----------
   'coffee-machine': 'M6 3h12v4H6zM7 7v11M17 7v11M5 21h14M9 13h5v4H9zM14 14h1a1.5 1.5 0 0 1 0 3h-1M11 9v2',
@@ -35,6 +36,7 @@ export const ICONS = {
   dishwasher: 'M4 3h16v18H4zM4 7h16M7 5h3M15 5h.01M7 11h10M7 14h10M7 17h10',
   // ---------- 廚衛 ----------
   'custom-cabinet': 'M4 3h16v18H4zM12 3v18M4 10h8M4 15h8M12 12h8M8 6.5h.01M8 12.5h.01M15 16h2M7 18h2',
+  'custom-pegboard': 'M3 4h18v15H3zM7 8h.01M12 8h.01M17 8h.01M7 12h.01M12 12h.01M6 15.5h6M16 11v3a1.5 1.5 0 0 0 3 0',
   'kitchen-counter': 'M2 10h20v10H2zM2 13h20M6 7h3v3M5 7h5M15 10.5h4M14 16h2M8 16h2',
   'upper-cabinet': 'M3 4h18v8H3zM12 4v8M9.5 9h.01M14.5 9h.01M3 20h18M5 16h14',
   'shower-screen': 'M5 3v18M19 3v18M5 4h14M5 20h14M9 7l4 4M9 11l6 6M16 8h.01',

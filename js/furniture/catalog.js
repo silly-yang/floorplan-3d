@@ -33,6 +33,7 @@ export const CATALOG = [
   item('furniture', 'fridge', '冰箱', [70, 70, 180], '#e6e8ea', { power: [110, 200], vent: 5 }),
   item('furniture', 'rug', '地毯', [200, 140, 1], '#b9a28c', { allowOverlap: true }),
   item('furniture', 'plant', '植栽', [45, 45, 120], '#5f8a54'),
+  item('furniture', 'cat-tree', '貓爬架', [60, 50, 160], '#c9b49a'),
   item('appliance', 'coffee-machine', '咖啡機', [25, 40, 35], '#2f3237', { placement: 'surface', power: [110, 1200], vent: 5 }),
   item('appliance', 'microwave', '微波爐', [50, 40, 30], '#d9dbde', { placement: 'surface', power: [110, 1200], vent: 10 }),
   item('appliance', 'rice-cooker', '電鍋', [30, 30, 28], '#e8e3d8', { placement: 'surface', power: [110, 800], vent: 20 }),
@@ -50,6 +51,8 @@ export const CATALOG = [
   item('appliance', 'floor-lamp', '立燈', [35, 35, 160], '#3b3f45', { power: [110, 20] }),
   // 自己設計的系統櫃：不出現在家具清單，從「櫃子」分頁擺放；尺寸與格子來自 design.cabinets
   item('custom', 'custom-cabinet', '系統櫃', [120, 60, 210], '#e9e4dc', { surface: true }),
+  // 自己設計的洞洞板：從「洞洞板」分頁擺放；離地高度存在家具的 elevation（取設計的掛牆高度）
+  item('custom', 'custom-pegboard', '洞洞板', [120, 2, 80], '#c8a27a', { placement: 'wall' }),
   item('fixture', 'kitchen-counter', '廚具', [225, 60, 90], '#f0ece4', { surface: true }),
   item('fixture', 'toilet', '馬桶', [40, 70, 75], '#fafafa'),
   item('fixture', 'upper-cabinet', '吊櫃', [225, 35, 70], '#f0ece4', { placement: 'wall', mountHeight: 145 }),

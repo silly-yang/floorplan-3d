@@ -4,7 +4,7 @@ import { CATALOG, SIZE_LIMITS, createFurniture, getCatalogItem, normalizeSizeVal
 
 const REQUIRED_FURNITURE = [
   'sofa', 'armchair', 'coffee-table', 'dining-table', 'dining-chair', 'double-bed', 'single-bed',
-  'wardrobe', 'desk', 'tv-stand', 'fridge', 'rug', 'plant', 'kitchen-island',
+  'wardrobe', 'desk', 'tv-stand', 'fridge', 'rug', 'plant', 'kitchen-island', 'cat-tree',
 ];
 const REQUIRED_APPLIANCES = [
   'coffee-machine', 'microwave', 'rice-cooker', 'laptop', 'desk-lamp',
@@ -137,4 +137,13 @@ test('吊櫃掛在牆上、有固定的掛牆高度', () => {
   // Assert
   assert.equal(upper.placement, 'wall');
   assert.ok(upper.mountHeight >= 130 && upper.mountHeight <= 170);
+});
+
+test('自己設計的洞洞板有獨立類型、掛在牆上，不混進家具清單', () => {
+  // Act
+  const custom = getCatalogItem('custom-pegboard');
+
+  // Assert
+  assert.equal(custom.category, 'custom');
+  assert.equal(custom.placement, 'wall');
 });

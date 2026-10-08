@@ -34,6 +34,7 @@
           <button role="tab" data-tab="appliance" data-icon="tab-appliance"><span>家電</span></button>
           <button role="tab" data-tab="fixture" data-icon="tab-fixture"><span>廚衛</span></button>
           <button role="tab" data-tab="cabinet" data-icon="custom-cabinet"><span>櫃子</span></button>
+          <button role="tab" data-tab="pegboard" data-icon="custom-pegboard"><span>洞洞板</span></button>
           <button role="tab" data-tab="floors" data-icon="tab-floor"><span>空間</span></button>
           <button role="tab" data-tab="files" data-icon="tab-files"><span>檔案</span></button>
         </nav>
@@ -51,6 +52,7 @@
           <ul class="catalog" id="catalog-fixture"></ul>
         </section>
         <section class="tab-panel" data-panel="cabinet" hidden id="cabinet-panel"></section>
+        <section class="tab-panel" data-panel="pegboard" hidden id="pegboard-panel"></section>
         <section class="tab-panel" data-panel="floors" hidden>
           <label class="field">
             <span>室內淨高（公尺）</span>
@@ -89,6 +91,7 @@
     </div>
 
     <div class="designer" id="cabinet-designer" hidden></div>
+    <div class="designer" id="pegboard-designer" hidden></div>
     <div class="toast" id="toast" role="status" hidden></div>
     <dialog class="dialog" id="dialog"></dialog>
     <div class="drop-zone" id="drop-zone" hidden><p>放開以匯入 .design.json</p></div>

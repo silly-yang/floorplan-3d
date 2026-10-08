@@ -16,12 +16,14 @@ import { createDoubleTapDetector } from '../core/cameraMath.js';
 import { doorStateOf } from '../core/doors.js';
 import { createFurniture } from '../furniture/catalog.js';
 import { placeCabinet } from '../core/cabinet.js';
+import { placePegboard } from '../core/pegboard.js';
 import { FURNITURE_MIME } from '../ui/catalogPanel.js';
 import { toast } from '../ui/dom.js';
 
 const CLICK_TOLERANCE = 5; // 像素；按下到放開移動小於此值視為點擊
 const DUPLICATE_OFFSET = 0.3;
 const CABINET_MIME = 'application/x-cabinet-id'; // 與 cabinetPanel 相同；避免互相 import
+const PEGBOARD_MIME = 'application/x-pegboard-id'; // 與 pegboardPanel 相同
 const WALK_REACH = 2.5;
 const NUDGE_RADIUS = 0.8; // 旋轉、改尺寸撞牆時，最多自動挪動幾公尺 // 漫遊時伸手可及、能開關門的距離（公尺）
 
@@ -256,12 +258,19 @@ export class Editor {
   #bindDrop() {
     const canvas = this.viewer.domElement;
     canvas.addEventListener('dragover', (e) => {
-      if (e.dataTransfer.types.includes(FURNITURE_MIME) || e.dataTransfer.types.includes(CABINET_MIME)) {
+      if ([FURNITURE_MIME, CABINET_MIME, PEGBOARD_MIME].some((t) => e.dataTransfer.types.includes(t))) {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'copy';
       }
     });
     canvas.addEventListener('drop', (e) => {
+      const pegboardId = e.dataTransfer.getData(PEGBOARD_MIME);
+      if (pegboardId) {
+        e.preventDefault();
+        const point = this.screenToPlan(e.clientX, e.clientY);
+        if (point) this.addPegboard(pegboardId, point);
+        return;
+      }
       const cabinetId = e.dataTransfer.getData(CABINET_MIME);
       if (cabinetId) {
         e.preventDefault();
@@ -310,6 +319,25 @@ export class Editor {
     const spot = findFreeSpot(item, this.getSolids());
     if (!spot) {
       toast('附近找不到空間放這個櫃子');
+      return;
+    }
+    this.store.commit({ ...placed, furniture: placed.furniture.map((f) => (f.id === id ? { ...f, ...spot } : f)) });
+    this.select(id);
+  }
+
+  // 把自己設計的洞洞板擺進場景；離地高度已經存在 elevation，跟系統櫃一樣只處理平面位置
+  addPegboard(pegboardId, point = null) {
+    if (this.viewer.mode === 'walk') this.viewer.setMode('orbit');
+    const rect = this.viewer.domElement.getBoundingClientRect();
+    const target = point ?? this.screenToPlan(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    if (!target) return;
+    const [x, y] = this.#snapped(target);
+    const id = newId();
+    const placed = placePegboard(this.store.getState(), pegboardId, { id, x, y });
+    const item = placed.furniture.at(-1);
+    const spot = findFreeSpot(item, this.getSolids());
+    if (!spot) {
+      toast('附近找不到空間放這塊洞洞板');
       return;
     }
     this.store.commit({ ...placed, furniture: placed.furniture.map((f) => (f.id === id ? { ...f, ...spot } : f)) });
