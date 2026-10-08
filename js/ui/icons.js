@@ -12,7 +12,7 @@ export const ICONS = {
   'single-bed': 'M6 19V7M6 14h12v5M18 14v-1a2 2 0 0 0-2-2h-4v3M8 12h2',
   wardrobe: 'M5 3h14v18H5zM12 3v18M10 11v2M14 11v2',
   desk: 'M3 8h18M4 8v12M20 8v12M14 8v5h6M16 10.5h2',
-  'tv-stand': 'M5 3h14v9H5zM10 12v2M14 12v2M3 14h18v5H3zM12 14v5',
+  'tv-stand': 'M3 10h18v8H3zM12 10v8M9 14h1M14 14h1M5 18v2M19 18v2',
   'kitchen-island': 'M3 9h18v10H3zM3 12h18M8 15h2M14 15h2M12 12v7',
   fridge: 'M6 3h12v18H6zM6 10h12M9 6v2M9 13v3',
   rug: 'M4 6h16v12H4zM7 9h10v6H7zM4 4v2M8 4v2M12 4v2M16 4v2M20 4v2M4 18v2M8 18v2M12 18v2M16 18v2M20 18v2',
@@ -37,6 +37,7 @@ export const ICONS = {
   'steam-oven': 'M3 4h18v16H3zM3 8h18M6 11h12v6H6zM9 13c0-1 1-1 1-2M13 13c0-1 1-1 1-2M17 6h1',
   kettle: 'M7 8h10v11a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2zM8 8l1-4h6l1 4M17 11h2v4h-2M10 13h4',
   dishwasher: 'M4 3h16v18H4zM4 7h16M7 5h3M15 5h.01M7 11h10M7 14h10M7 17h10',
+  tv: 'M3 5h18v11H3zM8 20h8M12 16v4',
   // ---------- 廚衛 ----------
   'custom-cabinet': 'M4 3h16v18H4zM12 3v18M4 10h8M4 15h8M12 12h8M8 6.5h.01M8 12.5h.01M15 16h2M7 18h2',
   'custom-pegboard': 'M3 4h18v15H3zM7 8h.01M12 8h.01M17 8h.01M7 12h.01M12 12h.01M6 15.5h6M16 11v3a1.5 1.5 0 0 0 3 0',

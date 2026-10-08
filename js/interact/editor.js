@@ -21,6 +21,7 @@ import { isCeilingMounted, isLight, lightElevation, lightOptionsOf } from '../co
 import { createElectrical, isElectrical, mountSurfaces, snapToWall } from '../core/electrical.js';
 import { placeCabinet } from '../core/cabinet.js';
 import { placePegboard } from '../core/pegboard.js';
+import { isWallTv, tvChange } from '../core/tv.js';
 import { FURNITURE_MIME } from '../ui/catalogPanel.js';
 import { toast } from '../ui/dom.js';
 
@@ -241,6 +242,10 @@ export class Editor {
       this.#slideOnWall(design, item, [x, y]);
       return;
     }
+    if (isWallTv(item)) {
+      this.#slideTvOnWall(design, item, [x, y]);
+      return;
+    }
     // 沿路逐步前進，撞牆就停在牆前；只有真的動到才更新
     const reached = moveToward(item, { x, y }, this.getSolids());
     if (reached.x !== x || reached.y !== y) this.drag.blocked = true;
@@ -259,6 +264,19 @@ export class Editor {
     if (!spot || (spot.x === item.x && spot.y === item.y && spot.rotation === item.rotation)) return;
     this.drag.moved = true;
     this.store.preview(updateFurniture(design, item.id, spot));
+  }
+
+  // 壁掛電視沿牆滑動；背面貼牆，會撞到轉角另一道牆的位置不去
+  #slideTvOnWall(design, item, point) {
+    const spot = this.#tvWallSpot(item, point);
+    if (!spot || (spot.x === item.x && spot.y === item.y && spot.rotation === item.rotation)) return;
+    if (hitsWalls({ ...item, ...spot }, this.getSolids(), item.elevation)) return;
+    this.drag.moved = true;
+    this.store.preview(updateFurniture(design, item.id, spot));
+  }
+
+  #tvWallSpot(item, point = [item.x, item.y], maxDistance) {
+    return snapToWall(point, this.floorplan.walls, { depth: item.size.d / 100, ...(maxDistance ? { maxDistance } : {}) });
   }
 
   #onUp(e) {
@@ -428,6 +446,10 @@ export class Editor {
       toast('插座、開關會自動朝向房間，拖曳就能沿著牆移動');
       return;
     }
+    if (isWallTv(item)) {
+      toast('壁掛電視會自動朝向房間，拖曳就能沿著牆移動');
+      return;
+    }
     for (let k = 1; k < 360 / ROTATION_STEP; k++) {
       const rotation = normalizeRotation(item.rotation - direction * ROTATION_STEP * k);
       const applied = this.#fit(item, { rotation });
@@ -446,6 +468,15 @@ export class Editor {
     this.store.commit(updateFurniture(this.store.getState(), item.id, { options: { ...lightOptionsOf(item), ...patch } }));
   }
 
+  // 電視的吋數、放置方式、壁掛中心高度；改成壁掛時貼到最近的牆，附近沒有牆就留在原處
+  setTvOptions(patch) {
+    const item = this.selected;
+    if (item?.type !== 'tv') return;
+    const change = tvChange(item, patch);
+    const spot = change.options.mount === 'wall' ? this.#tvWallSpot({ ...item, ...change }, [change.x, change.y], Infinity) : null;
+    this.update({ ...change, ...spot });
+  }
+
   remove() {
     const item = this.selected;
     if (!item) return;
@@ -460,7 +491,9 @@ export class Editor {
     // 插座複製後沿牆貼到旁邊
     const spot = isElectrical(item.type)
       ? snapToWall([copy.x, copy.y], this.walls, { maxDistance: Infinity })
-      : findFreeSpot(copy, this.getSolids());
+      : isWallTv(item)
+        ? this.#tvWallSpot(copy, [copy.x, copy.y], Infinity)
+        : findFreeSpot(copy, this.getSolids());
     if (!spot) {
       toast('附近找不到空間放複製的家具');
       return;

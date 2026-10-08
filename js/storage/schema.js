@@ -2,10 +2,13 @@
 import { CEILING_TYPES } from '../core/ceilings.js';
 import { DOOR_TYPES } from '../core/doors.js';
 import { getFloorMaterial } from '../core/materials.js';
+import { pointInPolygon } from '../core/geometry2d.js';
+import { footprint } from '../core/layout.js';
 import { getAccessory, PEGBOARD_MATERIALS } from '../core/pegboard.js';
+import { TV_DEFAULTS, tvSize } from '../core/tv.js';
 import { getCatalogItem, SIZE_LIMITS } from '../furniture/catalog.js';
 
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 // 層高 320 cm 扣掉樓板約 15 cm
 export const DEFAULT_CEILING = 3.05;
 export const DEFAULT_CEILING_COLOR = '#f4f2ee';
@@ -23,6 +26,20 @@ export class DesignFormatError extends Error {
 // 版本 n → n+1 的轉換；格式改版時在這裡加一筆，舊檔就能一路升到最新版
 const RETIRED_TYPES = new Set(['wifi-router', 'mesh-node', 'ceiling-ap', 'network-panel']);
 
+// 第 7 版電視櫃不再畫電視：每個櫃子上補一台預設電視；id 由櫃子推出，重跑也不會多補
+function addTvsOnStands(furniture) {
+  const ids = new Set(furniture.map((f) => f.id));
+  return furniture.flatMap((f) => {
+    if (f.type !== 'tv-stand') return [f];
+    const id = `${f.id}-tv`;
+    const area = footprint(f);
+    const hasTv = ids.has(id) || furniture.some((t) => t.type === 'tv' && pointInPolygon([t.x, t.y], area));
+    if (hasTv) return [f];
+    const tv = { id, type: 'tv', x: f.x, y: f.y, rotation: f.rotation, size: tvSize(TV_DEFAULTS.inch, TV_DEFAULTS.mount), color: getCatalogItem('tv').color, options: { ...TV_DEFAULTS } };
+    return [f, tv];
+  });
+}
+
 export const MIGRATIONS = {
   // 第 2 版加入天花板顏色
   1: (d) => ({ ...d, schemaVersion: 2, ceilingColor: DEFAULT_CEILING_COLOR }),
@@ -34,6 +51,8 @@ export const MIGRATIONS = {
   4: (d) => ({ ...d, schemaVersion: 5, ceilings: {} }),
   // 第 6 版下架 WiFi 規劃；舊檔留著這些設備會被當成未知家具，整份讀不進來
   5: (d) => ({ ...d, schemaVersion: 6, furniture: d.furniture.filter((f) => !RETIRED_TYPES.has(f.type)) }),
+  // 第 7 版電視與電視櫃拆開
+  6: (d) => ({ ...d, schemaVersion: 7, furniture: addTvsOnStands(d.furniture) }),
 };
 
 export function createDesign({ id, name, now, floorplanRef = null }) {

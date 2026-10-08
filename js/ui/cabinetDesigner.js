@@ -4,6 +4,7 @@ import {
   OUTLETS,
   PLINTH,
   addItem,
+  cabinetAppliances,
   cabinetIssues,
   cellBox,
   removeCell,
@@ -16,7 +17,7 @@ import {
   splitColumn,
   updateCell,
 } from '../core/cabinet.js';
-import { CATALOG, getCatalogItem, normalizeSizeValue } from '../furniture/catalog.js';
+import { getCatalogItem, normalizeSizeValue } from '../furniture/catalog.js';
 import { $, el, toast } from './dom.js';
 import { iconSvg } from './icons.js';
 
@@ -189,7 +190,7 @@ export function openCabinetDesigner(initial, { onSave }) {
       render();
     };
 
-    const appliances = CATALOG.filter((c) => c.category === 'appliance' && c.placement === 'surface').map((spec) => {
+    const appliances = cabinetAppliances().map((spec) => {
       const tile = el('button', {
         type: 'button',
         class: 'appliance-chip',

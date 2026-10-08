@@ -2,6 +2,7 @@
 import { getCatalogItem } from '../furniture/catalog.js';
 import { pointInPolygon, pointSegmentDistance } from './geometry2d.js';
 import { elevationOf, footprint, normalizeRotation } from './layout.js';
+import { isWallTv, tvOptionsOf } from './tv.js';
 
 export const OUTLET_DEPTH = 0.04; // 面板深，中心離牆面半個深度
 export const SNAP_DISTANCE = 0.6; // 落點離牆超過這個距離就不貼
@@ -138,7 +139,11 @@ function distanceToArea(point, area) {
 }
 
 // 電線要走的距離：平面距離，加上插座比家電底部更低或比頂部更高的那段
+// 壁掛電視的電源在機身背面中央，以電視中心為準
 function reachTo(appliance, bottom, outlet, outletElevation) {
+  if (isWallTv(appliance)) {
+    return Math.hypot(outlet.x - appliance.x, outlet.y - appliance.y) + Math.abs(tvOptionsOf(appliance).centerHeight / 100 - outletElevation);
+  }
   const top = bottom + appliance.size.h / 100;
   const vertical = Math.max(0, bottom - outletElevation, outletElevation - top);
   return distanceToArea([outlet.x, outlet.y], footprint(appliance)) + vertical;

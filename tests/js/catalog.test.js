@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { CATALOG, SIZE_LIMITS, createFurniture, getCatalogItem, normalizeSizeValue, sizeLimitsOf } from '../../js/furniture/catalog.js';
+import { tvSize, tvWatts } from '../../js/core/tv.js';
 
 const REQUIRED_FURNITURE = [
   'sofa', 'armchair', 'coffee-table', 'dining-table', 'dining-chair', 'double-bed', 'single-bed',
@@ -10,7 +11,7 @@ const REQUIRED_FURNITURE = [
 const REQUIRED_APPLIANCES = [
   'coffee-machine', 'microwave', 'rice-cooker', 'laptop', 'desk-lamp',
   'robot-vacuum', 'washing-machine', 'air-purifier', 'fan', 'floor-lamp',
-  'air-fryer', 'oven', 'steam-oven', 'kettle', 'dishwasher',
+  'air-fryer', 'oven', 'steam-oven', 'kettle', 'dishwasher', 'tv',
 ];
 const REQUIRED_FIXTURES = ['kitchen-counter', 'toilet', 'basin', 'upper-cabinet', 'shower-screen', 'shower-set'];
 const REQUIRED_ELECTRICAL = ['outlet-110', 'outlet-220', 'outlet-dedicated', 'switch', 'tv-jack', 'lan-jack'];
@@ -234,4 +235,29 @@ test('淋浴龍頭組（頂噴＋手持）掛在牆上，龍頭離地 100 cm、�
   assert.equal(shower.placement, 'wall');
   assert.equal(shower.mountHeight, 100);
   assert.equal(shower.mountHeight + shower.size.h, 215);
+});
+
+// ---------- 電視 ----------
+
+test('電視放在家電分頁，預設 55 吋放櫃上，可以放到電視櫃上', () => {
+  // Act
+  const tv = getCatalogItem('tv');
+
+  // Assert
+  assert.ok(tv, '目錄要有電視');
+  assert.equal(tv.name, '電視');
+  assert.equal(tv.category, 'appliance');
+  assert.equal(tv.placement, 'surface');
+  assert.deepEqual(tv.size, tvSize(55, 'stand'));
+  assert.deepEqual(tv.power, { voltage: 110, watts: tvWatts(55) });
+});
+
+test('電視櫃本身只是櫃子：大小不變，檯面可以放電視', () => {
+  // Act
+  const stand = getCatalogItem('tv-stand');
+
+  // Assert
+  assert.deepEqual(stand.size, { w: 180, d: 40, h: 50 });
+  assert.equal(stand.surface, true);
+  assert.equal(stand.power, undefined);
 });
