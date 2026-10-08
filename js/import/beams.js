@@ -9,7 +9,7 @@ const MIN_OVERLAP = 0.5; // 比例：兩條線重疊長度至少要佔較短那�
 const LABEL_RADIUS = 1.5;
 const WIDTH_TOLERANCE = 0.05;
 const DEFAULT_DEPTH = 0.6;
-// 標註的寬、深是圖面單位；公尺圖會寫小數
+// 標註的寬、深單位由 beamLabelScale 決定（沒給就同圖面）；公尺圖會寫小數
 const LABEL = /\((\d+(?:\.\d+)?)\s*[xX×]\s*(\d+(?:\.\d+)?)\)/;
 
 // [固定座標, 起點, 終點]：水平線固定 y、垂直線固定 x；斜線不處理
@@ -55,12 +55,14 @@ function pair(lines, minWidth, maxWidth) {
   return result;
 }
 
+// 回傳 [x, y, 寬, 深]，寬、深已換成圖面單位
 function labels(doc, config) {
+  const toDrawing = (config.beamLabelScale ?? config.unitScale) / config.unitScale;
   const result = [];
   for (const e of doc.entities) {
     if ((e.type !== 'TEXT' && e.type !== 'MTEXT') || !config.layers.beam.includes(e.layer)) continue;
     const match = LABEL.exec(e.all(1).join(' '));
-    if (match) result.push([e.num(10), e.num(20), Number(match[1]), Number(match[2])]);
+    if (match) result.push([e.num(10), e.num(20), Number(match[1]) * toDrawing, Number(match[2]) * toDrawing]);
   }
   return result;
 }

@@ -9,7 +9,7 @@ import { baseConfig, dxf } from './dxfFactory.js';
 // 左房 300×200、右房 140×200；下牆有 160 寬的窗、隔間有 90 寬的門、上牆有 40 寬的門洞、右側是欄杆
 // 左上角柱子用三條線畫、缺一邊，其中一個端點差 0.3；兩支樑：寬 30 有標註深 50、寬 40 沒標註且一端歪 0.2
 // 隔間每段都長於 30，否則它的側面會被當成牆端面
-function scene(k, { seeded, seeds = [[150, 100], [400, 100]] }) {
+function scene(k, { seeded, seeds = [[150, 100], [400, 100]], labelK = k, beamLabelScale }) {
   const p = (x, y) => [(1000 + x) * k, (1000 + y) * k];
   const rect = (layer, x0, y0, x1, y1) => dxf.lwpolyline(layer, [p(x0, y0), p(x1, y0), p(x1, y1), p(x0, y1)], true);
   const entities = [
@@ -30,7 +30,7 @@ function scene(k, { seeded, seeds = [[150, 100], [400, 100]] }) {
     dxf.attdef('OPEN-Door', p(360, 105), 'FD2', 'D7'),
     dxf.line('S01', p(100, 20), p(100, 180)),
     dxf.line('S01', p(130, 20), p(130, 180)),
-    dxf.text('S01', p(160, 100), `J10(${30 * k}x${50 * k})`),
+    dxf.text('S01', p(160, 100), `J10(${30 * labelK}x${50 * labelK})`),
     dxf.line('S01', p(30, 50), p(280, 50)),
     dxf.line('S01', p(30, 90), p(280, 90.2)),
   ];
@@ -43,6 +43,7 @@ function scene(k, { seeded, seeds = [[150, 100], [400, 100]] }) {
     gapMin: 30 * k,
     gapMax: 250 * k,
     rooms: seeded ? seeds.map(([x, y], i) => ({ id: `room-${i}`, name: `房間 ${i}`, seed: p(x, y) })) : [],
+    ...(beamLabelScale === undefined ? {} : { beamLabelScale }),
   };
   return convertDxf(parseDxf(dxf.document(entities, { DOOR1: [dxf.arc('OPEN-Door', [0, 0], 90 * k, 0, 90)] })), config).floorplan;
 }
@@ -89,6 +90,23 @@ for (const seeded of [true, false]) {
       assert.deepEqual(mismatches(expected, actual), []);
     });
   }
+}
+
+for (const [name, k, labelK, beamLabelScale] of [
+  ['公釐圖配公分標註', 10, 1, 0.01],
+  ['公分圖配公釐標註', 1, 10, 0.001],
+  ['公尺圖配公分標註', 0.01, 1, 0.01],
+]) {
+  test(`convertDxf 樑標註單位與圖面不同時依 beamLabelScale 換算：${name}`, () => {
+    // Arrange
+    const expected = scene(1, { seeded: true }).beams;
+
+    // Act
+    const actual = scene(k, { seeded: true, labelK, beamLabelScale }).beams;
+
+    // Assert
+    assert.deepEqual(mismatches(expected, actual), []);
+  });
 }
 
 for (const [unit, k] of [['公分圖', 1], ['公釐圖', 10], ['公尺圖', 0.01]]) {

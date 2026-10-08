@@ -43,7 +43,7 @@ export function makeStatusHandler(getExportAll) {
   };
 }
 
-export function setupSessionUi({ session, onFloorplanMismatch, exportPng, exportGlb }) {
+export function setupSessionUi({ session, onFloorplanMismatch, exportPng, exportGlb, onImportDxf }) {
   const exportDesigns = (designs) => {
     const now = new Date().toISOString();
     downloadBlob(jsonBlob(buildExport(designs, now)), exportFileName(designs, now));
@@ -174,6 +174,11 @@ export function setupSessionUi({ session, onFloorplanMismatch, exportPng, export
         iconButton('add', '新增方案', { class: 'btn small', onclick: () => guard(() => session.createNew()) }),
         iconButton('duplicate', '複製目前方案', { class: 'btn small', onclick: () => guard(() => session.duplicate()) }),
       ),
+      el('h2', { class: 'panel-title' }, '平面圖'),
+      el('div', { class: 'stack' },
+        iconButton('tab-floor', '匯入平面圖（DXF）', { class: 'btn', onclick: onImportDxf }),
+      ),
+      el('p', { class: 'note' }, '從建商或設計師給的 CAD 圖建立自己的平面圖；檔案只在這台裝置的瀏覽器裡處理，不會上傳。'),
       el('h2', { class: 'panel-title' }, '匯出／匯入設計檔'),
       el('div', { class: 'stack' },
         iconButton('export', '匯出目前方案（.design.json）', { class: 'btn', onclick: exportCurrent }),
@@ -198,26 +203,29 @@ export function setupSessionUi({ session, onFloorplanMismatch, exportPng, export
   const dropZone = $('#drop-zone');
   const hasFiles = (e) => [...(e.dataTransfer?.types ?? [])].includes('Files');
   let depth = 0;
+  // 換平面圖重建場景時，一次拿掉掛在 window、document 上的監聽
+  const abort = new AbortController();
+  const { signal } = abort;
   window.addEventListener('dragenter', (e) => {
     if (!hasFiles(e)) return;
     depth++;
     dropZone.hidden = false;
-  });
+  }, { signal });
   window.addEventListener('dragleave', (e) => {
     if (!hasFiles(e)) return;
     depth = Math.max(0, depth - 1);
     if (depth === 0) dropZone.hidden = true;
-  });
+  }, { signal });
   window.addEventListener('dragover', (e) => {
     if (hasFiles(e)) e.preventDefault();
-  });
+  }, { signal });
   window.addEventListener('drop', (e) => {
     if (!hasFiles(e)) return;
     e.preventDefault();
     depth = 0;
     dropZone.hidden = true;
     importFile(e.dataTransfer.files[0]);
-  });
+  }, { signal });
 
   // ---------- 同步畫面 ----------
   let lastId = null;
@@ -235,10 +243,10 @@ export function setupSessionUi({ session, onFloorplanMismatch, exportPng, export
   if (!$('#save-status').textContent) $('#save-status').textContent = '已儲存';
 
   // 關閉或切走頁面前把最後的變更存下來
-  window.addEventListener('pagehide', () => session.flush());
+  window.addEventListener('pagehide', () => session.flush(), { signal });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') session.flush();
-  });
+  }, { signal });
 
-  return { exportAll, importText };
+  return { exportAll, importText, dispose: () => abort.abort() };
 }

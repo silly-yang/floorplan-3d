@@ -968,5 +968,318 @@ select {
 
   .preset-thumb {
     height: 72px;
+
+/* ---------- 匯入平面圖（DXF）精靈 ---------- */
+.import-wizard {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.import-wizard[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.wizard-steps {
+  display: flex;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  flex-wrap: wrap;
+}
+
+.wizard-steps li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px 3px 4px;
+  border-radius: 999px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.wizard-steps .num {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  font-size: 12px;
+}
+
+.wizard-steps .done .num {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.wizard-steps .current {
+  background: var(--accent);
+  color: #fff;
+}
+
+.wizard-steps .current .num {
+  border-color: #fff;
+}
+
+.wizard-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.wizard-page {
+  flex: 1;
+  min-width: 0;
+  padding: 16px 20px;
+  overflow-y: auto;
+  font-size: 14px;
+}
+
+.wizard-page h3 {
+  font-size: 14px;
+  margin: 16px 0 8px;
+}
+
+.wizard-split {
+  display: flex;
+  gap: 12px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.wizard-side {
+  width: 320px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding: 12px 14px;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+}
+
+.wizard-canvas-box {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 8px 8px 0;
+}
+
+.wizard-canvas-tools {
+  margin-bottom: 6px;
+}
+
+.wizard-canvas-wrap {
+  flex: 1;
+  min-height: 0;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.wizard-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.wizard-canvas.panning {
+  cursor: grab;
+}
+
+.wizard-file input {
+  display: none;
+}
+
+.wizard-help {
+  margin-top: 20px;
+  max-width: 640px;
+  font-size: 13px;
+}
+
+.wizard-help summary {
+  cursor: pointer;
+  color: var(--accent);
+}
+
+.wizard-layers,
+.wizard-rooms,
+.wizard-warnings {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.wizard-layer,
+.wizard-room {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.wizard-layer.active,
+.wizard-room.active {
+  background: #fbe3f0;
+}
+
+.wizard-layer-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 0;
+  padding: 2px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wizard-layer-name span:nth-child(2) {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wizard-layer select {
+  width: 92px;
+  padding: 3px 4px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.wizard-room input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.wizard-room.removed input {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.wizard-quick {
+  align-items: center;
+  margin: 8px 0;
+}
+
+.wizard-warnings li,
+.wizard-hint {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.wizard-summary th {
+  text-align: left;
+  font-weight: normal;
+  color: var(--muted);
+  padding: 4px 16px 4px 0;
+}
+
+.wizard-name input[type='text'] {
+  width: 240px;
+}
+
+.wizard-name {
+  justify-content: flex-start;
+  max-width: 420px;
+}
+
+.wizard-foot {
+  padding: 10px 14px;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+}
+
+.wizard-actions {
+  justify-content: flex-end;
+}
+
+.wizard-error {
+  white-space: pre-wrap;
+  color: var(--danger);
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+/* 預覽匯入的平面圖時的提示條；版面高度扣掉它 */
+.preview-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 40px;
+  padding: 0 12px;
+  background: #fff4dc;
+  border-bottom: 1px solid var(--warn);
+  font-size: 14px;
+}
+
+.previewing .layout {
+  height: calc(100% - var(--topbar-h) - 40px);
+}
+
+.previewing .save-status {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .wizard-steps .label {
+    display: none;
+  }
+
+  .wizard-steps .current .label {
+    display: inline;
+  }
+
+  .wizard-split {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .wizard-side {
+    width: auto;
+    max-height: 40vh;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .wizard-canvas-box {
+    min-height: 50vh;
+    padding: 8px;
+  }
+
+  .preview-banner {
+    font-size: 12px;
+    height: 56px;
+  }
+
+  .previewing .layout {
+    height: calc(100% - var(--topbar-h) - 56px);
   }
 }

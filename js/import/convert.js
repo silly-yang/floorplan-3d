@@ -30,6 +30,8 @@ function resolveConfig(raw) {
   if (!raw || typeof raw !== 'object') throw new ConfigError(['設定必須是物件']);
   const problems = [];
   for (const key of ['unitScale', 'doorHead', 'doorwayHead', 'gapMin', 'gapMax']) positive(raw, key, problems);
+  // 樑標註的單位（每單位幾公尺）；選填，沒給就與圖面相同
+  if (raw.beamLabelScale !== undefined) positive(raw, 'beamLabelScale', problems);
   if (isNum(raw.gapMin) && isNum(raw.gapMax) && raw.gapMax <= raw.gapMin) problems.push(`gapMax：必須大於 gapMin（${raw.gapMin}），收到 ${raw.gapMax}`);
 
   const clip = raw.clip;
