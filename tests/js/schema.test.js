@@ -70,6 +70,8 @@ for (const [name, mutate, fragment] of [
   ['家具尺寸超出上限', (d) => (d.furniture[0].size.w = 9999), 'furniture[0].size.w'],
   ['家具顏色錯誤', (d) => (d.furniture[0].color = '#zzz'), 'furniture[0].color'],
   ['家具 id 重複', (d) => d.furniture.push({ ...d.furniture[0] }), 'furniture[1].id'],
+  ['家具離地高度不合理', (d) => (d.furniture[0].elevation = 9), 'furniture[0].elevation'],
+  ['家具選項不是物件', (d) => (d.furniture[0].options = 'x'), 'furniture[0].options'],
 ]) {
   test(`validateDesign ${name}時指出欄位路徑`, () => {
     // Arrange
@@ -241,4 +243,14 @@ test('第 4 版設計檔讀取時補上空的天花板設定', () => {
   // Assert
   assert.equal(design.schemaVersion, SCHEMA_VERSION);
   assert.deepEqual(design.ceilings, {});
+});
+
+test('validateDesign 家具可以帶選填的 elevation 與 options', () => {
+  // Arrange
+  const design = sampleDesign();
+  design.furniture[0].elevation = 1.2;
+  design.furniture[0].options = { colorTemp: 3000, on: true };
+
+  // Act & Assert
+  assert.deepEqual(validateDesign(design), []);
 });

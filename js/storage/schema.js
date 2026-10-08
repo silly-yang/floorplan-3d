@@ -132,6 +132,11 @@ function validateFurniture(list, errors, cabinetIds = new Set()) {
       }
     }
     if (!isColor(f.color)) errors.push(`${at}.color 必須是 #rrggbb 色碼`);
+    // 選填：掛牆／吸頂物件的離地高度（公尺）、各類型自己的設定（燈的色溫、開關等）
+    if (f.elevation !== undefined && !(isNum(f.elevation) && f.elevation >= 0 && f.elevation <= CEILING_LIMITS.max)) {
+      errors.push(`${at}.elevation 必須是 0～${CEILING_LIMITS.max} 公尺`);
+    }
+    if (f.options !== undefined && !isPlainObject(f.options)) errors.push(`${at}.options 必須是物件`);
   });
 }
 

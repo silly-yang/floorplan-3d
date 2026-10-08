@@ -264,3 +264,11 @@ test('findConflicts 吊櫃掛在流理台上方不算重疊', () => {
   // Act & Assert
   assert.equal(findConflicts([counter, upper]).size, 0);
 });
+
+test('elevationOf 家具自己帶 elevation（例如插座、燈）時以它為準', () => {
+  // Arrange
+  const outlet = item({ id: 'o', type: 'coffee-table', x: 1, y: 1, elevation: 1.2 });
+
+  // Act & Assert
+  assert.equal(elevationOf(outlet, [outlet]), 1.2);
+});

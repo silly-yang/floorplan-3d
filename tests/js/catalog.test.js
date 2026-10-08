@@ -76,7 +76,7 @@ test('每個項目都分到家具、家電或廚衛，放置方式只有地面�
   assert.deepEqual(byCategory('furniture'), [...REQUIRED_FURNITURE].sort());
   assert.deepEqual(byCategory('appliance'), [...REQUIRED_APPLIANCES].sort());
   assert.deepEqual(byCategory('fixture'), [...REQUIRED_FIXTURES].sort());
-  for (const item of CATALOG) assert.ok(['floor', 'surface', 'wall'].includes(item.placement), item.type);
+  for (const item of CATALOG) assert.ok(['floor', 'surface', 'wall', 'ceiling'].includes(item.placement), item.type);
 });
 
 for (const [type, placement] of [

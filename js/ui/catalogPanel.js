@@ -28,6 +28,9 @@ function tile(item, onAdd) {
 
 export function renderCatalog({ onAdd }) {
   for (const { id } of CATEGORIES) {
-    $(`#catalog-${id}`).replaceChildren(...CATALOG.filter((c) => c.category === id).map((c) => tile(c, onAdd)));
+    // 分類沒有對應的清單（例如還在開發的分頁）就略過
+    const list = $(`#catalog-${id}`);
+    if (!list) continue;
+    list.replaceChildren(...CATALOG.filter((c) => c.category === id).map((c) => tile(c, onAdd)));
   }
 }

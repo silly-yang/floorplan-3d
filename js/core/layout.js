@@ -109,6 +109,8 @@ export function supportOf(item, furniture) {
 
 // 家具離地高度（公尺）：放在檯面上就是檯面高度，否則為 0；檯面家具本身一定落地，不會再往下遞迴
 export function elevationOf(item, furniture) {
+  // 插座、燈具這類掛牆／吸頂的東西，放置時就算好高度存在 item.elevation
+  if (typeof item.elevation === 'number') return item.elevation;
   const mount = getCatalogItem(item.type)?.mountHeight;
   if (mount) return mount / 100;
   const support = supportOf(item, furniture);
