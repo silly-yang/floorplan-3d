@@ -77,8 +77,11 @@ export class Viewer {
     this.walk.addEventListener('unlock', () => this.#emit());
     this.walk.addEventListener('lock', () => this.#emit());
 
+    // 換平面圖重建場景時，一次拿掉掛在 window 上的監聽
+    this.abort = new AbortController();
     this.#bindKeys();
-    new ResizeObserver(() => this.resize()).observe(container);
+    this.resizeObserver = new ResizeObserver(() => this.resize());
+    this.resizeObserver.observe(container);
     this.resize();
     this.fitOrbit();
     this.#rebuildComposer();
@@ -104,11 +107,26 @@ export class Viewer {
 
   #bindKeys() {
     const isTyping = (e) => ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target?.tagName);
+    const { signal } = this.abort;
     window.addEventListener('keydown', (e) => {
       if (this.mode === 'walk' && MOVE_KEYS[e.code] && !isTyping(e)) this.pressed.add(MOVE_KEYS[e.code]);
-    });
-    window.addEventListener('keyup', (e) => this.pressed.delete(MOVE_KEYS[e.code]));
-    window.addEventListener('blur', () => this.pressed.clear());
+    }, { signal });
+    window.addEventListener('keyup', (e) => this.pressed.delete(MOVE_KEYS[e.code]), { signal });
+    window.addEventListener('blur', () => this.pressed.clear(), { signal });
+  }
+
+  // 停掉繪製迴圈、拿掉監聽並釋放 WebGL 資源；之後這個 viewer 不能再用
+  dispose() {
+    this.renderer.setAnimationLoop(null);
+    this.resizeObserver.disconnect();
+    this.abort.abort();
+    if (this.walk.isLocked) this.walk.unlock();
+    this.orbit.dispose();
+    this.topControls.dispose();
+    this.walk.dispose();
+    this.composer?.dispose();
+    this.renderer.dispose();
+    this.renderer.domElement.remove();
   }
 
   get camera() {

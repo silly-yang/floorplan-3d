@@ -66,7 +66,8 @@ function labelOf(entity) {
   return null;
 }
 
-function labels(doc, layers, clip) {
+// 回傳 [[座標, 編號]]；只收符合代號格式的文字
+export function labels(doc, layers, clip) {
   const result = [];
   for (const entity of doc.entities) {
     if (!layers.includes(entity.layer)) continue;

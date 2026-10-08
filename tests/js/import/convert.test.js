@@ -255,6 +255,7 @@ for (const [name, patch, field] of [
   ['gapMax 不大於 gapMin', { gapMax: 30 }, 'gapMax'],
   ['clip 最小值大於最大值', { clip: { xMin: 10, yMin: 0, xMax: 0, yMax: 10 } }, 'clip'],
   ['圖層不是陣列', { layers: { rcWall: 'L3' } }, 'layers.rcWall'],
+  ['樑標註單位不是正數', { beamLabelScale: 0 }, 'beamLabelScale'],
 ]) {
   test(`convertDxf 設定不合法時丟出設定錯誤：${name}`, () => {
     // Arrange

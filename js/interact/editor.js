@@ -483,7 +483,13 @@ export class Editor {
 
   // ---------- 鍵盤 ----------
 
+  // 換平面圖重建場景時呼叫；畫布上的監聽跟著畫布一起丟掉
+  dispose() {
+    this.abort.abort();
+  }
+
   #bindKeys() {
+    this.abort = new AbortController();
     window.addEventListener('keydown', (e) => {
       const tag = e.target?.tagName;
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) || e.target?.isContentEditable) return;
@@ -501,6 +507,6 @@ export class Editor {
       }
       else return;
       e.preventDefault();
-    });
+    }, { signal: this.abort.signal });
   }
 }
