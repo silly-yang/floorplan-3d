@@ -158,7 +158,9 @@ export function setupSessionUi({ session, onFloorplanMismatch, exportPng, export
   );
 
   // 操作失敗（例如容量不足、名稱重複）只提示，不讓頁面壞掉
+  // 換平面圖後舊畫面已拆掉，殘留在佇列裡的點擊不再動作
   async function guard(run) {
+    if (disposed) return;
     try {
       await run();
     } catch (error) {
@@ -307,7 +309,9 @@ export function setupSessionUi({ session, onFloorplanMismatch, exportPng, export
     if (document.visibilityState === 'hidden') session.flush();
   }, { signal });
 
+  let disposed = false;
   const dispose = () => {
+    disposed = true;
     abort.abort();
     banner?.remove();
     document.body.classList.remove('on-imported-floorplan');
