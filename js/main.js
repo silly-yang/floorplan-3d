@@ -15,6 +15,7 @@ import { mountSurfaces, outletsToFurniture } from './core/electrical.js';
 import { FLOOR_MATERIALS, floorMaterialOf } from './core/materials.js';
 import { walkStart } from './core/cameraMath.js';
 import { walkBlockers } from './core/layout.js';
+import { buildGrid } from './scene/gridLayer.js';
 import { buildHouse, disposeObject, floorColorOf } from './scene/house.js';
 import { textureThumbnail } from './scene/textures.js';
 import { Viewer } from './scene/viewer.js';
@@ -305,13 +306,25 @@ function toggleButton(icon, label, initial, onToggle, title) {
 function setupStageTools(editor) {
   const fullView = el('button', { class: 'btn', title: '回到一開始的 3D 視角與大小（漫遊、俯視時也會切回 3D）' }, iconLabel('full-view', '回到原位'));
   fullView.addEventListener('click', () => editor.viewer.resetView());
+  // 網格只在 3D／俯視顯示，漫遊時地上畫線會很怪
+  const grid = buildGrid(editor.floorplan.bounds);
+  editor.viewer.scene.add(grid);
+  let gridOn = true;
+  const applyGrid = () => (grid.visible = gridOn && editor.viewer.mode !== 'walk');
+  const setGrid = (on) => {
+    gridOn = on;
+    editor.setSnap(on);
+    applyGrid();
+  };
+  editor.viewer.onChange(applyGrid);
+  applyGrid();
   // 天花板在 3D／俯視會擋住視線，所以直接進漫遊從室內往上看
   const ceilingButton = el('button', { class: 'btn', title: '進入漫遊，從室內看天花板' }, iconLabel('ceiling', '天花板'));
   ceilingButton.addEventListener('click', () => editor.viewer.lookAtCeiling());
   $('#stage-tools').replaceChildren(
     fullView,
     toggleButton('high-quality', '高畫質', editor.viewer.highQuality, (on) => editor.viewer.setHighQuality(on), '牆角、家具底下的柔和陰影；手機較慢可關閉'),
-    toggleButton('grid', '網格 5 cm', true, (on) => editor.setSnap(on), '移動家具時對齊 5 公分網格'),
+    toggleButton('grid', '網格', true, setGrid, '地板顯示網格（細線 10 cm、粗線 1 m），移動家具時對齊 5 cm；靠牆 10 cm 內一律自動貼齊'),
     ceilingButton,
   );
 }

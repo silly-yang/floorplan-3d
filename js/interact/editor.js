@@ -1,6 +1,7 @@
 // 場景互動：選取、在地板平面拖曳、從清單拖放新增、旋轉、刪除、複製、快捷鍵
 import * as THREE from 'three';
 import {
+  ROTATION_STEP,
   addFurniture,
   findConflicts,
   findFreeSpot,
@@ -8,8 +9,8 @@ import {
   moveToward,
   normalizeRotation,
   removeFurniture,
-  ROTATION_STEP,
   snapToGrid,
+  snapToWalls,
   updateFurniture,
 } from '../core/layout.js';
 import { createDoubleTapDetector } from '../core/cameraMath.js';
@@ -243,7 +244,9 @@ export class Editor {
     const reached = moveToward(item, { x, y }, this.getSolids());
     if (reached.x !== x || reached.y !== y) this.drag.blocked = true;
     const [rx, ry] = this.#snapped([reached.x, reached.y]);
-    const spot = hitsWalls({ ...item, x: rx, y: ry }, this.getSolids()) ? reached : { x: rx, y: ry };
+    const free = hitsWalls({ ...item, x: rx, y: ry }, this.getSolids()) ? reached : { x: rx, y: ry };
+    // 離牆 10 cm 內直接貼齊，不受網格影響
+    const spot = snapToWalls({ ...item, ...free }, this.getSolids());
     if (spot.x === item.x && spot.y === item.y) return;
     this.drag.moved = true;
     this.store.preview(updateFurniture(design, item.id, this.#withLightElevation(item, spot)));

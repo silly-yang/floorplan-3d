@@ -12,6 +12,7 @@ import {
   normalizeRotation,
   removeFurniture,
   snapToGrid,
+  snapToWalls,
   supportOf,
   updateFurniture,
   walkBlockers,
@@ -286,4 +287,69 @@ test('walkBlockers 只回傳隔間的底面，從地面算起', () => {
   assert.equal(blockers.length, 1);
   assert.deepEqual(blockers[0].polygon, footprint(wallItem));
   assert.equal(blockers[0].bottom, 0);
+});
+
+// ---------- 貼牆吸附 ----------
+// WALLS 的牆面在 x = 0.15；item 預設 100×50 cm
+
+for (const [name, over, expected] of [
+  ['離牆 7 cm 吸過去貼齊', { x: 0.72, y: 1 }, { x: 0.65, y: 1 }],
+  ['離牆剛好 10 cm 也吸', { x: 0.75, y: 1 }, { x: 0.65, y: 1 }],
+  ['離牆 12 cm 不吸', { x: 0.77, y: 1 }, { x: 0.77, y: 1 }],
+  ['已經貼齊不動', { x: 0.65, y: 1 }, { x: 0.65, y: 1 }],
+  ['旋轉 90° 時以短邊貼牆', { x: 0.45, y: 1, rotation: 90 }, { x: 0.4, y: 1 }],
+  ['旋轉 45° 沒有平行的邊不吸', { x: 0.62, y: 1, rotation: 45 }, { x: 0.62, y: 1 }],
+  ['跟牆錯開沒有面對面不吸', { x: 0.72, y: 5 }, { x: 0.72, y: 5 }],
+]) {
+  test(`snapToWalls ${name}`, () => {
+    // Act
+    const spot = snapToWalls(item(over), WALLS);
+
+    // Assert
+    assert.ok(close(spot.x, expected.x) && close(spot.y, expected.y), `${spot.x}, ${spot.y}`);
+  });
+}
+
+test('snapToWalls 牆角兩面都在 10 cm 內時兩個方向一起貼齊', () => {
+  // Arrange：另一道牆面在 y = 0.15
+  const walls = [...WALLS, wall(rect(0, 0, 4, 0.15))];
+
+  // Act：左緣離牆 6 cm、下緣離牆 5 cm
+  const spot = snapToWalls(item({ x: 0.71, y: 0.45 }), walls);
+
+  // Assert
+  assert.ok(close(spot.x, 0.65) && close(spot.y, 0.4), `${spot.x}, ${spot.y}`);
+});
+
+test('snapToWalls 頭頂上的楣樑不算牆，不吸過去', () => {
+  // Arrange：楣樑 2.0～2.8 m，茶几高 40 cm
+  const walls = [wall(rect(0, 0, 0.15, 4), 2.0, 2.8)];
+
+  // Act
+  const spot = snapToWalls(item({ x: 0.72, y: 1 }), walls);
+
+  // Assert
+  assert.ok(close(spot.x, 0.72), `${spot.x}`);
+});
+
+test('snapToWalls 細柱前後兩面都在範圍內時貼近的那一面', () => {
+  // Arrange：柱子 x = 0.75～0.78；茶几右緣在 0.70，近面差 5 cm、遠面差 8 cm
+  const walls = [wall(rect(0.75, 0, 0.78, 4))];
+
+  // Act
+  const spot = snapToWalls(item({ x: 0.2, y: 1 }), walls);
+
+  // Assert
+  assert.ok(close(spot.x, 0.25), `${spot.x}`);
+});
+
+test('snapToWalls 吸過去會撞到斜角牆時維持原位', () => {
+  // Arrange：牆面 x = 0.15 的轉角有一塊三角形斜角，貼過去左下角會卡進去
+  const walls = [...WALLS, wall([[0.15, 0.7], [0.2, 0.7], [0.15, 0.8]])];
+
+  // Act
+  const spot = snapToWalls(item({ x: 0.72, y: 1 }), walls);
+
+  // Assert
+  assert.ok(close(spot.x, 0.72), `${spot.x}`);
 });
