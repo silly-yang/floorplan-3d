@@ -250,6 +250,37 @@ const BUILDERS = {
     cylinder(g, [w * 0.3, w * 0.5, h * 0.18, 16], [0, h * 0.91, 0], '#f1e6cf');
   },
 
+  // 隔間：原點在底面中心；options.top 為 wood 時半牆頂部加一片外凸的木作檯面
+  'half-wall': (g, w, d, h, c, options = {}) => {
+    const wood = options.top === 'wood';
+    const cap = wood ? 0.03 : 0;
+    box(g, [w, h - cap, d], [0, (h - cap) / 2, 0], c.main, 0.92);
+    // 兩面踢腳板，跟牆面一樣
+    for (const s of [-1, 1]) box(g, [w, 0.08, 0.012], [0, 0.04, s * (d / 2 + 0.006)], '#f7f5f0', 0.5);
+    if (wood) box(g, [w + 0.02, cap, d + 0.04], [0, h - cap / 2, 0], '#b48a60', 0.55);
+  },
+
+  'glass-partition': (g, w, d, h, c) => {
+    const frame = 0.04;
+    for (const s of [-1, 1]) box(g, [frame, h, d], [s * (w / 2 - frame / 2), h / 2, 0], c.main, 0.4);
+    for (const y of [frame / 2, h - frame / 2]) box(g, [w, frame, d], [0, y, 0], c.main, 0.4);
+    const glass = new THREE.Mesh(
+      new THREE.BoxGeometry(w - frame * 2, h - frame * 2, 0.01),
+      new THREE.MeshPhysicalMaterial({ color: '#d6e9f2', transparent: true, opacity: 0.25, roughness: 0.05, depthWrite: false }),
+    );
+    glass.position.set(0, h / 2, 0);
+    g.add(glass);
+  },
+
+  // 直條格柵：條寬 4 cm、間距 4 cm，上下各一支橫料固定
+  'slat-screen': (g, w, d, h, c) => {
+    const slat = 0.04;
+    const count = Math.max(2, Math.floor((w + slat) / (slat * 2)));
+    const gap = (w - count * slat) / (count - 1);
+    for (let k = 0; k < count; k++) box(g, [slat, h, d], [-w / 2 + slat / 2 + k * (slat + gap), h / 2, 0], c.main, 0.6);
+    for (const y of [0.02, h - 0.02]) box(g, [w, 0.04, d * 0.5], [0, y, 0], c.dark, 0.6);
+  },
+
   // 貓爬架：底座、左下貓窩方屋、兩支麻繩柱、中層跳台、頂層軟墊
   'cat-tree': (g, w, d, h, c) => {
     const sisal = '#d8c49b';
@@ -575,7 +606,7 @@ export function buildFurnitureModel(item, externalTemplate = null, cabinet = nul
   } else if (externalTemplate) {
     group.add(fitExternal(externalTemplate, w, d, h));
   } else {
-    (BUILDERS[item.type] ?? BUILDERS['coffee-table'])(group, w, d, h, shades(item.color));
+    (BUILDERS[item.type] ?? BUILDERS['coffee-table'])(group, w, d, h, shades(item.color), item.options);
   }
   group.traverse((child) => {
     if (child.isMesh) {

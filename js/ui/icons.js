@@ -16,6 +16,9 @@ export const ICONS = {
   'kitchen-island': 'M3 9h18v10H3zM3 12h18M8 15h2M14 15h2M12 12v7',
   fridge: 'M6 3h12v18H6zM6 10h12M9 6v2M9 13v3',
   rug: 'M4 6h16v12H4zM7 9h10v6H7zM4 4v2M8 4v2M12 4v2M16 4v2M20 4v2M4 18v2M8 18v2M12 18v2M16 18v2M20 18v2',
+  'half-wall': 'M3 21h18M6 21v-8h12v8M5 13h14M9 17h.01',
+  'glass-partition': 'M6 3h12v18H6zM9 9l4-4M9 14l7-7M12 17l4-4',
+  'slat-screen': 'M4 4h16M4 20h16M6 4v16M10 4v16M14 4v16M18 4v16',
   'cat-tree': 'M6 21h12M9 21V6M15 21v-9M5 6h8M12 12h7M13 15h4v-3M7 3.5c1-1 2-1 3 0M9 9v.01M9 13v.01M9 17v.01',
   plant: 'M8 15h8l-1 6H9zM12 15V9M12 11C9 11 7 9 7 6c3 0 5 2 5 5zM12 10c0-3 2-5 5-5 0 3-2 5-5 5z',
   // ---------- 家電 ----------

@@ -1,6 +1,6 @@
 // 右側屬性面板：選取家具的尺寸、顏色、旋轉、重疊警示、到最近牆面的距離
 import { elevationOf, nearestWallDistance, supportOf } from '../core/layout.js';
-import { getCatalogItem, normalizeSizeValue } from '../furniture/catalog.js';
+import { getCatalogItem, normalizeSizeValue, sizeLimitsOf } from '../furniture/catalog.js';
 import { $, el } from './dom.js';
 import { electricalFields, powerNotes, updateElectricalFields } from './electricalPanel.js';
 import { iconSvg } from './icons.js';
@@ -22,6 +22,30 @@ const DIMENSIONS = [
 ];
 
 // editCabinet／editPegboard：選到自己設計的系統櫃／洞洞板時，「編輯設計」要開設計器
+// 半牆頂部：同牆面乳膠漆，或加木作檯面
+const HALF_WALL_TOPS = [
+  ['paint', '同牆面'],
+  ['wood', '木作檯面'],
+];
+
+function halfWallFields(editor, item) {
+  if (item.type !== 'half-wall') return [];
+  const current = item.options?.top ?? 'paint';
+  const buttons = HALF_WALL_TOPS.map(([id, label]) =>
+    el(
+      'button',
+      {
+        type: 'button',
+        class: `btn small ${id === current ? 'primary' : ''}`,
+        'aria-pressed': String(id === current),
+        onclick: () => editor.update({ options: { ...item.options, top: id } }),
+      },
+      label,
+    ),
+  );
+  return [el('div', { class: 'field' }, el('span', {}, '頂部'), el('div', { class: 'row', role: 'group', 'aria-label': '頂部' }, buttons))];
+}
+
 export function setupInspector(editor, getSolids, { editCabinet, editPegboard } = {}) {
   const panel = $('#inspector');
   let colorBase = null;
@@ -43,9 +67,10 @@ export function setupInspector(editor, getSolids, { editCabinet, editPegboard } 
     renderedId = item.id;
 
     const sizeInputs = DIMENSIONS.map(([key, label]) => {
-      const input = el('input', { type: 'number', min: '1', max: '600', step: '1', value: String(item.size[key]) });
+      const limits = sizeLimitsOf(item.type, key, editor.store.getState().ceilingHeight);
+      const input = el('input', { type: 'number', min: String(limits[0]), max: String(limits[1]), step: '1', value: String(item.size[key]) });
       input.addEventListener('change', () => {
-        const value = normalizeSizeValue(input.value);
+        const value = normalizeSizeValue(input.value, limits);
         const current = editor.selected;
         if (value == null || !current) {
           input.value = current?.size[key] ?? '';
@@ -84,6 +109,7 @@ export function setupInspector(editor, getSolids, { editCabinet, editPegboard } 
       ...body,
       ...lightControls(editor, item),
       ...electricalFields(editor, item),
+      ...halfWallFields(editor, item),
       el(
         'div',
         { class: 'field' },

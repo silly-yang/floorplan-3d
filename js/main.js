@@ -14,6 +14,7 @@ import { CEILING_TYPES, ceilingStateOf, ceilingZones } from './core/ceilings.js'
 import { mountSurfaces, outletsToFurniture } from './core/electrical.js';
 import { FLOOR_MATERIALS, floorMaterialOf } from './core/materials.js';
 import { walkStart } from './core/cameraMath.js';
+import { walkBlockers } from './core/layout.js';
 import { buildHouse, disposeObject, floorColorOf } from './scene/house.js';
 import { textureThumbnail } from './scene/textures.js';
 import { Viewer } from './scene/viewer.js';
@@ -130,7 +131,7 @@ function makeWalkCollision(getSolids, floorplan, store) {
     const closedDoors = floorplan.openings
       .filter((o) => blocksPassage(doorStateOf(doors, o)))
       .map((o) => ({ polygon: o.polygon, bottom: 0 }));
-    return [...getSolids(), ...closedDoors]
+    return [...getSolids(), ...closedDoors, ...walkBlockers(store.getState().furniture)]
       .filter((s) => s.bottom < BODY_HEIGHT)
       .every(({ polygon }) => {
         if (pointInPolygon([x, y], polygon)) return false;

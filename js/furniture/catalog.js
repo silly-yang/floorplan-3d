@@ -15,13 +15,17 @@ export const CATEGORIES = [
 // allowOverlap：地毯本來就壓在其他家具底下，不算重疊
 // power：電壓（110／220）與瓦數；vent：上方建議保留的散熱空間（公分），放進櫃子時檢查
 // mountHeight：掛牆家具（吊櫃）的固定離地高度（公分）
+// blocksWalk：隔間這類漫遊時會被擋住的東西；sizeLimits：與預設不同的尺寸範圍 { d: [min, max] }，h 上限另受室內淨高限制
 // light：燈具的光源參數（kind：spot 朝下聚光／point 四散／linear 長條；lumens 光通量；beam 光束角°）
-const item = (category, type, name, [w, d, h], color, { placement = 'floor', surface = false, allowOverlap = false, power, vent, mountHeight, light } = {}) => ({
-  category, type, name, size: { w, d, h }, color, placement, surface, allowOverlap,
+const item = (category, type, name, [w, d, h], color, { placement = 'floor', surface = false, allowOverlap = false, blocksWalk = false, sizeLimits, power, vent, mountHeight, light } = {}) => ({
+  category, type, name, size: { w, d, h }, color, placement, surface, allowOverlap, blocksWalk,
+  ...(sizeLimits ? { sizeLimits } : {}),
   ...(mountHeight ? { mountHeight } : {}),
   ...(light ? { light } : {}),
   ...(power ? { power: { voltage: power[0], watts: power[1] }, vent: vent ?? 0 } : {}),
 });
+
+const partition = (depth) => ({ blocksWalk: true, sizeLimits: { w: [20, 600], d: depth, h: [30, 600] } });
 
 export const CATALOG = [
   item('furniture', 'sofa', '沙發', [210, 90, 85], '#8c9aa6'),
@@ -39,6 +43,10 @@ export const CATALOG = [
   item('furniture', 'rug', '地毯', [200, 140, 1], '#b9a28c', { allowOverlap: true }),
   item('furniture', 'plant', '植栽', [45, 45, 120], '#5f8a54'),
   item('furniture', 'cat-tree', '貓爬架', [60, 50, 160], '#c9b49a'),
+  // 隔間：會擋住漫遊；尺寸範圍另訂（厚度、高度上限＝室內淨高）
+  item('furniture', 'half-wall', '半牆', [120, 10, 110], '#ece8e1', { surface: true, ...partition([8, 30]) }),
+  item('furniture', 'glass-partition', '玻璃隔間', [120, 6, 220], '#2f3237', partition([4, 15])),
+  item('furniture', 'slat-screen', '格柵屏風', [120, 6, 220], '#b48a60', partition([4, 20])),
   item('appliance', 'coffee-machine', '咖啡機', [25, 40, 35], '#2f3237', { placement: 'surface', power: [110, 1200], vent: 5 }),
   item('appliance', 'microwave', '微波爐', [50, 40, 30], '#d9dbde', { placement: 'surface', power: [110, 1200], vent: 10 }),
   item('appliance', 'rice-cooker', '電鍋', [30, 30, 28], '#e8e3d8', { placement: 'surface', power: [110, 800], vent: 20 }),
@@ -84,9 +92,17 @@ export function createFurniture(type, { id, x, y }) {
 }
 
 // 尺寸輸入的防呆：非數字回 null，超出範圍夾到上下限，取整到公分
-export function normalizeSizeValue(value) {
+// 尺寸輸入範圍 [下限, 上限]（公分）；隔間的高度不超過室內淨高
+export function sizeLimitsOf(type, key, ceilingHeight) {
+  const limits = getCatalogItem(type)?.sizeLimits?.[key];
+  if (!limits) return [SIZE_LIMITS.min, SIZE_LIMITS.max];
+  if (key === 'h') return [limits[0], Math.min(limits[1], Math.round(ceilingHeight * 100))];
+  return [...limits];
+}
+
+export function normalizeSizeValue(value, [min, max] = [SIZE_LIMITS.min, SIZE_LIMITS.max]) {
   if (value === '' || value == null) return null;
   const num = Number(value);
   if (!Number.isFinite(num)) return null;
-  return Math.min(SIZE_LIMITS.max, Math.max(SIZE_LIMITS.min, Math.round(num)));
+  return Math.min(max, Math.max(min, Math.round(num)));
 }

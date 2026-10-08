@@ -10,7 +10,7 @@ const CONFLICT_COLOR = '#d64545';
 
 // 系統櫃、洞洞板的外觀取決於各自的設計，設計一改就要重建
 const modelKey = (item, design) =>
-  `${item.type}|${item.size.w}|${item.size.d}|${item.size.h}|${item.color}|${design ? JSON.stringify(design) : ''}`;
+  `${item.type}|${item.size.w}|${item.size.d}|${item.size.h}|${item.color}|${item.options?.top ?? ''}|${design ? JSON.stringify(design) : ''}`;
 
 function outline(item, color) {
   const w = item.size.w / 100;

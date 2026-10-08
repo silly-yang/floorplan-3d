@@ -14,6 +14,7 @@ import {
   snapToGrid,
   supportOf,
   updateFurniture,
+  walkBlockers,
 } from '../../js/core/layout.js';
 
 const rect = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
@@ -271,4 +272,18 @@ test('elevationOf 家具自己帶 elevation（例如插座、燈）時以它為�
 
   // Act & Assert
   assert.equal(elevationOf(outlet, [outlet]), 1.2);
+});
+
+test('walkBlockers 只回傳隔間的底面，從地面算起', () => {
+  // Arrange
+  const wallItem = item({ id: 'w', type: 'half-wall', x: 2, y: 1, size: { w: 120, d: 10, h: 110 } });
+  const sofa = item({ id: 's', type: 'sofa', x: 4, y: 4, size: { w: 210, d: 90, h: 85 } });
+
+  // Act
+  const blockers = walkBlockers([wallItem, sofa]);
+
+  // Assert
+  assert.equal(blockers.length, 1);
+  assert.deepEqual(blockers[0].polygon, footprint(wallItem));
+  assert.equal(blockers[0].bottom, 0);
 });

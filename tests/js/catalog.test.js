@@ -1,10 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CATALOG, SIZE_LIMITS, createFurniture, getCatalogItem, normalizeSizeValue } from '../../js/furniture/catalog.js';
+import { CATALOG, SIZE_LIMITS, createFurniture, getCatalogItem, normalizeSizeValue, sizeLimitsOf } from '../../js/furniture/catalog.js';
 
 const REQUIRED_FURNITURE = [
   'sofa', 'armchair', 'coffee-table', 'dining-table', 'dining-chair', 'double-bed', 'single-bed',
   'wardrobe', 'desk', 'tv-stand', 'fridge', 'rug', 'plant', 'kitchen-island', 'cat-tree',
+  'half-wall', 'glass-partition', 'slat-screen',
 ];
 const REQUIRED_APPLIANCES = [
   'coffee-machine', 'microwave', 'rice-cooker', 'laptop', 'desk-lamp',
@@ -168,5 +169,58 @@ for (const [type, height, options] of [
     assert.deepEqual(spec.size, { w: 12, d: 4, h: 12 });
     assert.equal(spec.mountHeight, height);
     assert.deepEqual(spec.options, options);
+  });
+}
+
+// ---------- 隔間 ----------
+
+const PARTITIONS = ['half-wall', 'glass-partition', 'slat-screen'];
+
+test('隔間都會擋住漫遊，一般家具不會', () => {
+  // Assert
+  for (const type of PARTITIONS) assert.equal(getCatalogItem(type).blocksWalk, true, type);
+  assert.equal(getCatalogItem('sofa').blocksWalk, false);
+});
+
+test('半牆頂部可以放東西，玻璃隔間與格柵屏風不行', () => {
+  // Assert
+  assert.equal(getCatalogItem('half-wall').surface, true);
+  assert.equal(getCatalogItem('glass-partition').surface, false);
+  assert.equal(getCatalogItem('slat-screen').surface, false);
+});
+
+test('半牆預設 寬 120 × 厚 10 × 高 110 cm，厚度對齊 5 cm 網格才貼得齊牆', () => {
+  // Assert
+  assert.deepEqual(getCatalogItem('half-wall').size, { w: 120, d: 10, h: 110 });
+});
+
+for (const [type, key, expected] of [
+  ['half-wall', 'w', [20, 600]],
+  ['half-wall', 'd', [8, 30]],
+  ['half-wall', 'h', [30, 305]],
+  ['glass-partition', 'd', [4, 15]],
+  ['slat-screen', 'd', [4, 20]],
+  ['sofa', 'w', [1, 600]],
+  ['sofa', 'h', [1, 600]],
+]) {
+  test(`sizeLimitsOf ${type} 的 ${key} 範圍是 ${expected.join('～')}（室內淨高 3.05 m）`, () => {
+    // Act & Assert
+    assert.deepEqual(sizeLimitsOf(type, key, 3.05), expected);
+  });
+}
+
+test('sizeLimitsOf 隔間高度上限跟著室內淨高', () => {
+  // Act & Assert
+  assert.deepEqual(sizeLimitsOf('half-wall', 'h', 2.8), [30, 280]);
+});
+
+for (const [name, input, expected] of [
+  ['低於下限夾到下限', 3, 8],
+  ['高於上限夾到上限', 45, 30],
+  ['範圍內取整', '12.4', 12],
+]) {
+  test(`normalizeSizeValue 指定範圍時${name}`, () => {
+    // Act & Assert
+    assert.equal(normalizeSizeValue(input, [8, 30]), expected);
   });
 }

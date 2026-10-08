@@ -70,6 +70,11 @@ export function findFreeSpot(item, solids, { radius = 2, step = 0.1 } = {}) {
   return null;
 }
 
+// 漫遊時會擋路的家具（隔間）：回傳 [{ polygon, bottom }]
+export function walkBlockers(furniture) {
+  return furniture.filter((f) => getCatalogItem(f.type)?.blocksWalk).map((f) => ({ polygon: footprint(f), bottom: 0 }));
+}
+
 export function addFurniture(design, item) {
   return { ...design, furniture: [...design.furniture, item] };
 }
