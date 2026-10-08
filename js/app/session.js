@@ -128,6 +128,12 @@ export function createSession({ designStore, store, now, newId, floorplanRef = n
       emit();
     },
 
+    // 目前方案的內容換回新方案的預設（建商附的廚衛、插座），名稱與 id 不變；可以復原
+    reset() {
+      const fresh = { ...createDesign({ id: meta.id, name: meta.name, now: now(), floorplanRef }), furniture: defaultFurniture() };
+      store.commit(contentOf(fresh));
+    },
+
     duplicate() {
       autosaver.flush();
       const copy = { ...compose(), id: newId(), name: uniqueName(`${meta.name} 複本`, names()), createdAt: now(), updatedAt: now() };

@@ -123,6 +123,14 @@ export function setupSessionUi({ session, onFloorplanMismatch, exportPng, export
       if (name) session.rename(name);
     }],
     ['duplicate', '複製方案', () => session.duplicate()],
+    ['reset', '重置方案', async () => {
+      const ok = await confirmDialog(
+        '重置方案',
+        `把「${session.current.name}」恢復成剛建立時的樣子：清空家具、櫃子、洞洞板，天花板、地板、門回到預設，只留建商附的廚衛與插座。按「復原」可以救回來。`,
+        { okLabel: '重置', danger: true },
+      );
+      if (ok) session.reset();
+    }],
     ['delete', '刪除方案', async () => {
       const ok = await confirmDialog('刪除方案', `確定要刪除「${session.current.name}」嗎？刪除後無法復原，建議先匯出備份。`, { okLabel: '刪除', danger: true });
       if (ok) session.remove(session.current.id);

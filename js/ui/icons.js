@@ -82,6 +82,7 @@ export const ICONS = {
   // ---------- 介面 ----------
   undo: 'M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3',
   redo: 'M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3',
+  reset: 'M4 12a8 8 0 1 0 2.3-5.7M4 4v4h4M12 9v3l2 2',
   add: 'M12 5v14M5 12h14',
   rename: 'M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4',
   duplicate: 'M8 8h12v12H8zM16 8V4H4v12h4',

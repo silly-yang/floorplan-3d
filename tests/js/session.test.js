@@ -314,3 +314,28 @@ test('洞洞板設計會跟著方案存檔，重新整理後還在', () => {
   assert.deepEqual(page2.store.getState().pegboards, pegboards);
   assert.deepEqual(page2.session.current.pegboards, pegboards);
 });
+
+test('重置方案：內容回到新方案的預設，名稱與 id 不變，可以復原，並會存檔', () => {
+  // Arrange：改過樓高、天花板、加了一張沙發
+  const storage = new MemoryStorage();
+  const { session, store, timers } = openPage(storage);
+  session.init();
+  const { id, name } = session.current;
+  store.commit({ ...store.getState(), ceilingHeight: 2.6, ceilings: { living: { type: 'flat', height: 2.4 } }, furniture: [...store.getState().furniture, sofa] });
+  const edited = store.getState();
+
+  // Act
+  session.reset();
+  timers.run();
+
+  // Assert
+  const state = store.getState();
+  assert.equal(state.ceilingHeight, 3.05);
+  assert.deepEqual(state.ceilings, {});
+  assert.equal(state.furniture.length, 1);
+  assert.match(state.furniture[0].id, /^default-/);
+  assert.deepEqual([session.current.id, session.current.name], [id, name]);
+  assert.equal(new DesignStore(storage).load(id).ceilingHeight, 3.05);
+  store.undo();
+  assert.deepEqual(store.getState(), edited);
+});
