@@ -9,13 +9,14 @@ const REQUIRED_FURNITURE = [
 const REQUIRED_APPLIANCES = [
   'coffee-machine', 'microwave', 'rice-cooker', 'laptop', 'desk-lamp',
   'robot-vacuum', 'washing-machine', 'air-purifier', 'fan', 'floor-lamp',
+  'air-fryer', 'oven', 'steam-oven', 'kettle', 'dishwasher',
 ];
 const REQUIRED_FIXTURES = ['kitchen-counter', 'toilet', 'basin'];
 const REQUIRED = [...REQUIRED_FURNITURE, ...REQUIRED_APPLIANCES, ...REQUIRED_FIXTURES];
 
 test('目錄包含需求列出的家具與家電，每種都有中文名稱與正數尺寸', () => {
-  // Act
-  const types = CATALOG.map((c) => c.type);
+  // Act：自己設計的系統櫃（custom）不在一般清單裡，另外檢查
+  const types = CATALOG.filter((c) => c.category !== 'custom').map((c) => c.type);
 
   // Assert
   assert.deepEqual([...types].sort(), [...REQUIRED].sort());
@@ -99,4 +100,32 @@ test('桌子、櫃子、中島櫃、流理台的檯面可以放東西，沙發�
   for (const type of ['sofa', 'double-bed', 'rug', 'coffee-machine']) {
     assert.equal(getCatalogItem(type).surface, false, type);
   }
+});
+
+test('每台家電都有電壓（110 或 220）、瓦數與建議的上方散熱空間', () => {
+  // Act
+  const appliances = CATALOG.filter((c) => c.category === 'appliance');
+
+  // Assert
+  for (const a of appliances) {
+    assert.ok([110, 220].includes(a.power?.voltage), `${a.type} voltage`);
+    assert.ok(a.power.watts > 0, `${a.type} watts`);
+    assert.ok(a.vent >= 0, `${a.type} vent`);
+  }
+});
+
+for (const [type, voltage] of [['microwave', 110], ['air-fryer', 110], ['steam-oven', 220], ['dishwasher', 220]]) {
+  test(`${type} 使用 ${voltage}V`, () => {
+    // Act & Assert
+    assert.equal(getCatalogItem(type).power.voltage, voltage);
+  });
+}
+
+test('自己設計的系統櫃有獨立類型，不混進家具清單', () => {
+  // Act
+  const custom = getCatalogItem('custom-cabinet');
+
+  // Assert
+  assert.equal(custom.category, 'custom');
+  assert.equal(custom.surface, true);
 });

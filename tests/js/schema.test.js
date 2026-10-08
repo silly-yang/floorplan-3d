@@ -38,6 +38,7 @@ test('createDesign 帶入版本、名稱、時間與預設樓高', () => {
     ceilingColor: '#f4f2ee',
     rooms: {},
     doors: {},
+    cabinets: [],
     furniture: [],
   });
 });
@@ -54,6 +55,8 @@ for (const [name, mutate, fragment] of [
   ['天花板顏色不是色碼', (d) => (d.ceilingColor = 'white'), 'ceilingColor'],
   ['門型未知', (d) => (d.doors = { 'FD2-1': { type: 'portal', open: false, flip: false, out: false } }), 'doors.FD2-1.type'],
   ['門的開關不是布林值', (d) => (d.doors = { 'FD2-1': { type: 'hinged', open: 'yes', flip: false, out: false } }), 'doors.FD2-1.open'],
+  ['擺放的系統櫃找不到設計', (d) => d.furniture.push({ id: 'f9', type: 'custom-cabinet', cabinetId: 'ghost', x: 1, y: 1, rotation: 0, size: { w: 60, d: 60, h: 90 }, color: '#e9e4dc' }), 'furniture[1].cabinetId'],
+  ['櫃子設計格式錯誤', (d) => (d.cabinets = [{ id: 'c1', name: '櫃', size: { w: 60, d: 60, h: 90 }, columns: 'x' }]), 'cabinets[0].columns'],
   ['門的內外開不是布林值', (d) => (d.doors = { 'FD2-1': { type: 'hinged', open: false, flip: false, out: 1 } }), 'doors.FD2-1.out'],
   ['地板顏色不是色碼', (d) => (d.rooms.living.floorColor = 'red'), 'rooms.living.floorColor'],
   ['家具不是陣列', (d) => (d.furniture = {}), 'furniture'],
@@ -172,11 +175,12 @@ test('migrateDesign 遷移函式就地修改時，原物件也不受影響', () 
 });
 
 test('第 1 版設計檔讀取時自動升到目前版本，補上預設天花板顏色', () => {
-  // Arrange：第 1 版還沒有 ceilingColor、doors
+  // Arrange：第 1 版還沒有 ceilingColor、doors、cabinets
   const v1 = sampleDesign();
   v1.schemaVersion = 1;
   delete v1.ceilingColor;
   delete v1.doors;
+  delete v1.cabinets;
 
   // Act
   const design = parseDesign(v1);
@@ -192,6 +196,7 @@ test('第 2 版設計檔讀取時補上空的門設定（全部用預設門型�
   const v2 = sampleDesign();
   v2.schemaVersion = 2;
   delete v2.doors;
+  delete v2.cabinets;
 
   // Act
   const design = parseDesign(v2);
@@ -200,4 +205,18 @@ test('第 2 版設計檔讀取時補上空的門設定（全部用預設門型�
   assert.equal(design.schemaVersion, SCHEMA_VERSION);
   assert.deepEqual(design.doors, {});
   assert.equal(design.ceilingColor, v2.ceilingColor);
+});
+
+test('第 3 版設計檔讀取時補上空的櫃子清單', () => {
+  // Arrange
+  const v3 = sampleDesign();
+  v3.schemaVersion = 3;
+  delete v3.cabinets;
+
+  // Act
+  const design = parseDesign(v3);
+
+  // Assert
+  assert.equal(design.schemaVersion, SCHEMA_VERSION);
+  assert.deepEqual(design.cabinets, []);
 });

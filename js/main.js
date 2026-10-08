@@ -14,6 +14,7 @@ import { DesignStore, StorageUnavailableError } from './storage/localStore.js';
 import { fingerprint } from './storage/schema.js';
 import { renderCatalog } from './ui/catalogPanel.js';
 import { $, alertDialog, el, toast } from './ui/dom.js';
+import { setupCabinetPanel } from './ui/cabinetPanel.js';
 import { setupDoorPanel } from './ui/doorPanel.js';
 import { iconSvg } from './ui/icons.js';
 import { setupInspector } from './ui/inspector.js';
@@ -301,7 +302,7 @@ async function main() {
     await alertDialog('無法載入平面圖', error.message);
     return;
   }
-  const store = createStore({ ceilingHeight: 2.8, ceilingColor: '#f4f2ee', rooms: {}, doors: {}, furniture: [] });
+  const store = createStore({ ceilingHeight: 2.8, ceilingColor: '#f4f2ee', rooms: {}, doors: {}, cabinets: [], furniture: [] });
   let exportAll = () => {};
   const defaultFurniture = () => fixturesToFurniture(floorplan.fixtures, () => crypto.randomUUID());
   const { session, warnings, persistent } = openSession(store, floorplanRef, makeStatusHandler(() => exportAll), defaultFurniture);
@@ -314,8 +315,8 @@ async function main() {
 
   // 圖層要比編輯器先訂閱：編輯器更新選取與衝突外框時，物件必須已經同步好
   const furnitureLayer = new FurnitureLayer(viewer.scene);
-  store.subscribe((design) => furnitureLayer.sync(design.furniture));
-  furnitureLayer.sync(store.getState().furniture);
+  store.subscribe((design) => furnitureLayer.sync(design.furniture, design.cabinets));
+  furnitureLayer.sync(store.getState().furniture, store.getState().cabinets);
   const doorLayer = new DoorLayer(viewer.scene, floorplan);
   store.subscribe((design) => doorLayer.sync(design.doors));
   doorLayer.sync(store.getState().doors);
@@ -327,7 +328,8 @@ async function main() {
       document.body.classList.remove('sidebar-open');
     },
   });
-  setupInspector(editor, getSolids);
+  const cabinetPanel = setupCabinetPanel({ store, editor });
+  setupInspector(editor, getSolids, { editCabinet: cabinetPanel.edit });
   setupDoorPanel(editor, floorplan);
   setupStageTools(editor, houseView);
   setupFixtureActions(floorplan, store);

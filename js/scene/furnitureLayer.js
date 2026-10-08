@@ -8,7 +8,9 @@ import { disposeObject } from './house.js';
 const SELECT_COLOR = '#2f6f62';
 const CONFLICT_COLOR = '#d64545';
 
-const modelKey = (item) => `${item.type}|${item.size.w}|${item.size.d}|${item.size.h}|${item.color}`;
+// 系統櫃的外觀取決於櫃子設計，設計一改就要重建
+const modelKey = (item, cabinet) =>
+  `${item.type}|${item.size.w}|${item.size.d}|${item.size.h}|${item.color}|${cabinet ? JSON.stringify(cabinet) : ''}`;
 
 function outline(item, color) {
   const w = item.size.w / 100;
@@ -47,8 +49,9 @@ export class FurnitureLayer {
     this.lastFurniture = [];
   }
 
-  sync(furniture) {
+  sync(furniture, cabinets = []) {
     this.lastFurniture = furniture;
+    this.cabinets = new Map(cabinets.map((c) => [c.id, c]));
     const alive = new Set(furniture.map((f) => f.id));
     for (const [id, entry] of this.entries) {
       if (!alive.has(id)) {
@@ -80,10 +83,11 @@ export class FurnitureLayer {
     const { x, y, z } = planToWorld([item.x, item.y], elevation);
     entry.container.position.set(x, y, z);
     entry.container.rotation.y = (item.rotation * Math.PI) / 180;
-    const key = modelKey(item);
+    const cabinet = item.cabinetId ? this.cabinets.get(item.cabinetId) : null;
+    const key = modelKey(item, cabinet);
     if (key !== entry.key) {
       entry.key = key;
-      this.#replaceModel(entry, buildFurnitureModel(item));
+      this.#replaceModel(entry, buildFurnitureModel(item, null, cabinet));
       // 有註冊外部模型時，載入完成再換上去；期間先顯示程式化模型
       loadExternalTemplate(item.type).then((template) => {
         if (template && entry.key === key && this.entries.get(item.id) === entry) {

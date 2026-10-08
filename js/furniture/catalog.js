@@ -10,8 +10,10 @@ export const CATEGORIES = [
 
 // placement：floor 只能放地上；surface 可以放地上，也可以放到有檯面（surface: true）的家具上
 // allowOverlap：地毯本來就壓在其他家具底下，不算重疊
-const item = (category, type, name, [w, d, h], color, { placement = 'floor', surface = false, allowOverlap = false } = {}) => ({
+// power：電壓（110／220）與瓦數；vent：上方建議保留的散熱空間（公分），放進櫃子時檢查
+const item = (category, type, name, [w, d, h], color, { placement = 'floor', surface = false, allowOverlap = false, power, vent } = {}) => ({
   category, type, name, size: { w, d, h }, color, placement, surface, allowOverlap,
+  ...(power ? { power: { voltage: power[0], watts: power[1] }, vent: vent ?? 0 } : {}),
 });
 
 export const CATALOG = [
@@ -26,19 +28,26 @@ export const CATALOG = [
   item('furniture', 'desk', '書桌', [120, 60, 75], '#c7a37a', { surface: true }),
   item('furniture', 'tv-stand', '電視櫃', [180, 40, 50], '#6f5a48', { surface: true }),
   item('furniture', 'kitchen-island', '中島櫃', [180, 90, 90], '#e9e4dc', { surface: true }),
-  item('furniture', 'fridge', '冰箱', [70, 70, 180], '#e6e8ea'),
+  item('furniture', 'fridge', '冰箱', [70, 70, 180], '#e6e8ea', { power: [110, 200], vent: 5 }),
   item('furniture', 'rug', '地毯', [200, 140, 1], '#b9a28c', { allowOverlap: true }),
   item('furniture', 'plant', '植栽', [45, 45, 120], '#5f8a54'),
-  item('appliance', 'coffee-machine', '咖啡機', [25, 40, 35], '#2f3237', { placement: 'surface' }),
-  item('appliance', 'microwave', '微波爐', [50, 40, 30], '#d9dbde', { placement: 'surface' }),
-  item('appliance', 'rice-cooker', '電鍋', [30, 30, 28], '#e8e3d8', { placement: 'surface' }),
-  item('appliance', 'laptop', '筆電', [33, 23, 22], '#9aa0a8', { placement: 'surface' }),
-  item('appliance', 'desk-lamp', '檯燈', [18, 18, 45], '#3b3f45', { placement: 'surface' }),
-  item('appliance', 'robot-vacuum', '掃地機器人', [35, 35, 9], '#25272b'),
-  item('appliance', 'washing-machine', '洗衣機', [60, 65, 100], '#eef0f2'),
-  item('appliance', 'air-purifier', '空氣清淨機', [30, 30, 65], '#f2f2f0'),
-  item('appliance', 'fan', '電風扇', [40, 35, 110], '#e9ecef'),
-  item('appliance', 'floor-lamp', '立燈', [35, 35, 160], '#3b3f45'),
+  item('appliance', 'coffee-machine', '咖啡機', [25, 40, 35], '#2f3237', { placement: 'surface', power: [110, 1200], vent: 5 }),
+  item('appliance', 'microwave', '微波爐', [50, 40, 30], '#d9dbde', { placement: 'surface', power: [110, 1200], vent: 10 }),
+  item('appliance', 'rice-cooker', '電鍋', [30, 30, 28], '#e8e3d8', { placement: 'surface', power: [110, 800], vent: 20 }),
+  item('appliance', 'air-fryer', '氣炸鍋', [30, 36, 33], '#2b2d31', { placement: 'surface', power: [110, 1500], vent: 10 }),
+  item('appliance', 'oven', '烤箱', [50, 42, 32], '#3a3d42', { placement: 'surface', power: [110, 1500], vent: 10 }),
+  item('appliance', 'steam-oven', '蒸烤爐', [60, 55, 45], '#1f2226', { placement: 'surface', power: [220, 3000], vent: 5 }),
+  item('appliance', 'kettle', '電熱水瓶', [23, 30, 32], '#f1efe9', { placement: 'surface', power: [110, 700], vent: 10 }),
+  item('appliance', 'laptop', '筆電', [33, 23, 22], '#9aa0a8', { placement: 'surface', power: [110, 65] }),
+  item('appliance', 'desk-lamp', '檯燈', [18, 18, 45], '#3b3f45', { placement: 'surface', power: [110, 10] }),
+  item('appliance', 'robot-vacuum', '掃地機器人', [35, 35, 9], '#25272b', { power: [110, 30] }),
+  item('appliance', 'washing-machine', '洗衣機', [60, 65, 100], '#eef0f2', { power: [110, 500] }),
+  item('appliance', 'dishwasher', '洗碗機', [60, 57, 82], '#d6d9dd', { power: [220, 1800] }),
+  item('appliance', 'air-purifier', '空氣清淨機', [30, 30, 65], '#f2f2f0', { power: [110, 50] }),
+  item('appliance', 'fan', '電風扇', [40, 35, 110], '#e9ecef', { power: [110, 45] }),
+  item('appliance', 'floor-lamp', '立燈', [35, 35, 160], '#3b3f45', { power: [110, 20] }),
+  // 自己設計的系統櫃：不出現在家具清單，從「櫃子」分頁擺放；尺寸與格子來自 design.cabinets
+  item('custom', 'custom-cabinet', '系統櫃', [120, 60, 210], '#e9e4dc', { surface: true }),
   item('fixture', 'kitchen-counter', '廚具', [225, 60, 90], '#f0ece4', { surface: true }),
   item('fixture', 'toilet', '馬桶', [40, 70, 75], '#fafafa'),
   item('fixture', 'basin', '洗手台', [60, 45, 85], '#f5f5f3'),

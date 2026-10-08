@@ -15,11 +15,13 @@ import {
 import { createDoubleTapDetector } from '../core/cameraMath.js';
 import { doorStateOf } from '../core/doors.js';
 import { createFurniture } from '../furniture/catalog.js';
+import { placeCabinet } from '../core/cabinet.js';
 import { FURNITURE_MIME } from '../ui/catalogPanel.js';
 import { toast } from '../ui/dom.js';
 
 const CLICK_TOLERANCE = 5; // 像素；按下到放開移動小於此值視為點擊
 const DUPLICATE_OFFSET = 0.3;
+const CABINET_MIME = 'application/x-cabinet-id'; // 與 cabinetPanel 相同；避免互相 import
 const WALK_REACH = 2.5;
 const NUDGE_RADIUS = 0.8; // 旋轉、改尺寸撞牆時，最多自動挪動幾公尺 // 漫遊時伸手可及、能開關門的距離（公尺）
 
@@ -247,12 +249,19 @@ export class Editor {
   #bindDrop() {
     const canvas = this.viewer.domElement;
     canvas.addEventListener('dragover', (e) => {
-      if (e.dataTransfer.types.includes(FURNITURE_MIME)) {
+      if (e.dataTransfer.types.includes(FURNITURE_MIME) || e.dataTransfer.types.includes(CABINET_MIME)) {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'copy';
       }
     });
     canvas.addEventListener('drop', (e) => {
+      const cabinetId = e.dataTransfer.getData(CABINET_MIME);
+      if (cabinetId) {
+        e.preventDefault();
+        const point = this.screenToPlan(e.clientX, e.clientY);
+        if (point) this.addCabinet(cabinetId, point);
+        return;
+      }
       const type = e.dataTransfer.getData(FURNITURE_MIME);
       if (!type) return;
       e.preventDefault();
@@ -279,6 +288,25 @@ export class Editor {
     if (point && (spot.x !== item.x || spot.y !== item.y)) toast('已自動往內挪一點，避免壓到牆');
     this.store.commit(addFurniture(this.store.getState(), { ...item, ...spot }));
     this.select(item.id);
+  }
+
+  // 把自己設計的系統櫃擺進場景；落點壓到牆時一樣自動往內挪
+  addCabinet(cabinetId, point = null) {
+    if (this.viewer.mode === 'walk') this.viewer.setMode('orbit');
+    const rect = this.viewer.domElement.getBoundingClientRect();
+    const target = point ?? this.screenToPlan(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    if (!target) return;
+    const [x, y] = this.#snapped(target);
+    const id = newId();
+    const placed = placeCabinet(this.store.getState(), cabinetId, { id, x, y });
+    const item = placed.furniture.at(-1);
+    const spot = findFreeSpot(item, this.getSolids());
+    if (!spot) {
+      toast('附近找不到空間放這個櫃子');
+      return;
+    }
+    this.store.commit({ ...placed, furniture: placed.furniture.map((f) => (f.id === id ? { ...f, ...spot } : f)) });
+    this.select(id);
   }
 
   // ---------- 編輯選取的家具 ----------

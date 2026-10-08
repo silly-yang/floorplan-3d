@@ -28,7 +28,13 @@ export const ICONS = {
   'air-purifier': 'M8 3h8a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM10 7h4M10 10h4M10 13h4M10 17h4',
   fan: 'M12 4a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM12 9l3-2.5M12 9l-3.5-1M12 9l.5 3.5M12 14v6M8 21h8',
   'floor-lamp': 'M8 3h8l2 6H6zM12 9v11M8 21h8',
+  'air-fryer': 'M6 6h12l-1 13a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2zM6 6a6 3 0 0 1 12 0M9 11h6v5H9zM15 13.5h2',
+  oven: 'M3 5h18v14H3zM3 9h18M6 12h10v5H6zM6 7h.01M9 7h.01M17 7h2',
+  'steam-oven': 'M3 4h18v16H3zM3 8h18M6 11h12v6H6zM9 13c0-1 1-1 1-2M13 13c0-1 1-1 1-2M17 6h1',
+  kettle: 'M7 8h10v11a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2zM8 8l1-4h6l1 4M17 11h2v4h-2M10 13h4',
+  dishwasher: 'M4 3h16v18H4zM4 7h16M7 5h3M15 5h.01M7 11h10M7 14h10M7 17h10',
   // ---------- 廚衛 ----------
+  'custom-cabinet': 'M4 3h16v18H4zM12 3v18M4 10h8M4 15h8M12 12h8M8 6.5h.01M8 12.5h.01M15 16h2M7 18h2',
   'kitchen-counter': 'M2 10h20v10H2zM2 13h20M6 7h3v3M5 7h5M15 10.5h4M14 16h2M8 16h2',
   toilet: 'M7 3h7v6H7zM5 9h11c0 4-3 6-5.5 6S5 13 5 9zM8 15l-1 6h8l-1-6',
   basin: 'M4 9h16a8 5 0 0 1-16 0zM12 9V5h3M9 14v7M15 14v7',
@@ -42,6 +48,8 @@ export const ICONS = {
   flip: 'M7 7h11l-3-3M17 17H6l3 3',
   swing: 'M4 20h16M6 20V8M6 8a12 12 0 0 1 12 12M15 11l3 1-1 3',
   // ---------- 鏡頭與畫質 ----------
+  'split-v': 'M4 4h16v16H4zM12 4v16M9 10l-2 2 2 2M15 10l2 2-2 2',
+  'split-h': 'M4 4h16v16H4zM4 12h16M10 9l2-2 2 2M10 15l2 2 2-2',
   focus: 'M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
   'full-view': 'M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5M8 8l3 3M16 8l-3 3M16 16l-3-3M8 16l3-3',
   'high-quality': 'M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z',

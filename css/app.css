@@ -619,3 +619,185 @@ select {
   width: 100%;
   justify-content: center;
 }
+
+/* ---------- 系統櫃 ---------- */
+.btn.block {
+  width: 100%;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.cabinet-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cabinet-list li {
+  display: flex;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 8px;
+  cursor: grab;
+  background: #fff;
+}
+
+.cabinet-thumb {
+  width: 64px;
+  height: 80px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.cabinet-thumb svg,
+.cabinet-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.cabinet-info {
+  min-width: 0;
+  font-size: 13px;
+}
+
+.designer {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.designer[hidden] {
+  display: none;
+}
+
+.designer-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.designer-head h2 {
+  font-size: 16px;
+  margin: 0;
+}
+
+.designer-head input[type='text'] {
+  width: 160px;
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.designer-head .field {
+  margin: 0;
+}
+
+.designer-head .field input {
+  width: 72px;
+}
+
+.designer-head .spacer {
+  flex: 1;
+}
+
+.designer-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.designer-canvas {
+  flex: 1;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.designer-canvas .cabinet-svg {
+  flex: 1;
+  min-height: 0;
+}
+
+.cabinet-cell {
+  cursor: pointer;
+}
+
+.designer-side {
+  width: 320px;
+  overflow-y: auto;
+  padding: 12px 14px;
+  background: var(--panel);
+  border-left: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.designer-side h3 {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 14px 0 6px;
+}
+
+.appliance-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.appliance-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  padding: 4px 10px 4px 6px;
+  cursor: grab;
+  font-size: 13px;
+}
+
+.appliance-chip .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.issue-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--danger);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.note.ok {
+  color: var(--accent);
+}
+
+@media (max-width: 760px) {
+  .designer-body {
+    flex-direction: column;
+  }
+
+  .designer-canvas {
+    height: 45vh;
+    flex: none;
+  }
+
+  .designer-side {
+    width: auto;
+    flex: 1;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+}

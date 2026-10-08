@@ -2,7 +2,7 @@
 import { DOOR_TYPES } from '../core/doors.js';
 import { getCatalogItem, SIZE_LIMITS } from '../furniture/catalog.js';
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 export const DEFAULT_CEILING = 2.8;
 export const DEFAULT_CEILING_COLOR = '#f4f2ee';
 export const CEILING_LIMITS = { min: 2, max: 5 };
@@ -22,6 +22,8 @@ export const MIGRATIONS = {
   1: (d) => ({ ...d, schemaVersion: 2, ceilingColor: DEFAULT_CEILING_COLOR }),
   // 第 3 版加入門設定；空物件＝每個開口都用預設門型
   2: (d) => ({ ...d, schemaVersion: 3, doors: {} }),
+  // 第 4 版加入自己設計的系統櫃
+  3: (d) => ({ ...d, schemaVersion: 4, cabinets: [] }),
 };
 
 export function createDesign({ id, name, now, floorplanRef = null }) {
@@ -36,6 +38,7 @@ export function createDesign({ id, name, now, floorplanRef = null }) {
     ceilingColor: DEFAULT_CEILING_COLOR,
     rooms: {},
     doors: {},
+    cabinets: [],
     furniture: [],
   };
 }
@@ -60,7 +63,24 @@ function validateDoors(doors, errors) {
   }
 }
 
-function validateFurniture(list, errors) {
+function validateCabinets(cabinets, errors) {
+  if (!Array.isArray(cabinets)) {
+    errors.push('cabinets 必須是陣列');
+    return;
+  }
+  cabinets.forEach((cab, i) => {
+    const at = `cabinets[${i}]`;
+    if (typeof cab?.id !== 'string' || !cab.id) errors.push(`${at}.id 必須是非空字串`);
+    if (!['w', 'd', 'h'].every((k) => isNum(cab?.size?.[k]) && cab.size[k] > 0)) errors.push(`${at}.size 需要正數 w、d、h`);
+    const ok =
+      Array.isArray(cab?.columns) &&
+      cab.columns.length > 0 &&
+      cab.columns.every((col) => isNum(col?.width) && Array.isArray(col.cells) && col.cells.every((c) => isNum(c?.height) && Array.isArray(c.items)));
+    if (!ok) errors.push(`${at}.columns 必須是含 width 與 cells 的欄位陣列`);
+  });
+}
+
+function validateFurniture(list, errors, cabinetIds = new Set()) {
   if (!Array.isArray(list)) {
     errors.push('furniture 必須是陣列');
     return;
@@ -76,6 +96,7 @@ function validateFurniture(list, errors) {
     else if (seen.has(f.id)) errors.push(`${at}.id 與前面的家具重複（${f.id}）`);
     seen.add(f.id);
     if (!getCatalogItem(f.type)) errors.push(`${at}.type 是未知的家具類型（${f.type}）`);
+    if (f.type === 'custom-cabinet' && !cabinetIds.has(f.cabinetId)) errors.push(`${at}.cabinetId 找不到對應的櫃子設計（${f.cabinetId}）`);
     for (const key of ['x', 'y', 'rotation']) {
       if (!isNum(f[key])) errors.push(`${at}.${key} 必須是數字`);
     }
@@ -117,7 +138,8 @@ export function validateDesign(design) {
     }
   }
   validateDoors(design.doors, errors);
-  validateFurniture(design.furniture, errors);
+  validateCabinets(design.cabinets, errors);
+  validateFurniture(design.furniture, errors, new Set((Array.isArray(design.cabinets) ? design.cabinets : []).map((c) => c?.id)));
   return errors;
 }
 

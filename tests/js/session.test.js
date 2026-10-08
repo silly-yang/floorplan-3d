@@ -74,7 +74,7 @@ test('重新整理頁面後設計完整保留（含家具、樓高、天花板�
   const storage = new MemoryStorage();
   const page1 = openPage(storage);
   page1.session.init();
-  page1.store.commit({ ceilingHeight: 3.1, ceilingColor: '#ddeeff', rooms: { living: { floorColor: '#445566' } }, doors: { 'FD2-1': { type: 'sliding', open: true, flip: false, out: false } }, furniture: [sofa] });
+  page1.store.commit({ ceilingHeight: 3.1, ceilingColor: '#ddeeff', rooms: { living: { floorColor: '#445566' } }, doors: { 'FD2-1': { type: 'sliding', open: true, flip: false, out: false } }, cabinets: [], furniture: [sofa] });
   page1.timers.run();
 
   // Act
@@ -82,7 +82,7 @@ test('重新整理頁面後設計完整保留（含家具、樓高、天花板�
   page2.session.init();
 
   // Assert
-  assert.deepEqual(page2.store.getState(), { ceilingHeight: 3.1, ceilingColor: '#ddeeff', rooms: { living: { floorColor: '#445566' } }, doors: { 'FD2-1': { type: 'sliding', open: true, flip: false, out: false } }, furniture: [sofa] });
+  assert.deepEqual(page2.store.getState(), { ceilingHeight: 3.1, ceilingColor: '#ddeeff', rooms: { living: { floorColor: '#445566' } }, doors: { 'FD2-1': { type: 'sliding', open: true, flip: false, out: false } }, cabinets: [], furniture: [sofa] });
   assert.equal(page2.session.current.id, page1.session.current.id);
 });
 

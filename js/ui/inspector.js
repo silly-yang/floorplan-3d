@@ -19,7 +19,8 @@ const DIMENSIONS = [
   ['h', '高'],
 ];
 
-export function setupInspector(editor, getSolids) {
+// editCabinet：選到自己設計的系統櫃時，「編輯櫃子設計」要開設計器
+export function setupInspector(editor, getSolids, { editCabinet } = {}) {
   const panel = $('#inspector');
   let colorBase = null;
   let renderedId = null;
@@ -66,10 +67,15 @@ export function setupInspector(editor, getSolids) {
     const title = el('h2', { class: 'with-icon' });
     title.innerHTML = iconSvg(item.type);
     title.append(el('span', {}, getCatalogItem(item.type)?.name ?? item.type));
+    // 系統櫃的尺寸、格子都在設計器裡改，這裡只給入口
+    const cabinet = item.type === 'custom-cabinet' ? editor.store.getState().cabinets.find((c) => c.id === item.cabinetId) : null;
+    if (cabinet) title.querySelector('span').textContent = cabinet.name;
+    const body = cabinet
+      ? [iconButton('rename', '編輯櫃子設計', '尺寸、隔板、插座、格內家電', () => editCabinet?.(cabinet), 'primary block')]
+      : [...sizeInputs, el('label', { class: 'field' }, el('span', {}, '顏色'), color)];
     panel.replaceChildren(
       title,
-      ...sizeInputs,
-      el('label', { class: 'field' }, el('span', {}, '顏色'), color),
+      ...body,
       el(
         'div',
         { class: 'field' },
@@ -119,10 +125,10 @@ export function setupInspector(editor, getSolids) {
     panel.querySelector('.warn').textContent = editor.conflicts.has(item.id) ? '⚠ 與其他家具重疊' : '';
     DIMENSIONS.forEach(([key], i) => {
       const input = panel.querySelectorAll('input[type=number]')[i];
-      if (document.activeElement !== input) input.value = item.size[key];
+      if (input && document.activeElement !== input) input.value = item.size[key];
     });
     const color = panel.querySelector('input[type=color]');
-    if (document.activeElement !== color) color.value = item.color;
+    if (color && document.activeElement !== color) color.value = item.color;
   };
 
   editor.onChange(render);

@@ -2,6 +2,8 @@
 // 座標：原點在家具底面中心，寬沿 x、深沿 z、正面朝 +z
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { PLINTH, cellBox } from '../core/cabinet.js';
+import { getCatalogItem } from './catalog.js';
 
 const materialCache = new Map();
 
@@ -296,13 +298,72 @@ function fitExternal(template, w, d, h) {
   return clone;
 }
 
+const PANEL = 0.018; // 系統櫃板材厚 1.8 cm
+const OUTLET_COLORS = { '110v': '#f4f4f2', '220v': '#d9534f' };
+
+// 自己設計的系統櫃：櫃體、隔板、每格的門片／抽屜／開放、背板插座、格內家電
+export function buildCabinetModel(cab) {
+  const group = new THREE.Group();
+  const w = cab.size.w / 100;
+  const d = cab.size.d / 100;
+  const h = cab.size.h / 100;
+  const c = shades('#e9e4dc');
+  const plinth = PLINTH / 100;
+  box(group, [w - 0.02, plinth, d - 0.05], [0, plinth / 2, -0.025], '#4b4b4b');
+  for (const sx of [-1, 1]) box(group, [PANEL, h - plinth, d], [sx * (w / 2 - PANEL / 2), plinth + (h - plinth) / 2, 0], c.main);
+  box(group, [w, PANEL, d], [0, h - PANEL / 2, 0], c.main);
+  box(group, [w, PANEL, d], [0, plinth + PANEL / 2, 0], c.main);
+  box(group, [w, h - plinth, 0.008], [0, plinth + (h - plinth) / 2, -d / 2 + 0.004], c.dark);
+  cab.columns.forEach((column, col) => {
+    column.cells.forEach((cell, index) => {
+      const b = cellBox(cab, col, index);
+      const x0 = -w / 2 + b.x / 100;
+      const cw = b.w / 100;
+      const y0 = b.y / 100;
+      const ch = b.h / 100;
+      const cx = x0 + cw / 2;
+      if (col > 0 && index === 0) box(group, [PANEL, h - plinth, d - 0.01], [x0, plinth + (h - plinth) / 2, 0.005], c.main);
+      if (index > 0) box(group, [cw - PANEL, PANEL, d - 0.01], [cx, y0, 0.005], c.main);
+      if (cell.kind === 'door') {
+        box(group, [cw - 0.006, ch - 0.006, PANEL], [cx, y0 + ch / 2, d / 2 + PANEL / 2], c.light);
+        box(group, [0.012, Math.min(0.16, ch * 0.5), 0.02], [x0 + cw - 0.05, y0 + ch / 2, d / 2 + PANEL + 0.01], '#4a4d52');
+      }
+      if (cell.kind === 'drawer') {
+        const count = Math.max(1, Math.round(ch / 0.22));
+        for (let k = 0; k < count; k++) {
+          const dh = ch / count;
+          box(group, [cw - 0.006, dh - 0.006, PANEL], [cx, y0 + dh * (k + 0.5), d / 2 + PANEL / 2], c.light);
+          box(group, [Math.min(0.16, cw * 0.4), 0.012, 0.02], [cx, y0 + dh * (k + 0.5), d / 2 + PANEL + 0.01], '#4a4d52');
+        }
+      }
+      if (cell.outlet !== 'none') {
+        box(group, [0.07, 0.07, 0.01], [cx, y0 + ch - 0.08, -d / 2 + 0.013], OUTLET_COLORS[cell.outlet] ?? '#ffffff', 0.4);
+      }
+      // 格內家電由左往右排，貼著格子底板、靠前緣
+      let cursor = x0 + 0.02;
+      for (const it of cell.items) {
+        const spec = getCatalogItem(it.type);
+        if (!spec) continue;
+        const model = buildFurnitureModel({ type: it.type, size: spec.size, color: spec.color });
+        model.position.set(cursor + spec.size.w / 200, y0 + (index > 0 ? PANEL / 2 : PANEL), d / 2 - spec.size.d / 200 - 0.01);
+        group.add(model);
+        cursor += spec.size.w / 100 + 0.02;
+      }
+    });
+  });
+  return group;
+}
+
 // 回傳家具的 Three.js 群組；外部模型若已載入就用外部模型
-export function buildFurnitureModel(item, externalTemplate = null) {
+// cabinet：custom-cabinet 對應的櫃子設計
+export function buildFurnitureModel(item, externalTemplate = null, cabinet = null) {
   const group = new THREE.Group();
   const w = item.size.w / 100;
   const d = item.size.d / 100;
   const h = item.size.h / 100;
-  if (externalTemplate) {
+  if (item.type === 'custom-cabinet' && cabinet) {
+    group.add(buildCabinetModel(cabinet));
+  } else if (externalTemplate) {
     group.add(fitExternal(externalTemplate, w, d, h));
   } else {
     (BUILDERS[item.type] ?? BUILDERS['coffee-table'])(group, w, d, h, shades(item.color));
