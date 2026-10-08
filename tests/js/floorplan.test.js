@@ -185,3 +185,44 @@ for (const [name, furniture, expected] of [
     assert.deepEqual(missing.map((f) => f.type), expected);
   });
 }
+
+const SERVICES = {
+  sprinklers: [{ x: 1, y: 1 }],
+  detectors: [{ type: 'smoke', x: 2, y: 1 }],
+  ducts: [{ type: 'exhaust', path: [[1, 1], [2, 1]], size: { w: 0.1, h: 0.1 } }],
+  vents: [{ x: 2, y: 1 }],
+};
+
+test('validateFloorplan 接受合法的天花板設備', () => {
+  // Arrange
+  const fp = { ...samplePlan(), ceilingServices: structuredClone(SERVICES) };
+
+  // Act
+  const errors = validateFloorplan(fp);
+
+  // Assert
+  assert.deepEqual(errors, []);
+});
+
+for (const [name, mutate, expected] of [
+  ['不是物件', (s) => 'x', 'ceilingServices 必須是物件'],
+  ['灑水頭清單不是陣列', (s) => ({ ...s, sprinklers: {} }), 'ceilingServices.sprinklers 必須是陣列'],
+  ['灑水頭座標不是數字', (s) => ({ ...s, sprinklers: [{ x: '1', y: 1 }] }), 'ceilingServices.sprinklers[0]'],
+  ['探測器類型不認得', (s) => ({ ...s, detectors: [{ type: 'gas', x: 1, y: 1 }] }), 'ceilingServices.detectors[0].type'],
+  ['風管路線只有一點', (s) => ({ ...s, ducts: [{ ...s.ducts[0], path: [[1, 1]] }] }), 'ceilingServices.ducts[0].path'],
+  ['風管尺寸不是正數', (s) => ({ ...s, ducts: [{ ...s.ducts[0], size: { w: 0, h: 0.1 } }] }), 'ceilingServices.ducts[0].size'],
+  ['風管類型不是字串', (s) => ({ ...s, ducts: [{ ...s.ducts[0], type: 3 }] }), 'ceilingServices.ducts[0].type'],
+  ['排風口缺座標', (s) => ({ ...s, vents: [{ x: 1 }] }), 'ceilingServices.vents[0]'],
+]) {
+  test(`validateFloorplan 天花板設備${name}時指出欄位路徑`, () => {
+    // Arrange
+    const fp = { ...samplePlan(), ceilingServices: mutate(structuredClone(SERVICES)) };
+
+    // Act
+    const errors = validateFloorplan(fp);
+
+    // Assert
+    assert.equal(errors.length, 1, errors.join('\n'));
+    assert.ok(errors[0].includes(expected), errors[0]);
+  });
+}

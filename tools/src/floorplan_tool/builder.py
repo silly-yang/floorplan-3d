@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from floorplan_tool.beams import find_beams
+from floorplan_tool.ceiling_services import find_ceiling_services
 from floorplan_tool.config import Box, Config
 from floorplan_tool.dxf import DxfDocument
 from floorplan_tool.geometry import Point, Polygon, centroid
@@ -64,6 +65,8 @@ def build_floorplan(doc: DxfDocument, config: Config) -> BuildResult:
     x0, y0 = min(x for x, _ in points), min(y for _, y in points)
     x1, y1 = max(x for x, _ in points), max(y for _, y in points)
     scale = config.unit_scale
+    services = find_ceiling_services(doc, config, Box(x0, y0, x1, y1))
+    warnings += services.warnings
 
     def pt(p: Point) -> list[float]:
         return [round((p[0] - x0) * scale, DECIMALS), round((p[1] - y0) * scale, DECIMALS)]
@@ -138,5 +141,21 @@ def build_floorplan(doc: DxfDocument, config: Config) -> BuildResult:
             {"type": o.type, "x": pt(o.at)[0], "y": pt(o.at)[1], "height": o.height}
             for o in outlet_result.outlets
         ],
+        # 不包天花板時看得到的灑水頭、探測器、風管、排風口；只有類型代碼與座標，風管尺寸為公尺
+        "ceilingServices": {
+            "sprinklers": [{"x": pt(s)[0], "y": pt(s)[1]} for s in services.sprinklers],
+            "detectors": [
+                {"type": d.type, "x": pt(d.at)[0], "y": pt(d.at)[1]} for d in services.detectors
+            ],
+            "ducts": [
+                {
+                    "type": d.type,
+                    "path": [pt(p) for p in d.path],
+                    "size": {"w": round(d.size, DECIMALS), "h": round(d.size, DECIMALS)},
+                }
+                for d in services.ducts
+            ],
+            "vents": [{"x": pt(v)[0], "y": pt(v)[1]} for v in services.vents],
+        },
     }
     return BuildResult(floorplan=floorplan, warnings=warnings)

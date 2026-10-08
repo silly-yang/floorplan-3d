@@ -36,6 +36,40 @@ export function validateFloorplan(fp) {
     const ok = Array.isArray(r?.rects) && r.rects.every((rc) => Array.isArray(rc) && rc.length === 4 && rc.every(isNum));
     if (!ok) errors.push(`rooms[${i}].rects 必須是 [x0, y0, x1, y1] 陣列`);
   });
+  if (fp.ceilingServices !== undefined) errors.push(...ceilingServicesErrors(fp.ceilingServices));
+  return errors;
+}
+
+const DETECTOR_TYPES = ['smoke', 'heat'];
+const isPoint = (p) => isNum(p?.x) && isNum(p?.y);
+
+// 天花板設備是選填欄位；舊的平面圖沒有它照樣合法
+function ceilingServicesErrors(cs) {
+  const at = 'ceilingServices';
+  if (!cs || typeof cs !== 'object' || Array.isArray(cs)) return [`${at} 必須是物件`];
+  const errors = [];
+  const each = (key, check) => {
+    if (!Array.isArray(cs[key])) {
+      errors.push(`${at}.${key} 必須是陣列`);
+      return;
+    }
+    cs[key].forEach((item, i) => check(item, `${at}.${key}[${i}]`));
+  };
+  const pointCheck = (p, path) => {
+    if (!isPoint(p)) errors.push(`${path} 需要 x、y 數字`);
+  };
+  each('sprinklers', pointCheck);
+  each('vents', pointCheck);
+  each('detectors', (d, path) => {
+    if (!DETECTOR_TYPES.includes(d?.type)) errors.push(`${path}.type 必須是 ${DETECTOR_TYPES.join('／')}`);
+    pointCheck(d, path);
+  });
+  each('ducts', (d, path) => {
+    if (typeof d?.type !== 'string') errors.push(`${path}.type 必須是字串`);
+    const ok = Array.isArray(d?.path) && d.path.length >= 2 && d.path.every((p) => Array.isArray(p) && p.length === 2 && p.every(isNum));
+    if (!ok) errors.push(`${path}.path 至少要 2 個 [x, y] 點`);
+    if (!['w', 'h'].every((k) => isNum(d?.size?.[k]) && d.size[k] > 0)) errors.push(`${path}.size 需要正數 w、h`);
+  });
   return errors;
 }
 
