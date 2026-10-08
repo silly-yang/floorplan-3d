@@ -12,20 +12,25 @@ import {
   snapToGrid,
   updateFurniture,
 } from '../core/layout.js';
+import { doorStateOf } from '../core/doors.js';
 import { createFurniture } from '../furniture/catalog.js';
 import { FURNITURE_MIME } from '../ui/catalogPanel.js';
 import { toast } from '../ui/dom.js';
 
 const CLICK_TOLERANCE = 5; // 像素；按下到放開移動小於此值視為點擊
 const DUPLICATE_OFFSET = 0.3;
+const WALK_REACH = 2.5; // 漫遊時伸手可及、能開關門的距離（公尺）
 
 const newId = () => crypto.randomUUID();
 
 export class Editor {
-  constructor({ viewer, store, furnitureLayer, getSolids }) {
+  constructor({ viewer, store, furnitureLayer, doorLayer, floorplan, getSolids }) {
     this.viewer = viewer;
     this.store = store;
     this.layer = furnitureLayer;
+    this.doorLayer = doorLayer;
+    this.openings = floorplan.openings;
+    this.selectedDoorId = null;
     this.getSolids = getSolids;
     this.selectedId = null;
     this.snap = true;
@@ -68,7 +73,61 @@ export class Editor {
   select(id) {
     this.selectedId = id;
     this.layer.setSelected(id);
+    if (id) this.#setDoorSelection(null);
     this.#emit();
+  }
+
+  // ---------- 門 ----------
+
+  #setDoorSelection(openingId) {
+    this.selectedDoorId = openingId;
+    this.doorLayer.setSelected(openingId);
+  }
+
+  selectDoor(openingId) {
+    this.#setDoorSelection(openingId);
+    if (openingId) {
+      this.selectedId = null;
+      this.layer.setSelected(null);
+    }
+    this.#emit();
+  }
+
+  get selectedDoor() {
+    return this.openings.find((o) => o.id === this.selectedDoorId) ?? null;
+  }
+
+  #patchDoor(openingId, patch) {
+    const design = this.store.getState();
+    const opening = this.openings.find((o) => o.id === openingId);
+    if (!opening) return;
+    const current = doorStateOf(design.doors, opening);
+    this.store.commit({ ...design, doors: { ...design.doors, [openingId]: { ...current, ...patch } } });
+  }
+
+  toggleDoor(openingId) {
+    const opening = this.openings.find((o) => o.id === openingId);
+    if (!opening) return;
+    const state = doorStateOf(this.store.getState().doors, opening);
+    if (state.type === 'none') {
+      toast('這個開口沒有裝門');
+      return;
+    }
+    this.#patchDoor(openingId, { open: !state.open });
+  }
+
+  setDoorType(openingId, type) {
+    this.#patchDoor(openingId, { type });
+  }
+
+  swingDoor(openingId) {
+    const opening = this.openings.find((o) => o.id === openingId);
+    if (opening) this.#patchDoor(openingId, { out: !doorStateOf(this.store.getState().doors, opening).out });
+  }
+
+  flipDoor(openingId) {
+    const opening = this.openings.find((o) => o.id === openingId);
+    if (opening) this.#patchDoor(openingId, { flip: !doorStateOf(this.store.getState().doors, opening).flip });
   }
 
   // ---------- 座標換算 ----------
@@ -104,10 +163,26 @@ export class Editor {
   }
 
   #onDown(e) {
-    if (this.viewer.mode === 'walk' || e.button > 0) return;
+    if (e.button > 0) return;
+    // 漫遊：點擊開關準星前方 2.5 m 內的門
+    if (this.viewer.mode === 'walk') {
+      if (!this.viewer.isWalkLocked) return;
+      this.viewer.scene.updateMatrixWorld();
+      const hit = this.doorLayer.pick(this.viewer.centerRay(this.raycaster));
+      if (hit && hit.distance < WALK_REACH) this.toggleDoor(hit.openingId);
+      return;
+    }
     this.down = { x: e.clientX, y: e.clientY };
-    const id = this.layer.pick(this.#ray(e.clientX, e.clientY));
-    if (!id) return;
+    const ray = this.#ray(e.clientX, e.clientY);
+    const id = this.layer.pick(ray);
+    if (!id) {
+      const door = this.doorLayer.pick(ray);
+      if (door) {
+        this.selectDoor(door.openingId);
+        this.down = null; // 點到門不算點空白處
+      }
+      return;
+    }
     const point = this.screenToPlan(e.clientX, e.clientY);
     const item = this.store.getState().furniture.find((f) => f.id === id);
     if (!point || !item) return;
@@ -144,6 +219,7 @@ export class Editor {
       this.viewer.setControlsEnabled(true);
     } else if (wasClick && this.viewer.mode !== 'walk') {
       this.select(null);
+      this.selectDoor(null);
     }
     this.down = null;
   }
@@ -260,7 +336,10 @@ export class Editor {
       else if (mod && key === 'd') this.duplicate();
       else if (!mod && key === 'r' && this.viewer.mode !== 'walk') this.rotate(e.shiftKey ? -1 : 1);
       else if (key === 'delete' || key === 'backspace') this.remove();
-      else if (key === 'escape' && this.viewer.mode !== 'walk') this.select(null);
+      else if (key === 'escape' && this.viewer.mode !== 'walk') {
+        this.select(null);
+        this.selectDoor(null);
+      }
       else return;
       e.preventDefault();
     });

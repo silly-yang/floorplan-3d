@@ -13,6 +13,7 @@ export class Viewer {
     this.bounds = bounds;
     this.mode = 'orbit';
     this.listeners = new Set();
+    this.frameListeners = new Set();
     this.canWalkTo = () => true;
     this.pressed = new Set();
     this.timer = new THREE.Timer();
@@ -99,6 +100,18 @@ export class Viewer {
   onChange(listener) {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  // 每幀回呼（門的開關動畫用）
+  onFrame(listener) {
+    this.frameListeners.add(listener);
+    return () => this.frameListeners.delete(listener);
+  }
+
+  // 漫遊時畫面正中央的射線（準星）
+  centerRay(raycaster) {
+    raycaster.setFromCamera(new THREE.Vector2(0, 0), this.walkCamera);
+    return raycaster;
   }
 
   #emit() {
@@ -195,6 +208,7 @@ export class Viewer {
     const dt = Math.min(this.timer.getDelta(), 0.1);
     if (this.mode === 'walk') this.#moveWalker(dt);
     if (this.mode === 'orbit') this.orbit.update();
+    this.frameListeners.forEach((l) => l(dt));
     this.renderer.render(this.scene, this.camera);
   }
 

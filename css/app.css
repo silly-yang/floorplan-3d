@@ -594,3 +594,19 @@ select {
     display: none;
   }
 }
+
+/* ---------- 門 ---------- */
+.door-item {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.door-item strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.door-types .btn {
+  flex: 1 1 auto;
+}

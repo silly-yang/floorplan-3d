@@ -32,6 +32,15 @@ export const ICONS = {
   'kitchen-counter': 'M2 10h20v10H2zM2 13h20M6 7h3v3M5 7h5M15 10.5h4M14 16h2M8 16h2',
   toilet: 'M7 3h7v6H7zM5 9h11c0 4-3 6-5.5 6S5 13 5 9zM8 15l-1 6h8l-1-6',
   basin: 'M4 9h16a8 5 0 0 1-16 0zM12 9V5h3M9 14v7M15 14v7',
+  // ---------- 門 ----------
+  'door-none': 'M5 21V4h14v17M3 21h18M9 9l6 6M15 9l-6 6',
+  'door-hinged': 'M5 21V4h10v17M3 21h18M15 4l4 2v15M12 12v1.5',
+  'door-sliding': 'M3 21h18M4 4h16M5 4v17M11 4v17M13 4v17h6V4M9 12v2M15 12v2',
+  'door-glass': 'M3 21h18M4 4h16v17H4zM12 4v17M7 8l2-2M7 12l4-4M15 8l2-2M15 12l4-4',
+  'door-open': 'M5 21V4h8M3 21h18M13 4l6 3v14l-6-2zM15.5 12.5v1',
+  'door-close': 'M5 21V4h14v17M3 21h18M15 12v1.5',
+  flip: 'M7 7h11l-3-3M17 17H6l3 3',
+  swing: 'M4 20h16M6 20V8M6 8a12 12 0 0 1 12 12M15 11l3 1-1 3',
   // ---------- 介面 ----------
   undo: 'M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3',
   redo: 'M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3',

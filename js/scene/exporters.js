@@ -21,7 +21,7 @@ export function exportPng(viewer, furnitureLayer) {
 
 export function exportGlb(viewer, furnitureLayer) {
   return withoutDecorations(furnitureLayer, async () => {
-    const targets = ['house', 'furniture'].map((name) => viewer.scene.getObjectByName(name)).filter(Boolean);
+    const targets = ['house', 'doors', 'furniture'].map((name) => viewer.scene.getObjectByName(name)).filter(Boolean);
     viewer.scene.updateMatrixWorld();
     const buffer = await new GLTFExporter().parseAsync(targets, { binary: true, onlyVisible: true });
     return new Blob([buffer], { type: 'model/gltf-binary' });

@@ -1,7 +1,8 @@
 // 設計檔格式：版本、建立、遷移、驗證；不依賴瀏覽器 API，可在 node 測試
+import { DOOR_TYPES } from '../core/doors.js';
 import { getCatalogItem, SIZE_LIMITS } from '../furniture/catalog.js';
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 export const DEFAULT_CEILING = 2.8;
 export const DEFAULT_CEILING_COLOR = '#f4f2ee';
 export const CEILING_LIMITS = { min: 2, max: 5 };
@@ -19,6 +20,8 @@ export class DesignFormatError extends Error {
 export const MIGRATIONS = {
   // 第 2 版加入天花板顏色
   1: (d) => ({ ...d, schemaVersion: 2, ceilingColor: DEFAULT_CEILING_COLOR }),
+  // 第 3 版加入門設定；空物件＝每個開口都用預設門型
+  2: (d) => ({ ...d, schemaVersion: 3, doors: {} }),
 };
 
 export function createDesign({ id, name, now, floorplanRef = null }) {
@@ -32,6 +35,7 @@ export function createDesign({ id, name, now, floorplanRef = null }) {
     ceilingHeight: DEFAULT_CEILING,
     ceilingColor: DEFAULT_CEILING_COLOR,
     rooms: {},
+    doors: {},
     furniture: [],
   };
 }
@@ -40,6 +44,21 @@ const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 const isColor = (v) => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v);
 const isDate = (v) => typeof v === 'string' && !Number.isNaN(Date.parse(v));
 const isPlainObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+
+const DOOR_TYPE_IDS = new Set(DOOR_TYPES.map((t) => t.id));
+
+function validateDoors(doors, errors) {
+  if (!isPlainObject(doors)) {
+    errors.push('doors 必須是物件');
+    return;
+  }
+  for (const [id, door] of Object.entries(doors)) {
+    if (!DOOR_TYPE_IDS.has(door?.type)) errors.push(`doors.${id}.type 必須是 ${[...DOOR_TYPE_IDS].join('／')}`);
+    for (const key of ['open', 'flip', 'out']) {
+      if (typeof door?.[key] !== 'boolean') errors.push(`doors.${id}.${key} 必須是 true 或 false`);
+    }
+  }
+}
 
 function validateFurniture(list, errors) {
   if (!Array.isArray(list)) {
@@ -97,6 +116,7 @@ export function validateDesign(design) {
       if (!isColor(setting?.floorColor)) errors.push(`rooms.${roomId}.floorColor 必須是 #rrggbb 色碼`);
     }
   }
+  validateDoors(design.doors, errors);
   validateFurniture(design.furniture, errors);
   return errors;
 }

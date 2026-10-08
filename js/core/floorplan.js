@@ -56,11 +56,11 @@ export function buildSolids(fp, ceilingHeight) {
 
 // 開口矩形的長軸方向與中線，用來放玻璃、門片
 export function openingAxis(polygon) {
-  const [a, b, c] = polygon;
+  const [a, b, c, d] = polygon;
   const ab = Math.hypot(b[0] - a[0], b[1] - a[1]);
   const bc = Math.hypot(c[0] - b[0], c[1] - b[1]);
-  // 長邊是開口寬度、短邊是牆厚
-  const [p, q, r] = ab >= bc ? [a, b, c] : [b, c, a];
+  // 長邊是開口寬度、短邊是牆厚；p→q 沿長邊，q→r 是緊接著的短邊
+  const [p, q, r] = ab >= bc ? [a, b, c] : [b, c, d];
   const width = Math.max(ab, bc);
   const thickness = Math.min(ab, bc);
   const dir = [(q[0] - p[0]) / width, (q[1] - p[1]) / width];

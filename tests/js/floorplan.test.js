@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGlass, buildSolids, fixturesToFurniture, planToWorld, validateFloorplan } from '../../js/core/floorplan.js';
+import { buildGlass, buildSolids, fixturesToFurniture, openingAxis, planToWorld, validateFloorplan } from '../../js/core/floorplan.js';
 
 const rect = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
 
@@ -147,4 +147,19 @@ test('fixturesToFurniture 轉成家具並配上新 id 與目錄顏色，未知�
   assert.deepEqual(furniture, [
     { id: 'f1', type: 'toilet', x: 7.15, y: 1.1, rotation: 180, size: { w: 40, d: 70, h: 75 }, color: '#fafafa' },
   ]);
+});
+
+test('openingAxis 矩形從短邊（牆厚）開始排列時，仍算出正確的中線與方向', () => {
+  // Arrange：轉換器產生的開口是 [牆端a, 牆端b, 對面b, 對面a]，第一條邊是 15 cm 的牆厚
+  const polygon = [[1, 0], [1, 0.15], [2.1, 0.15], [2.1, 0]];
+
+  // Act
+  const axis = openingAxis(polygon);
+
+  // Assert：開口沿 x 寬 1.1 m、中線在 y=0.075
+  assert.ok(Math.abs(axis.width - 1.1) < 1e-9);
+  assert.ok(Math.abs(axis.thickness - 0.15) < 1e-9);
+  assert.deepEqual(axis.dir.map((v) => Math.round(v * 1e6) / 1e6), [1, 0]);
+  assert.ok(Math.abs(axis.start[0] - 1) < 1e-9 && Math.abs(axis.start[1] - 0.075) < 1e-9, `start=${axis.start}`);
+  assert.ok(Math.abs(axis.across[0]) < 1e-9 && Math.abs(Math.abs(axis.across[1]) - 1) < 1e-9, `across=${axis.across}`);
 });

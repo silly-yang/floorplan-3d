@@ -1,9 +1,11 @@
 // 進入點：載入平面圖、建立 3D 場景、串起各面板
 import { createSession } from './app/session.js';
 import { createStore } from './app/store.js';
+import { blocksPassage, doorStateOf } from './core/doors.js';
 import { buildSolids, fixturesToFurniture, validateFloorplan } from './core/floorplan.js';
 import { pointInPolygon, pointSegmentDistance } from './core/geometry2d.js';
 import { Editor } from './interact/editor.js';
+import { DoorLayer } from './scene/doorLayer.js';
 import { exportGlb, exportPng } from './scene/exporters.js';
 import { FurnitureLayer } from './scene/furnitureLayer.js';
 import { buildHouse, disposeObject, floorColorOf } from './scene/house.js';
@@ -12,6 +14,7 @@ import { DesignStore, StorageUnavailableError } from './storage/localStore.js';
 import { fingerprint } from './storage/schema.js';
 import { renderCatalog } from './ui/catalogPanel.js';
 import { $, alertDialog, el, toast } from './ui/dom.js';
+import { setupDoorPanel } from './ui/doorPanel.js';
 import { iconSvg } from './ui/icons.js';
 import { setupInspector } from './ui/inspector.js';
 import { makeStatusHandler, setupSessionUi } from './ui/sessionUi.js';
@@ -111,14 +114,20 @@ function makeSolidsGetter(floorplan, store) {
   };
 }
 
-function makeWalkCollision(getSolids) {
-  return ([x, y]) =>
-    getSolids()
+// 漫遊時擋路的東西：牆、窗台，加上關著的門
+function makeWalkCollision(getSolids, floorplan, store) {
+  return ([x, y]) => {
+    const doors = store.getState().doors;
+    const closedDoors = floorplan.openings
+      .filter((o) => blocksPassage(doorStateOf(doors, o)))
+      .map((o) => ({ polygon: o.polygon, bottom: 0 }));
+    return [...getSolids(), ...closedDoors]
       .filter((s) => s.bottom < BODY_HEIGHT)
       .every(({ polygon }) => {
         if (pointInPolygon([x, y], polygon)) return false;
         return polygon.every((a, i) => pointSegmentDistance([x, y], a, polygon[(i + 1) % polygon.length]) > WALKER_RADIUS);
       });
+  };
 }
 
 function setupFloorPanel(floorplan, store) {
@@ -271,13 +280,13 @@ async function main() {
     await alertDialog('無法載入平面圖', error.message);
     return;
   }
-  const store = createStore({ ceilingHeight: 2.8, ceilingColor: '#f4f2ee', rooms: {}, furniture: [] });
+  const store = createStore({ ceilingHeight: 2.8, ceilingColor: '#f4f2ee', rooms: {}, doors: {}, furniture: [] });
   let exportAll = () => {};
   const defaultFurniture = () => fixturesToFurniture(floorplan.fixtures, () => crypto.randomUUID());
   const { session, warnings, persistent } = openSession(store, floorplanRef, makeStatusHandler(() => exportAll), defaultFurniture);
   const getSolids = makeSolidsGetter(floorplan, store);
   const viewer = new Viewer($('#stage'), floorplan.bounds);
-  viewer.canWalkTo = makeWalkCollision(getSolids);
+  viewer.canWalkTo = makeWalkCollision(getSolids, floorplan, store);
   setupViewSwitch(viewer);
   const houseView = setupHouse(floorplan, viewer, store);
   setupFloorPanel(floorplan, store);
@@ -286,7 +295,11 @@ async function main() {
   const furnitureLayer = new FurnitureLayer(viewer.scene);
   store.subscribe((design) => furnitureLayer.sync(design.furniture));
   furnitureLayer.sync(store.getState().furniture);
-  const editor = new Editor({ viewer, store, furnitureLayer, getSolids });
+  const doorLayer = new DoorLayer(viewer.scene, floorplan);
+  store.subscribe((design) => doorLayer.sync(design.doors));
+  doorLayer.sync(store.getState().doors);
+  viewer.onFrame((dt) => doorLayer.update(dt));
+  const editor = new Editor({ viewer, store, furnitureLayer, doorLayer, floorplan, getSolids });
   renderCatalog({
     onAdd: (type) => {
       editor.add(type);
@@ -294,6 +307,7 @@ async function main() {
     },
   });
   setupInspector(editor, getSolids);
+  setupDoorPanel(editor, floorplan);
   setupStageTools(editor, houseView);
   setupHistoryButtons(store, editor);
   ({ exportAll } = setupSessionUi({
@@ -307,7 +321,7 @@ async function main() {
     },
   }));
   // 開發驗證用：網址加 ?debug 才暴露內部物件
-  if (new URLSearchParams(location.search).has('debug')) window.__app = { store, viewer, floorplan, furnitureLayer, editor, session };
+  if (new URLSearchParams(location.search).has('debug')) window.__app = { store, viewer, floorplan, furnitureLayer, doorLayer, editor, session };
   if (!persistent) {
     await alertDialog('無法自動儲存', '瀏覽器不允許這個網頁使用儲存空間（可能是無痕模式或隱私設定）。這次的設計只會留在這個分頁，關閉前請到「檔案」匯出。');
   }
