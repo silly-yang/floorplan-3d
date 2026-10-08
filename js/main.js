@@ -1,6 +1,7 @@
 // 進入點：載入平面圖、建立 3D 場景、串起各面板
 import { createFloorplanCatalog, floorplanRefOf } from './app/floorplans.js';
 import { createSession } from './app/session.js';
+import { createSwitchGate } from './app/switchGate.js';
 import { createStore } from './app/store.js';
 import { blocksPassage, doorStateOf } from './core/doors.js';
 import { buildSolids, fixturesToFurniture, missingFixtures, validateFloorplan } from './core/floorplan.js';
@@ -521,10 +522,21 @@ async function main() {
     return app;
   };
 
-  const switchFloorplan = (key) => {
-    const entry = catalog.open(key);
+  // 重建很慢又是同步的：連點時交給 gate 合併成一次，重建中再來的要求忽略
+  // notice：重建完要顯示的訊息，沒給就用切換的預設訊息
+  let gate = null;
+  let notice = null;
+  const rebuild = (key, tasks) => {
     app.dispose();
-    return mount(entry);
+    tasks.forEach((task) => task());
+    mount(catalog.open(key));
+    toast(notice ?? (key === null ? '已切回預設平面圖' : `已切換到「${app.entry.name}」`), { duration: 5000 });
+    notice = null;
+  };
+  // 先確認讀得到才排程，讀不到的錯誤留在呼叫端提示，不會拆了舊場景才失敗
+  const switchFloorplan = (key, message = null) => {
+    catalog.open(key);
+    if (gate.request(key)) notice = message;
   };
 
   const onCreate = (floorplan, name) => {
@@ -535,8 +547,8 @@ async function main() {
       alertDialog('無法儲存平面圖', error.message);
       return;
     }
-    const { entry } = switchFloorplan(result.key);
-    toast(result.existed ? `已經有相同的平面圖「${entry.name}」，直接切換過去` : `已建立平面圖「${name}」`, { duration: 5000 });
+    const existing = catalog.open(result.key).name;
+    switchFloorplan(result.key, result.existed ? `已經有相同的平面圖「${existing}」，直接切換過去` : `已建立平面圖「${name}」`);
   };
 
   const floorplans = {
@@ -550,10 +562,7 @@ async function main() {
     restore: (records) => catalog.restore(records),
     hasFloorplan: (ref) => catalog.keyOf(ref) !== null,
     importDxf: () => openImportWizard({ onCreate }),
-    switchTo: (key) => {
-      switchFloorplan(key);
-      toast(key === null ? '已切回預設平面圖' : `已切換到「${app.entry.name}」`);
-    },
+    switchTo: (key) => switchFloorplan(key),
     rename: (key, name) => {
       catalog.rename(key, name);
       app.refresh();
@@ -566,21 +575,21 @@ async function main() {
         { okLabel: '刪除', danger: true },
       );
       if (!ok) return;
+      const message = `已刪除平面圖「${target.name}」`;
       // 刪的是使用中的平面圖：先存檔拆掉場景，再刪，最後開預設平面圖
-      if (key === app.entry.key) {
-        app.dispose();
-        catalog.remove(key);
-        mount(catalog.open(null));
-      } else {
-        catalog.remove(key);
-        app.refresh();
+      if (key === gate.current) {
+        if (gate.request(null, () => catalog.remove(key))) notice = message;
+        return;
       }
-      toast(`已刪除平面圖「${target.name}」`);
+      catalog.remove(key);
+      app.refresh();
+      toast(message);
     },
   };
 
   const { entry, warning } = catalog.startup();
   const { warnings } = mount(entry);
+  gate = createSwitchGate({ current: entry.key, rebuild, schedule: (run) => setTimeout(run, 0) });
   if (!persistent) {
     await alertDialog('無法自動儲存', '瀏覽器不允許這個網頁使用儲存空間（可能是無痕模式或隱私設定）。這次的設計只會留在這個分頁，關閉前請到「檔案」匯出。');
   }
