@@ -5,6 +5,7 @@ import { COVE_MARGIN, COVE_RECESS, ceilingStateOf, ceilingZones, clipRect } from
 import { floorMaterialOf } from '../core/materials.js';
 import { buildCeilingServices } from './ceilingServices.js';
 import { sizedTexture, proceduralTexture } from './textures.js';
+import { applyFloorTexture, applyWallFinish } from './assetTextures.js';
 
 
 const BASEBOARD_HEIGHT = 0.08;
@@ -48,6 +49,7 @@ export function buildHouse(floorplan, { ceilingHeight, rooms, ceilingColor = '#f
   const wallMaterials = Object.fromEntries(
     Object.entries(WALL_COLORS).map(([k, c]) => [k, new THREE.MeshStandardMaterial({ color: c, roughness: 0.92, map: paint })]),
   );
+  applyWallFinish(Object.values(wallMaterials));
   const wallMeshes = [];
   for (const solid of buildSolids(floorplan, ceilingHeight)) {
     const mesh = extrude(solid.polygon, solid.bottom, solid.top, wallMaterials[solid.kind] ?? wallMaterials.rc);
@@ -85,6 +87,8 @@ export function buildHouse(floorplan, { ceilingHeight, rooms, ceilingColor = '#f
       const map = sizedTexture(look.pattern, color, x1 - x0, y1 - y0, look.tile, look.options);
       map.offset.set(x0 / look.tile, y0 / look.tile);
       const material = new THREE.MeshStandardMaterial({ color: '#ffffff', map, roughness: look.roughness, metalness: 0 });
+      // 有寫實貼圖的材質載入後換上，期間與失敗時維持程式紋理
+      applyFloorTexture(material, look, [x0, y0, x1, y1], rooms?.[room.id]?.floorColor);
       const mesh = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, y1 - y0), material);
       mesh.rotation.x = -Math.PI / 2;
       mesh.position.set((x0 + x1) / 2, 0.002, -(y0 + y1) / 2);
@@ -132,6 +136,7 @@ function wallFader(wallMeshes, paint) {
     opacity: FADED_OPACITY,
     depthWrite: false,
   });
+  applyWallFinish([faded]);
   const apply = (ids) => {
     for (const mesh of wallMeshes) {
       const fade = ids.has(mesh.name);

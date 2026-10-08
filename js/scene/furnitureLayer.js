@@ -3,14 +3,27 @@ import * as THREE from 'three';
 import { planToWorld } from '../core/floorplan.js';
 import { elevationOf } from '../core/layout.js';
 import { buildFurnitureModel, loadExternalTemplate } from '../furniture/models.js';
+import { preparedTemplate, registerRealisticModels, tintExternal } from '../furniture/externalModels.js';
+import { veneerMaterial } from './assetTextures.js';
 import { disposeObject } from './house.js';
 
 const SELECT_COLOR = '#2f6f62';
+const CABINET_BODY = '#e9e4dc';
+
+registerRealisticModels();
 const CONFLICT_COLOR = '#d64545';
 
 // 系統櫃、洞洞板的外觀取決於各自的設計，設計一改就要重建；電視的吋數、放置方式決定機身與腳座
 const modelKey = (item, design) =>
   `${item.type}|${item.size.w}|${item.size.d}|${item.size.h}|${item.color}|${item.options?.top ?? ''}|${item.options?.inch ?? ''}|${item.options?.mount ?? ''}|${design ? JSON.stringify(design) : ''}`;
+
+// 系統櫃的門片、抽屜面板換成木皮；櫃體目前固定淺色，所以是白橡
+function withVeneer(model) {
+  model.traverse((node) => {
+    if (node.userData.front) node.material = veneerMaterial(CABINET_BODY);
+  });
+  return model;
+}
 
 function outline(item, color) {
   const w = item.size.w / 100;
@@ -89,11 +102,12 @@ export class FurnitureLayer {
     const key = modelKey(item, cabinet ?? pegboard);
     if (key !== entry.key) {
       entry.key = key;
-      this.#replaceModel(entry, buildFurnitureModel(item, null, cabinet, pegboard));
-      // 有註冊外部模型時，載入完成再換上去；期間先顯示程式化模型
-      loadExternalTemplate(item.type).then((template) => {
+      this.#replaceModel(entry, withVeneer(buildFurnitureModel(item, null, cabinet, pegboard)));
+      // 有註冊外部模型時，載入完成再換上去；期間與載入失敗時顯示程式化模型
+      loadExternalTemplate(item.type).then((raw) => {
+        const template = preparedTemplate(item.type, raw);
         if (template && entry.key === key && this.entries.get(item.id) === entry) {
-          this.#replaceModel(entry, buildFurnitureModel(item, template));
+          this.#replaceModel(entry, tintExternal(buildFurnitureModel(item, template), item));
         }
       });
     }

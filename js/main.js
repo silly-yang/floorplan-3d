@@ -19,7 +19,7 @@ import { footprint, walkBlockers } from './core/layout.js';
 import { occludingWalls } from './core/occlusion.js';
 import { buildGrid } from './scene/gridLayer.js';
 import { buildHouse, disposeObject, floorColorOf } from './scene/house.js';
-import { textureThumbnail } from './scene/textures.js';
+import { floorThumbnail } from './scene/assetTextures.js';
 import { Viewer } from './scene/viewer.js';
 import { FloorplanStore } from './storage/floorplanStore.js';
 import { DesignStore } from './storage/localStore.js';
@@ -179,7 +179,7 @@ function setupFloorPanel(floorplan, store) {
               'aria-pressed': String(m.id === currentMaterial),
               onclick: () => pickMaterial(m.id),
             },
-              el('img', { src: textureThumbnail(m.pattern, m.color, m.options), alt: '' }),
+              el('img', { src: floorThumbnail(m), alt: '', loading: 'lazy' }),
               el('span', {}, m.name),
             )));
         input.addEventListener('input', () => {
