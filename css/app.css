@@ -801,3 +801,32 @@ select {
     border-top: 1px solid var(--line);
   }
 }
+
+.designer-section {
+  width: 240px;
+  padding: 16px 8px;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--line);
+}
+
+.designer-section h3 {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0 0 8px;
+}
+
+.cabinet-side-svg {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+@media (max-width: 760px) {
+  .designer-section {
+    width: auto;
+    height: 30vh;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+}

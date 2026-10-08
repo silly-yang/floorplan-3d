@@ -97,6 +97,39 @@ export function cabinetElevation(cab, { selected = null, issues = [], onCell = n
   return root;
 }
 
+const USABLE_DEPTH_GAP = 2; // 背板與留縫；與 cabinetIssues 的可用深度一致
+
+// 側面剖面圖：選取那一欄從側面看，左邊是櫃子正面；顯示櫃深、每格高度與格內家電的深度
+export function cabinetSideView(cab, col, { selectedCell = null } = {}) {
+  const { d, h } = cab.size;
+  const usable = d - USABLE_DEPTH_GAP;
+  const root = svg('svg', { viewBox: `-14 -8 ${d + 40} ${h + 22}`, class: 'cabinet-side-svg', preserveAspectRatio: 'xMidYMid meet' });
+  const flipY = (y, height) => h - y - height;
+  root.append(svg('rect', { x: 0, y: h - PLINTH, width: d - 4, height: PLINTH, fill: '#5a5a5a' }));
+  root.append(svg('rect', { x: usable, y: 0, width: USABLE_DEPTH_GAP, height: h - PLINTH, fill: '#b9ae9f' }));
+  cab.columns[col].cells.forEach((cell, index) => {
+    const b = cellBox(cab, col, index);
+    root.append(svg('rect', {
+      x: 0, y: flipY(b.y, b.h), width: usable, height: b.h,
+      fill: KIND_FILL[cell.kind] ?? '#fff', stroke: index === selectedCell ? '#2f6f62' : '#8a7f70', 'stroke-width': index === selectedCell ? 2.5 : 1,
+    }));
+    // 同一格多台家電在側面會重疊，取最深的一台畫
+    const deepest = cell.items.map((it) => getCatalogItem(it.type)).filter(Boolean).sort((a, b2) => b2.size.d - a.size.d)[0];
+    if (deepest) {
+      const tooDeep = deepest.size.d > usable;
+      root.append(svg('rect', { x: 0, y: flipY(b.y, deepest.size.h), width: deepest.size.d, height: Math.min(deepest.size.h, b.h), fill: tooDeep ? '#f6d4d4' : '#dfe7ec', stroke: tooDeep ? '#d64545' : '#566', 'stroke-width': 0.8 }));
+      const note = tooDeep ? `超出 ${deepest.size.d - usable} cm` : `後方剩 ${usable - deepest.size.d} cm`;
+      root.append(svg('text', { x: 2, y: flipY(b.y, deepest.size.h) - 2, 'font-size': 5, fill: tooDeep ? '#b4423a' : '#335' }, document.createTextNode(`${deepest.name} 深 ${deepest.size.d}・${note}`)));
+    }
+  });
+  root.append(svg('rect', { x: 0, y: 0, width: d, height: h - PLINTH, fill: 'none', stroke: '#5f564b', 'stroke-width': 1.5 }));
+  // 深度尺寸線
+  root.append(svg('line', { x1: 0, x2: d, y1: h + 6, y2: h + 6, stroke: '#333', 'stroke-width': 0.6 }));
+  root.append(svg('text', { x: d / 2, y: h + 13, 'font-size': 6, 'text-anchor': 'middle', fill: '#333' }, document.createTextNode(`深 ${d} cm（可用 ${usable}）`)));
+  root.append(svg('text', { x: -3, y: (h - PLINTH) / 2, 'font-size': 5, 'text-anchor': 'end', fill: '#777' }, document.createTextNode('正面')));
+  return root;
+}
+
 // onSave(cab) 由呼叫端寫進方案
 export function openCabinetDesigner(initial, { onSave }) {
   let cab = structuredClone(initial);
@@ -199,6 +232,10 @@ export function openCabinetDesigner(initial, { onSave }) {
             },
           }),
           el('p', { class: 'note' }, '點格子選取；把右邊的家電拖進格子，或選好格子後點家電。單位：公分。'),
+        ),
+        el('div', { class: 'designer-section' },
+          el('h3', {}, `側面剖面（第 ${selected.col + 1} 欄）`),
+          cabinetSideView(cab, selected.col, { selectedCell: selected.cell }),
         ),
         el('aside', { class: 'designer-side' },
           el('h3', {}, `第 ${selected.col + 1} 欄、由下往上第 ${selected.cell + 1} 格`),
