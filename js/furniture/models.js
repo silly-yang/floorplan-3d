@@ -122,6 +122,99 @@ const BUILDERS = {
     box(g, [w * 0.82, Math.max(h, 0.005) + 0.001, d * 0.78], [0, Math.max(h, 0.005) / 2, 0], c.light, 1);
   },
 
+  'kitchen-island': (g, w, d, h, c) => counterBody(g, w, d, h, c, { top: '#d9d4cb' }),
+
+  'kitchen-counter': (g, w, d, h, c) => {
+    counterBody(g, w, d, h, c, { top: '#cfcac2' });
+    // 水槽、爐台、抽油煙機：位置依檯面寬度比例放
+    box(g, [Math.min(0.55, w * 0.25), 0.012, d * 0.6], [-w * 0.22, h + 0.004, 0.02], '#9aa2aa', 0.3);
+    box(g, [0.03, 0.22, 0.03], [-w * 0.22, h + 0.11, -d / 2 + 0.08], METAL);
+    box(g, [Math.min(0.6, w * 0.27), 0.012, d * 0.6], [w * 0.24, h + 0.004, 0.02], '#202225', 0.3);
+    box(g, [Math.min(0.75, w * 0.32), 0.35, 0.45], [w * 0.24, h + 0.75, -d / 2 + 0.22], '#c9cdd1', 0.4);
+  },
+
+  toilet: (g, w, d, h, c) => {
+    box(g, [w * 0.9, h * 0.45, d * 0.25], [0, h * 0.775, -d / 2 + d * 0.125], c.main, 0.3);
+    cylinder(g, [w * 0.45, w * 0.32, h * 0.55, 16], [0, h * 0.275, d * 0.1], c.main);
+    box(g, [w * 0.95, 0.03, d * 0.65], [0, h * 0.56, d * 0.12], c.light, 0.3);
+  },
+
+  basin: (g, w, d, h, c) => {
+    box(g, [w, h * 0.7, d * 0.9], [0, h * 0.35, 0], '#b9a68f');
+    box(g, [w, h * 0.3, d], [0, h * 0.85, 0], c.main, 0.3);
+    box(g, [w * 0.6, 0.02, d * 0.55], [0, h + 0.001, 0.03], '#dfe3e6', 0.2);
+    box(g, [0.03, 0.18, 0.03], [0, h + 0.09, -d / 2 + 0.06], METAL);
+    box(g, [w * 0.9, 0.6, 0.02], [0, h + 0.55, -d / 2 + 0.01], '#cfe0ea', 0.1);
+  },
+
+  'coffee-machine': (g, w, d, h, c) => {
+    box(g, [w, h * 0.12, d], [0, h * 0.06, 0], c.dark);
+    box(g, [w, h * 0.88, d * 0.45], [0, h * 0.56, -d * 0.275], c.main, 0.4);
+    box(g, [w, h * 0.22, d * 0.55], [0, h * 0.89, d * 0.225], c.main, 0.4);
+    cylinder(g, [w * 0.18, w * 0.15, h * 0.22, 12], [0, h * 0.23, d * 0.2], '#f4f1ec');
+  },
+
+  microwave: (g, w, d, h, c) => {
+    box(g, [w, h, d], [0, h / 2, 0], c.main, 0.4);
+    box(g, [w * 0.68, h * 0.75, 0.005], [-w * 0.12, h / 2, d / 2], '#2a2d31', 0.2);
+    box(g, [w * 0.2, h * 0.6, 0.006], [w * 0.36, h / 2, d / 2], c.dark);
+  },
+
+  'rice-cooker': (g, w, d, h, c) => {
+    cylinder(g, [w * 0.48, w * 0.45, h * 0.75, 18], [0, h * 0.375, 0], c.main);
+    cylinder(g, [w * 0.35, w * 0.48, h * 0.18, 18], [0, h * 0.84, 0], c.light);
+    cylinder(g, [w * 0.06, w * 0.06, h * 0.07, 8], [0, h * 0.965, 0], '#3a3a3a');
+    for (const s of [-1, 1]) box(g, [w * 0.12, h * 0.06, w * 0.08], [s * w * 0.52, h * 0.6, 0], '#3a3a3a');
+  },
+
+  laptop: (g, w, d, h, c) => {
+    box(g, [w, 0.015, d], [0, 0.0075, 0], c.main, 0.4);
+    const screen = box(g, [w, h, 0.008], [0, h / 2 * 0.95 + 0.01, -d / 2 + 0.03], c.dark, 0.4);
+    screen.rotation.x = -0.25;
+    box(g, [w * 0.9, h * 0.85, 0.001], [0, h / 2 * 0.95 + 0.01, -d / 2 + 0.036], '#1e2a38', 0.2).rotation.x = -0.25;
+  },
+
+  'desk-lamp': (g, w, d, h, c) => {
+    cylinder(g, [w * 0.45, w * 0.5, 0.02, 16], [0, 0.01, 0], c.main);
+    box(g, [0.015, h * 0.75, 0.015], [0, h * 0.375, 0], c.main);
+    const shade = cylinder(g, [w * 0.15, w * 0.45, h * 0.25, 16], [0, h * 0.85, d * 0.15], c.main);
+    shade.rotation.x = 0.4;
+  },
+
+  'robot-vacuum': (g, w, d, h, c) => {
+    cylinder(g, [w / 2, w / 2, h * 0.85, 24], [0, h * 0.425 + h * 0.05, 0], c.main);
+    cylinder(g, [w * 0.12, w * 0.12, h * 0.15, 16], [0, h * 0.95, -d * 0.18], '#5b6168');
+    box(g, [w * 0.6, h * 0.3, 0.01], [0, h * 0.5, d / 2 - 0.01], '#45494e');
+  },
+
+  'washing-machine': (g, w, d, h, c) => {
+    box(g, [w, h, d], [0, h / 2, 0], c.main, 0.35);
+    box(g, [w * 0.9, h * 0.1, 0.006], [0, h * 0.92, d / 2], c.dark);
+    const door = cylinder(g, [w * 0.3, w * 0.3, 0.02, 24], [0, h * 0.48, d / 2 + 0.01], '#9fb4c2');
+    door.rotation.x = Math.PI / 2;
+  },
+
+  'air-purifier': (g, w, d, h, c) => {
+    box(g, [w, h, d], [0, h / 2, 0], c.main, 0.5);
+    for (let i = 0; i < 5; i++) box(g, [w * 0.7, 0.008, 0.004], [0, h * (0.3 + i * 0.08), d / 2], c.dark);
+    box(g, [w * 0.8, 0.01, d * 0.8], [0, h + 0.005, 0], '#b7bcc2');
+  },
+
+  fan: (g, w, d, h, c) => {
+    cylinder(g, [w * 0.35, w * 0.4, 0.04, 16], [0, 0.02, 0], c.main);
+    cylinder(g, [0.015, 0.015, h * 0.6, 8], [0, h * 0.3, 0], c.main);
+    const head = cylinder(g, [w * 0.48, w * 0.48, 0.06, 24], [0, h - w * 0.5, 0], c.light);
+    head.rotation.x = Math.PI / 2;
+    const hub = cylinder(g, [0.04, 0.04, 0.08, 12], [0, h - w * 0.5, 0.02], c.dark);
+    hub.rotation.x = Math.PI / 2;
+  },
+
+  'floor-lamp': (g, w, d, h, c) => {
+    cylinder(g, [w * 0.35, w * 0.4, 0.03, 16], [0, 0.015, 0], c.main);
+    cylinder(g, [0.012, 0.012, h * 0.82, 8], [0, h * 0.41, 0], c.main);
+    cylinder(g, [w * 0.3, w * 0.5, h * 0.18, 16], [0, h * 0.91, 0], '#f1e6cf');
+  },
+
   plant: (g, w, d, h, c) => {
     const r = Math.min(w, d) / 2;
     cylinder(g, [r * 0.7, r * 0.55, h * 0.3, 12], [0, h * 0.15, 0], '#b6866a');
@@ -138,6 +231,16 @@ const BUILDERS = {
     }
   },
 };
+
+// 櫃體＋踢腳內縮＋檯面＋門板分隔；中島櫃與廚具共用
+function counterBody(g, w, d, h, c, { top }) {
+  const kick = 0.08;
+  box(g, [w - 0.04, kick, d - 0.06], [0, kick / 2, -0.03], '#4b4b4b');
+  box(g, [w, h - kick - 0.03, d], [0, kick + (h - kick - 0.03) / 2, 0], c.main);
+  box(g, [w + 0.02, 0.03, d + 0.03], [0, h - 0.015, 0.01], top, 0.35);
+  const doors = Math.max(2, Math.round(w / 0.6));
+  for (let i = 1; i < doors; i++) box(g, [0.005, h - kick - 0.08, 0.004], [-w / 2 + (w / doors) * i, kick + (h - kick) / 2, d / 2], c.dark);
+}
 
 function bed(g, w, d, h, c, pillows) {
   const baseH = Math.min(0.3, h * 0.3);

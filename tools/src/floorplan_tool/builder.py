@@ -101,5 +101,16 @@ def build_floorplan(doc: DxfDocument, config: Config) -> BuildResult:
             for o in openings
         ],
         "rooms": rooms,
+        # 建商附的廚具、衛浴；新方案會以此為預設家具
+        "fixtures": [
+            {
+                "type": f.type,
+                "x": pt(f.center)[0],
+                "y": pt(f.center)[1],
+                "rotation": f.rotation,
+                "size": {"w": f.size[0], "d": f.size[1], "h": f.size[2]},
+            }
+            for f in config.fixtures
+        ],
     }
     return BuildResult(floorplan=floorplan, warnings=warnings)

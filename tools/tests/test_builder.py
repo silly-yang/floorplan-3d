@@ -137,3 +137,41 @@ def test_build_floorplan_with_railing_line_should_close_room(
     # Assert
     rects = floorplan["rooms"][0]["rects"]
     assert max(r[3] for r in rects) <= 1.9
+
+
+def test_build_floorplan_should_convert_fixtures_to_plan_meters(
+    dxf: DxfFactory, raw_config: dict[str, Any]
+) -> None:
+    # Arrange：圖面單位 cm，原點會平移到牆體外框左下角 (OFFSET, OFFSET)
+    raw_config["fixtures"] = [
+        {
+            "type": "toilet",
+            "center": [OFFSET + 150, OFFSET + 50],
+            "size": [40, 70, 75],
+            "rotation": 180,
+        }
+    ]
+
+    # Act
+    floorplan = _build(dxf, raw_config).floorplan
+
+    # Assert
+    assert floorplan["fixtures"] == [
+        {
+            "type": "toilet",
+            "x": 1.5,
+            "y": 0.5,
+            "rotation": 180.0,
+            "size": {"w": 40.0, "d": 70.0, "h": 75.0},
+        }
+    ]
+
+
+def test_build_floorplan_without_fixtures_should_output_empty_list(
+    dxf: DxfFactory, raw_config: dict[str, Any]
+) -> None:
+    # Act
+    floorplan = _build(dxf, raw_config).floorplan
+
+    # Assert
+    assert floorplan["fixtures"] == []

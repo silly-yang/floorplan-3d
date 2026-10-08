@@ -1,0 +1,67 @@
+// 線條 icon（24×24、描邊）；家具家電與介面按鈕共用，風格一致且各平台顯示相同
+// 內容都是寫死的常數，可以直接放進 innerHTML
+
+export const ICONS = {
+  // ---------- 家具 ----------
+  sofa: 'M5 11V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3M3 11a2 2 0 0 1 4 0v2h10v-2a2 2 0 0 1 4 0v5H3zM5 16v2M19 16v2',
+  armchair: 'M7 11V7a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v4M4 11a2 2 0 0 1 3 1.7V14h10v-1.3A2 2 0 0 1 20 11v6H4zM6 17v2M18 17v2',
+  'coffee-table': 'M3 11h18M5 11v6M19 11v6M7 15h10',
+  'dining-table': 'M3 9h18M6 9v10M18 9v10M3 7h18',
+  'dining-chair': 'M8 3v18M8 13h9v8M11 6v4',
+  'double-bed': 'M3 19V8M3 14h18v5M21 14v-2a2 2 0 0 0-2-2h-7v4M6 12h3',
+  'single-bed': 'M6 19V7M6 14h12v5M18 14v-1a2 2 0 0 0-2-2h-4v3M8 12h2',
+  wardrobe: 'M5 3h14v18H5zM12 3v18M10 11v2M14 11v2',
+  desk: 'M3 8h18M4 8v12M20 8v12M14 8v5h6M16 10.5h2',
+  'tv-stand': 'M5 3h14v9H5zM10 12v2M14 12v2M3 14h18v5H3zM12 14v5',
+  'kitchen-island': 'M3 9h18v10H3zM3 12h18M8 15h2M14 15h2M12 12v7',
+  fridge: 'M6 3h12v18H6zM6 10h12M9 6v2M9 13v3',
+  rug: 'M4 6h16v12H4zM7 9h10v6H7zM4 4v2M8 4v2M12 4v2M16 4v2M20 4v2M4 18v2M8 18v2M12 18v2M16 18v2M20 18v2',
+  plant: 'M8 15h8l-1 6H9zM12 15V9M12 11C9 11 7 9 7 6c3 0 5 2 5 5zM12 10c0-3 2-5 5-5 0 3-2 5-5 5z',
+  // ---------- 家電 ----------
+  'coffee-machine': 'M6 3h12v4H6zM7 7v11M17 7v11M5 21h14M9 13h5v4H9zM14 14h1a1.5 1.5 0 0 1 0 3h-1M11 9v2',
+  microwave: 'M3 6h18v12H3zM5 8h11v8H5zM18.5 9v.01M18.5 12v.01M18.5 15v.01',
+  'rice-cooker': 'M5 11h14v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zM4 11h16M7 11a5 3 0 0 1 10 0M12 6v2M3 14h2M19 14h2',
+  laptop: 'M5 5h14v10H5zM3 18h18M10 18v-1h4v1',
+  'desk-lamp': 'M7 21h8M11 21v-7M11 14l5-6M14 5l5 2-1.5 3.5L12.5 9z',
+  'robot-vacuum': 'M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM8 10h8M12 14.5v.01',
+  'washing-machine': 'M5 3h14v18H5zM5 7h14M8 5h2M12 10a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM10.5 14.5c1-.8 2-.8 3 0',
+  'air-purifier': 'M8 3h8a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM10 7h4M10 10h4M10 13h4M10 17h4',
+  fan: 'M12 4a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM12 9l3-2.5M12 9l-3.5-1M12 9l.5 3.5M12 14v6M8 21h8',
+  'floor-lamp': 'M8 3h8l2 6H6zM12 9v11M8 21h8',
+  // ---------- 廚衛 ----------
+  'kitchen-counter': 'M2 10h20v10H2zM2 13h20M6 7h3v3M5 7h5M15 10.5h4M14 16h2M8 16h2',
+  toilet: 'M7 3h7v6H7zM5 9h11c0 4-3 6-5.5 6S5 13 5 9zM8 15l-1 6h8l-1-6',
+  basin: 'M4 9h16a8 5 0 0 1-16 0zM12 9V5h3M9 14v7M15 14v7',
+  // ---------- 介面 ----------
+  undo: 'M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3',
+  redo: 'M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3',
+  add: 'M12 5v14M5 12h14',
+  rename: 'M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4',
+  duplicate: 'M8 8h12v12H8zM16 8V4H4v12h4',
+  delete: 'M4 7h16M10 11v6M14 11v6M5 7l1 13h12l1-13M9 7V4h6v3',
+  grid: 'M4 4h16v16H4zM4 9.3h16M4 14.7h16M9.3 4v16M14.7 4v16',
+  cutaway: 'M3 20h18M5 20v-7h14v7M5 13l3-4M19 13l-3-4M8 9h8',
+  ceiling: 'M3 5h18M5 5v3M19 5v3M12 5v4M9 13a3 3 0 0 0 6 0zM12 16v1',
+  'view-3d': 'M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5',
+  'view-top': 'M4 4h16v16H4zM4 12h7v8M11 4v5h9',
+  'view-walk': 'M13 3.5v.01M10 21l2-6 3 3v3M9 12l2-3 3 1 2 3M11 9l-1 6',
+  'rotate-cw': 'M20 12a8 8 0 1 1-2.3-5.6M20 4v4h-4',
+  'rotate-ccw': 'M4 12a8 8 0 1 0 2.3-5.6M4 4v4h4',
+  export: 'M12 4v11M7 10l5 5 5-5M5 20h14',
+  import: 'M12 15V4M7 9l5-5 5 5M5 20h14',
+  camera: 'M4 8h4l2-3h4l2 3h4v11H4zM12 10a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z',
+  cube: 'M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5',
+  'tab-furniture': 'M5 11V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3M3 11a2 2 0 0 1 4 0v2h10v-2a2 2 0 0 1 4 0v5H3zM5 16v2M19 16v2',
+  'tab-appliance': 'M6 3h12v4H6zM7 7v11M17 7v11M5 21h14M9 13h5v4H9z',
+  'tab-fixture': 'M4 9h16a8 5 0 0 1-16 0zM12 9V5h3M9 14v7M15 14v7',
+  'tab-floor': 'M3 9l9-5 9 5-9 5zM3 14l9 5 9-5',
+  'tab-files': 'M3 6h6l2 2h10v11H3z',
+  close: 'M6 6l12 12M18 6L6 18',
+  open: 'M5 12h14M13 6l6 6-6 6',
+};
+
+export function iconSvg(name) {
+  const path = ICONS[name];
+  if (!path) throw new Error(`沒有這個 icon：${name}`);
+  return `<svg aria-hidden="true" class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="${path}"/></svg>`;
+}

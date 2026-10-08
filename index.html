@@ -22,40 +22,52 @@
       <div class="scheme-bar" id="scheme-bar"></div>
       <span class="save-status" id="save-status" aria-live="polite"></span>
       <div class="topbar-actions">
-        <button class="btn" id="undo-btn" title="復原（Ctrl+Z）" disabled>↶ <span>復原</span></button>
-        <button class="btn" id="redo-btn" title="重做（Ctrl+Y）" disabled>↷ <span>重做</span></button>
+        <button class="btn" id="undo-btn" data-icon="undo" title="復原（Ctrl+Z）" disabled><span>復原</span></button>
+        <button class="btn" id="redo-btn" data-icon="redo" title="重做（Ctrl+Y）" disabled><span>重做</span></button>
       </div>
     </header>
 
     <div class="layout">
       <aside class="sidebar" id="sidebar">
         <nav class="tabs" role="tablist">
-          <button role="tab" data-tab="furniture" aria-selected="true">家具</button>
-          <button role="tab" data-tab="floors">地板</button>
-          <button role="tab" data-tab="files">檔案</button>
-          <button role="tab" data-tab="cloud">雲端</button>
+          <button role="tab" data-tab="furniture" data-icon="tab-furniture" aria-selected="true"><span>家具</span></button>
+          <button role="tab" data-tab="appliance" data-icon="tab-appliance"><span>家電</span></button>
+          <button role="tab" data-tab="fixture" data-icon="tab-fixture"><span>廚衛</span></button>
+          <button role="tab" data-tab="floors" data-icon="tab-floor"><span>空間</span></button>
+          <button role="tab" data-tab="files" data-icon="tab-files"><span>檔案</span></button>
         </nav>
         <section class="tab-panel" data-panel="furniture">
-          <p class="hint-text">把家具拖進右側畫面放置；手機上點一下即可放到畫面中央。</p>
-          <ul class="catalog" id="catalog"></ul>
+          <p class="hint-text">拖進右側畫面放置；手機上點一下即可放到畫面中央。</p>
+          <ul class="catalog" id="catalog-furniture"></ul>
+        </section>
+        <section class="tab-panel" data-panel="appliance" hidden>
+          <p class="hint-text">咖啡機、電鍋這類桌上型家電拖到桌面、櫃面或流理台上，會自動放到檯面高度。</p>
+          <ul class="catalog" id="catalog-appliance"></ul>
+        </section>
+        <section class="tab-panel" data-panel="fixture" hidden>
+          <p class="hint-text">建商附的廚具與衛浴已預先擺好，可以移動、調整尺寸或刪除；也可以從這裡再新增。</p>
+          <ul class="catalog" id="catalog-fixture"></ul>
         </section>
         <section class="tab-panel" data-panel="floors" hidden>
           <label class="field">
             <span>樓高（公尺）</span>
             <input type="number" id="ceiling-input" min="2" max="5" step="0.05" />
           </label>
+          <label class="field">
+            <span>天花板顏色</span>
+            <input type="color" id="ceiling-color" />
+          </label>
           <h2 class="panel-title">各房間地板顏色</h2>
           <ul class="room-list" id="room-list"></ul>
         </section>
         <section class="tab-panel" data-panel="files" hidden id="files-panel"></section>
-        <section class="tab-panel" data-panel="cloud" hidden id="cloud-panel"></section>
       </aside>
 
       <main class="stage" id="stage">
         <div class="view-switch" role="group" aria-label="視角">
-          <button data-view="orbit" aria-pressed="true">3D</button>
-          <button data-view="top">俯視</button>
-          <button data-view="walk" class="walk-btn">漫遊</button>
+          <button data-view="orbit" data-icon="view-3d" aria-pressed="true"><span>3D</span></button>
+          <button data-view="top" data-icon="view-top"><span>俯視</span></button>
+          <button data-view="walk" data-icon="view-walk" class="walk-btn"><span>漫遊</span></button>
         </div>
         <div class="stage-tools" id="stage-tools"></div>
         <div class="walk-overlay" id="walk-overlay" hidden>

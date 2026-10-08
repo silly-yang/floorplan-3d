@@ -3,7 +3,7 @@
 距離類欄位（clip、gap、seed）用圖面單位；高度類欄位（sill、head）用公尺。
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from floorplan_tool.exceptions import ConfigError
@@ -53,6 +53,14 @@ class RoomSeed:
 
 
 @dataclass(frozen=True)
+class FixtureSeed:
+    type: str
+    center: tuple[float, float]
+    size: tuple[float, float, float]  # 公分：寬、深、高
+    rotation: float
+
+
+@dataclass(frozen=True)
 class Config:
     unit_scale: float
     clip: Box
@@ -64,6 +72,7 @@ class Config:
     gap_max: float
     rooms: list[RoomSeed]
     ignore_openings: list[str]
+    fixtures: list[FixtureSeed] = field(default_factory=list)
 
 
 def _is_number(value: object) -> bool:
@@ -151,6 +160,49 @@ def _rooms(raw: dict[str, Any], problems: list[str]) -> list[RoomSeed]:
     return result
 
 
+def _fixtures(raw: dict[str, Any], problems: list[str]) -> list[FixtureSeed]:
+    fixtures = raw.get("fixtures", [])
+    if not isinstance(fixtures, list):
+        problems.append(f"fixtures：必須是陣列，收到 {fixtures!r}")
+        return []
+    result: list[FixtureSeed] = []
+    for i, f in enumerate(fixtures):
+        at = f"fixtures[{i}]"
+        if not isinstance(f, dict):
+            problems.append(f"{at}：必須是物件")
+            continue
+        center, size, rotation = f.get("center"), f.get("size"), f.get("rotation", 0)
+        ok = True
+        if not isinstance(f.get("type"), str) or not f["type"]:
+            problems.append(f"{at}.type：必須是家具類型字串")
+            ok = False
+        if not (
+            isinstance(center, list) and len(center) == 2 and all(_is_number(v) for v in center)
+        ):
+            problems.append(f"{at}.center：必須是 [x, y] 兩個數字（圖面單位）")
+            ok = False
+        if not (
+            isinstance(size, list) and len(size) == 3 and all(_is_number(v) and v > 0 for v in size)
+        ):
+            problems.append(f"{at}.size：必須是 [寬, 深, 高] 三個正數（公分）")
+            ok = False
+        if not _is_number(rotation):
+            problems.append(f"{at}.rotation：必須是數字（度）")
+            ok = False
+        if ok:
+            # 上面已逐項驗過；這行只是讓型別檢查知道它們是 list
+            assert isinstance(center, list) and isinstance(size, list)
+            result.append(
+                FixtureSeed(
+                    f["type"],
+                    (float(center[0]), float(center[1])),
+                    (float(size[0]), float(size[1]), float(size[2])),
+                    float(rotation),
+                )
+            )
+    return result
+
+
 # raw 來自 json.load，結構未知，驗證完才轉成具型別的 Config
 def parse_config(raw: Any) -> Config:
     if not isinstance(raw, dict):
@@ -167,6 +219,7 @@ def parse_config(raw: Any) -> Config:
     if gap_min is not None and gap_max is not None and gap_max <= gap_min:
         problems.append(f"gapMax：必須大於 gapMin（{gap_min}），收到 {gap_max}")
     rooms = _rooms(raw, problems)
+    fixtures = _fixtures(raw, problems)
     ignore = raw.get("ignoreOpenings", [])
     if not isinstance(ignore, list) or not all(isinstance(i, str) for i in ignore):
         problems.append(f"ignoreOpenings：必須是字串陣列，收到 {ignore!r}")
@@ -186,4 +239,5 @@ def parse_config(raw: Any) -> Config:
         gap_max=gap_max,
         rooms=rooms,
         ignore_openings=list(ignore),
+        fixtures=fixtures,
     )

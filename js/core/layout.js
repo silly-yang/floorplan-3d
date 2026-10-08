@@ -1,6 +1,6 @@
 // 家具擺放規則：網格、旋轉、撞牆、重疊、牆距、找空位；單位公尺（家具尺寸為公分）
 import { getCatalogItem } from '../furniture/catalog.js';
-import { polygonDistance, polygonsIntersect, rectCorners } from './geometry2d.js';
+import { pointInPolygon, polygonDistance, polygonsIntersect, rectCorners } from './geometry2d.js';
 
 export const GRID_STEP = 0.05;
 export const ROTATION_STEP = 15;
@@ -20,22 +20,29 @@ export function footprint(item) {
   return rectCorners(item.x, item.y, item.size.w / 100, item.size.d / 100, item.rotation);
 }
 
-// 只有底部低於家具高度的量體會擋到（楣樑在頭頂上）
-const blockingSolids = (item, solids) => solids.filter((s) => s.bottom < item.size.h / 100);
+// 只有高度範圍跟家具重疊的量體會擋到（楣樑在頭頂上、窗台在桌上家電的腳下）
+const blockingSolids = (item, solids, elevation = 0) =>
+  solids.filter((s) => s.bottom < elevation + item.size.h / 100 && s.top > elevation);
 
-// solids 為 buildSolids 的輸出
-export function hitsWalls(item, solids) {
+// solids 為 buildSolids 的輸出；elevation 是家具離地高度（公尺）
+export function hitsWalls(item, solids, elevation = 0) {
   const area = footprint(item);
-  return blockingSolids(item, solids).some((s) => polygonsIntersect(area, s.polygon));
+  return blockingSolids(item, solids, elevation).some((s) => polygonsIntersect(area, s.polygon));
 }
 
 export function findConflicts(furniture) {
   const solid = furniture.filter((f) => !getCatalogItem(f.type)?.allowOverlap);
   const areas = solid.map(footprint);
+  const ranges = solid.map((f) => {
+    const bottom = elevationOf(f, furniture);
+    return [bottom, bottom + f.size.h / 100];
+  });
+  // 上下疊放（咖啡機在桌上）只碰到一個面，不算重疊
+  const verticalOverlap = (a, b) => a[0] < b[1] - 1e-9 && b[0] < a[1] - 1e-9;
   const conflicts = new Set();
   for (let i = 0; i < solid.length; i++) {
     for (let j = i + 1; j < solid.length; j++) {
-      if (polygonsIntersect(areas[i], areas[j])) {
+      if (verticalOverlap(ranges[i], ranges[j]) && polygonsIntersect(areas[i], areas[j])) {
         conflicts.add(solid[i].id);
         conflicts.add(solid[j].id);
       }
@@ -87,4 +94,21 @@ export function moveToward(item, target, solids, step = GRID_STEP) {
     last = next;
   }
   return last;
+}
+
+// 桌上型家電底下的檯面家具；沒有就回 null
+export function supportOf(item, furniture) {
+  if (getCatalogItem(item.type)?.placement !== 'surface') return null;
+  const center = [item.x, item.y];
+  const supports = furniture.filter(
+    (f) => f.id !== item.id && getCatalogItem(f.type)?.surface && pointInPolygon(center, footprint(f)),
+  );
+  if (supports.length === 0) return null;
+  return supports.reduce((best, f) => (f.size.h > best.size.h ? f : best));
+}
+
+// 家具離地高度（公尺）：放在檯面上就是檯面高度，否則為 0；檯面家具本身一定落地，不會再往下遞迴
+export function elevationOf(item, furniture) {
+  const support = supportOf(item, furniture);
+  return support ? support.size.h / 100 : 0;
 }

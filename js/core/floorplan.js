@@ -1,4 +1,5 @@
 // floorplan.json 的驗證與 3D 量體計算；不依賴 Three.js，可在 node 測試
+import { getCatalogItem } from '../furniture/catalog.js';
 
 export const FLOORPLAN_VERSION = 1;
 export const GLASS_THICKNESS = 0.02;
@@ -22,6 +23,13 @@ export function validateFloorplan(fp) {
     if (!isPolygon(o?.polygon)) errors.push(`openings[${i}].polygon 至少要 3 個 [x, y] 點`);
     for (const k of ['sill', 'head']) {
       if (!isNum(o?.[k])) errors.push(`openings[${i}].${k} 必須是數字`);
+    }
+  });
+  if (fp.fixtures !== undefined && !Array.isArray(fp.fixtures)) errors.push('fixtures 必須是陣列');
+  (Array.isArray(fp.fixtures) ? fp.fixtures : []).forEach((f, i) => {
+    const sizeOk = ['w', 'd', 'h'].every((k) => isNum(f?.size?.[k]) && f.size[k] > 0);
+    if (typeof f?.type !== 'string' || !isNum(f?.x) || !isNum(f?.y) || !isNum(f?.rotation) || !sizeOk) {
+      errors.push(`fixtures[${i}] 需要 type、x、y、rotation 與正數 size`);
     }
   });
   (fp.rooms ?? []).forEach((r, i) => {
@@ -82,4 +90,11 @@ export function buildGlass(fp) {
 // 平面座標 (x, y) → Three.js 世界座標：x 不變、平面 y 朝上 → 世界 -z
 export function planToWorld([x, y], height = 0) {
   return { x, y: height, z: -y };
+}
+
+// 建商附的廚衛 → 新方案的預設家具
+export function fixturesToFurniture(fixtures, newId) {
+  return (fixtures ?? [])
+    .filter((f) => getCatalogItem(f.type))
+    .map((f) => ({ id: newId(), type: f.type, x: f.x, y: f.y, rotation: f.rotation, size: { ...f.size }, color: getCatalogItem(f.type).color }));
 }

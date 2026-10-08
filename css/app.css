@@ -147,9 +147,15 @@ select {
   flex: 1;
   border: 0;
   background: none;
-  padding: 10px 0;
+  padding: 8px 0 6px;
   cursor: pointer;
   border-bottom: 2px solid transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--muted);
 }
 
 .tabs button[aria-selected='true'] {
@@ -230,11 +236,31 @@ select {
   background: var(--accent-soft);
 }
 
-.catalog .swatch {
-  display: block;
-  height: 26px;
-  border-radius: 4px;
-  margin-bottom: 6px;
+.catalog .tile-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  margin-bottom: 4px;
+  border-radius: 6px;
+  background: #f4f2ee;
+  color: #4a4540;
+  position: relative;
+}
+
+.catalog .tile-color {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.catalog .tile-icon .icon {
+  width: 30px;
+  height: 30px;
 }
 
 .catalog .dims {
@@ -520,6 +546,51 @@ select {
   }
 
   .scheme-bar .btn {
+    display: none;
+  }
+}
+
+/* ---------- icon ---------- */
+.icon {
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.btn,
+.view-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.btn.small .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.btn.icon-only {
+  padding: 4px 6px;
+}
+
+.with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.view-switch .icon {
+  width: 18px;
+  height: 18px;
+}
+
+@media (max-width: 760px) {
+  /* 手機沒有滑鼠與鍵盤，不提供漫遊；要壓過上面 .view-switch button 的 display */
+  .view-switch .walk-btn {
+    display: none;
+  }
+
+  .view-switch button span,
+  .stage-tools .btn .with-icon > span {
     display: none;
   }
 }

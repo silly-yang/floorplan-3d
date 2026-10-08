@@ -1,7 +1,17 @@
 // 右側屬性面板：選取家具的尺寸、顏色、旋轉、重疊警示、到最近牆面的距離
-import { nearestWallDistance } from '../core/layout.js';
+import { nearestWallDistance, supportOf } from '../core/layout.js';
 import { getCatalogItem, normalizeSizeValue } from '../furniture/catalog.js';
 import { $, el } from './dom.js';
+import { iconSvg } from './icons.js';
+
+// 帶 icon 的小按鈕
+function iconButton(icon, label, title, onclick, extra = '') {
+  const button = el('button', { class: `btn small ${extra}`, title, onclick });
+  button.innerHTML = iconSvg(icon);
+  if (label) button.append(el('span', {}, label));
+  else button.setAttribute('aria-label', title);
+  return button;
+}
 
 const DIMENSIONS = [
   ['w', '寬'],
@@ -53,8 +63,11 @@ export function setupInspector(editor, getSolids) {
       colorBase = null;
     });
 
+    const title = el('h2', { class: 'with-icon' });
+    title.innerHTML = iconSvg(item.type);
+    title.append(el('span', {}, getCatalogItem(item.type)?.name ?? item.type));
     panel.replaceChildren(
-      el('h2', {}, getCatalogItem(item.type)?.name ?? item.type),
+      title,
       ...sizeInputs,
       el('label', { class: 'field' }, el('span', {}, '顏色'), color),
       el(
@@ -64,19 +77,20 @@ export function setupInspector(editor, getSolids) {
         el(
           'span',
           { class: 'row' },
-          el('button', { class: 'btn small', title: '逆時針 15°（Shift+R）', onclick: () => editor.rotate(-1) }, '⟲'),
-          el('button', { class: 'btn small', title: '順時針 15°（R）', onclick: () => editor.rotate(1) }, '⟳'),
+          iconButton('rotate-ccw', '', '逆時針 15°（Shift+R）', () => editor.rotate(-1)),
+          iconButton('rotate-cw', '', '順時針 15°（R）', () => editor.rotate(1)),
         ),
       ),
       el('p', { class: 'metric dims' }),
       el('p', { class: 'metric wall' }),
+      el('p', { class: 'metric support' }),
       el('p', { class: 'warn' }),
       el(
         'div',
         { class: 'row' },
-        el('button', { class: 'btn small', title: 'Ctrl+D', onclick: () => editor.duplicate() }, '複製'),
-        el('button', { class: 'btn small danger', title: 'Delete', onclick: () => editor.remove() }, '刪除'),
-        el('button', { class: 'btn small', title: 'Esc', onclick: () => editor.select(null) }, '取消選取'),
+        iconButton('duplicate', '複製', 'Ctrl+D', () => editor.duplicate()),
+        iconButton('delete', '刪除', 'Delete', () => editor.remove(), 'danger'),
+        iconButton('close', '取消選取', 'Esc', () => editor.select(null)),
       ),
     );
     updateMetrics(item);
@@ -91,6 +105,13 @@ export function setupInspector(editor, getSolids) {
     panel.querySelector('.wall').textContent = Number.isFinite(distance)
       ? `離最近牆面 ${Math.round(distance * 100)} cm`
       : '附近沒有牆面';
+    const support = supportOf(item, editor.store.getState().furniture);
+    const placement = getCatalogItem(item.type)?.placement;
+    panel.querySelector('.support').textContent = support
+      ? `放在「${getCatalogItem(support.type)?.name}」上（離地 ${support.size.h} cm）`
+      : placement === 'surface'
+        ? '放在地上；拖到桌面或櫃面上會自動放上去'
+        : '';
     panel.querySelector('.warn').textContent = editor.conflicts.has(item.id) ? '⚠ 與其他家具重疊' : '';
     DIMENSIONS.forEach(([key], i) => {
       const input = panel.querySelectorAll('input[type=number]')[i];

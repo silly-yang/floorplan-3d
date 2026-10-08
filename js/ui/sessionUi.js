@@ -2,6 +2,14 @@
 import { StorageFullError, StorageUnavailableError } from '../storage/localStore.js';
 import { buildExport, exportFileName, findConflict, ImportError, parseImportText, resolveImport } from '../storage/transfer.js';
 import { $, alertDialog, chooseDialog, confirmDialog, downloadBlob, el, promptDialog, toast } from './dom.js';
+import { iconSvg } from './icons.js';
+
+function iconButton(icon, label, attrs) {
+  const button = el('button', attrs);
+  button.innerHTML = iconSvg(icon);
+  if (label) button.append(el('span', {}, label));
+  return button;
+}
 
 const timeOf = (iso) => new Date(iso).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });
 const dateTimeOf = (iso) => new Date(iso).toLocaleString('zh-TW', { dateStyle: 'short', timeStyle: 'short', hour12: false });
@@ -109,20 +117,20 @@ export function setupSessionUi({ session, onFloorplanMismatch, exportPng, export
   // ---------- 頂部方案列 ----------
   const select = el('select', { 'aria-label': '目前方案', onchange: () => guard(() => session.switchTo(select.value)) });
   const actions = [
-    ['＋', '新增方案', () => session.createNew()],
-    ['✎', '重新命名', async () => {
+    ['add', '新增方案', () => session.createNew()],
+    ['rename', '重新命名', async () => {
       const name = await promptDialog('重新命名', '新的方案名稱', session.current.name);
       if (name) session.rename(name);
     }],
-    ['⧉', '複製方案', () => session.duplicate()],
-    ['🗑', '刪除方案', async () => {
+    ['duplicate', '複製方案', () => session.duplicate()],
+    ['delete', '刪除方案', async () => {
       const ok = await confirmDialog('刪除方案', `確定要刪除「${session.current.name}」嗎？刪除後無法復原，建議先匯出備份。`, { okLabel: '刪除', danger: true });
       if (ok) session.remove(session.current.id);
     }],
   ];
   $('#scheme-bar').replaceChildren(
     select,
-    ...actions.map(([icon, title, run]) => el('button', { class: 'btn small', title, 'aria-label': title, onclick: () => guard(run) }, icon)),
+    ...actions.map(([icon, title, run]) => iconButton(icon, '', { class: 'btn small icon-only', title, 'aria-label': title, onclick: () => guard(run) })),
   );
 
   // 操作失敗（例如容量不足、名稱重複）只提示，不讓頁面壞掉
@@ -152,29 +160,29 @@ export function setupSessionUi({ session, onFloorplanMismatch, exportPng, export
       el('ul', { class: 'cloud-list' }, list.map((d) =>
         el('li', {},
           el('span', {}, d.id === session.current?.id ? el('strong', {}, `▸ ${d.name}`) : d.name, el('div', { class: 'note' }, `修改於 ${dateTimeOf(d.updatedAt)}`)),
-          d.id === session.current?.id ? null : el('button', { class: 'btn small', onclick: () => guard(() => session.switchTo(d.id)) }, '開啟'),
+          d.id === session.current?.id ? null : iconButton('open', '開啟', { class: 'btn small', onclick: () => guard(() => session.switchTo(d.id)) }),
         ))),
       el('div', { class: 'row' },
-        el('button', { class: 'btn small', onclick: () => guard(() => session.createNew()) }, '新增方案'),
-        el('button', { class: 'btn small', onclick: () => guard(() => session.duplicate()) }, '複製目前方案'),
+        iconButton('add', '新增方案', { class: 'btn small', onclick: () => guard(() => session.createNew()) }),
+        iconButton('duplicate', '複製目前方案', { class: 'btn small', onclick: () => guard(() => session.duplicate()) }),
       ),
       el('h2', { class: 'panel-title' }, '匯出／匯入設計檔'),
       el('div', { class: 'stack' },
-        el('button', { class: 'btn', onclick: exportCurrent }, '匯出目前方案（.design.json）'),
-        el('button', { class: 'btn', onclick: exportAll }, '匯出全部方案（.design.json）'),
-        el('button', { class: 'btn primary', onclick: () => fileInput.click() }, '匯入 .design.json'),
+        iconButton('export', '匯出目前方案（.design.json）', { class: 'btn', onclick: exportCurrent }),
+        iconButton('export', '匯出全部方案（.design.json）', { class: 'btn', onclick: exportAll }),
+        iconButton('import', '匯入 .design.json', { class: 'btn primary', onclick: () => fileInput.click() }),
         fileInput,
         el('p', { class: 'note' }, '也可以直接把 .design.json 檔案拖放到頁面上匯入。'),
       ),
       el('h2', { class: 'panel-title' }, '匯出畫面與模型'),
       el('div', { class: 'stack' },
-        el('button', { class: 'btn', onclick: () => guard(async () => downloadBlob(await exportPng(), `${session.current.name}.png`)) }, '目前畫面截圖（PNG）'),
-        el('button', { class: 'btn', onclick: () => guard(async () => {
+        iconButton('camera', '目前畫面截圖（PNG）', { class: 'btn', onclick: () => guard(async () => downloadBlob(await exportPng(), `${session.current.name}.png`)) }),
+        iconButton('cube', '整個場景（GLB，可用 Blender／SketchUp 開啟）', { class: 'btn', onclick: () => guard(async () => {
           toast('正在產生 GLB…');
           downloadBlob(await exportGlb(), `${session.current.name}.glb`);
-        }) }, '整個場景（GLB，可用 Blender／SketchUp 開啟）'),
+        }) }),
       ),
-      el('p', { class: 'note' }, '設計會自動存在這個瀏覽器裡。清除瀏覽器資料或換電腦前，請先匯出備份，或使用「雲端」同步。'),
+      el('p', { class: 'note' }, '設計會自動存在這個瀏覽器裡。清除瀏覽器資料或換電腦前，請先匯出備份。'),
     );
   };
 

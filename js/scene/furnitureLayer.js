@@ -1,6 +1,7 @@
 // 把 design.furniture 同步成場景物件；選取與衝突用外框表示，不改共用材質
 import * as THREE from 'three';
 import { planToWorld } from '../core/floorplan.js';
+import { elevationOf } from '../core/layout.js';
 import { buildFurnitureModel, loadExternalTemplate } from '../furniture/models.js';
 import { disposeObject } from './house.js';
 
@@ -61,11 +62,11 @@ export class FurnitureLayer {
         this.entries.delete(id);
       }
     }
-    for (const item of furniture) this.#upsert(item);
+    for (const item of furniture) this.#upsert(item, elevationOf(item, furniture));
     this.#refreshDecorations();
   }
 
-  #upsert(item) {
+  #upsert(item, elevation) {
     let entry = this.entries.get(item.id);
     if (!entry) {
       const container = new THREE.Group();
@@ -75,7 +76,8 @@ export class FurnitureLayer {
       this.entries.set(item.id, entry);
     }
     entry.item = item;
-    const { x, y, z } = planToWorld([item.x, item.y]);
+    // 桌上型家電放在檯面上時抬到檯面高度
+    const { x, y, z } = planToWorld([item.x, item.y], elevation);
     entry.container.position.set(x, y, z);
     entry.container.rotation.y = (item.rotation * Math.PI) / 180;
     const key = modelKey(item);

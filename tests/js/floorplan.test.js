@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGlass, buildSolids, planToWorld, validateFloorplan } from '../../js/core/floorplan.js';
+import { buildGlass, buildSolids, fixturesToFurniture, planToWorld, validateFloorplan } from '../../js/core/floorplan.js';
 
 const rect = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
 
@@ -117,4 +117,34 @@ test('planToWorld 平面 y 朝上對應世界 -z、高度放到 y', () => {
 
   // Assert
   assert.deepEqual(p, { x: 1.5, y: 0.9, z: -2 });
+});
+
+test('validateFloorplan 預設廚衛格式錯誤時指出欄位', () => {
+  // Arrange
+  const fp = samplePlan();
+  fp.fixtures = [{ type: 'toilet', x: 'a', y: 1, rotation: 0, size: { w: 40, d: 70, h: 75 } }];
+
+  // Act
+  const errors = validateFloorplan(fp);
+
+  // Assert
+  assert.equal(errors.length, 1);
+  assert.ok(errors[0].includes('fixtures[0]'));
+});
+
+test('fixturesToFurniture 轉成家具並配上新 id 與目錄顏色，未知類型略過', () => {
+  // Arrange
+  let n = 0;
+  const fixtures = [
+    { type: 'toilet', x: 7.15, y: 1.1, rotation: 180, size: { w: 40, d: 70, h: 75 } },
+    { type: 'ufo', x: 1, y: 1, rotation: 0, size: { w: 1, d: 1, h: 1 } },
+  ];
+
+  // Act
+  const furniture = fixturesToFurniture(fixtures, () => `f${++n}`);
+
+  // Assert
+  assert.deepEqual(furniture, [
+    { id: 'f1', type: 'toilet', x: 7.15, y: 1.1, rotation: 180, size: { w: 40, d: 70, h: 75 }, color: '#fafafa' },
+  ]);
 });

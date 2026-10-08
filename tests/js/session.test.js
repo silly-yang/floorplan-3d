@@ -49,6 +49,7 @@ function openPage(storage) {
     newId: () => `id-${++ids}-${Math.random().toString(36).slice(2, 6)}`,
     floorplanRef: 'fp1',
     timers,
+    defaultFurniture: () => [{ ...sofa, id: `default-${++ids}` }],
   });
   return { store, session, timers };
 }
@@ -68,12 +69,12 @@ test('空的瀏覽器第一次開啟時建立並儲存「方案 1」', () => {
   assert.deepEqual(session.list().map((d) => d.name), ['方案 1']);
 });
 
-test('重新整理頁面後設計完整保留（含家具、樓高、地板色）', () => {
+test('重新整理頁面後設計完整保留（含家具、樓高、天花板與地板色）', () => {
   // Arrange
   const storage = new MemoryStorage();
   const page1 = openPage(storage);
   page1.session.init();
-  page1.store.commit({ ceilingHeight: 3.1, rooms: { living: { floorColor: '#445566' } }, furniture: [sofa] });
+  page1.store.commit({ ceilingHeight: 3.1, ceilingColor: '#ddeeff', rooms: { living: { floorColor: '#445566' } }, furniture: [sofa] });
   page1.timers.run();
 
   // Act
@@ -81,7 +82,7 @@ test('重新整理頁面後設計完整保留（含家具、樓高、地板色�
   page2.session.init();
 
   // Assert
-  assert.deepEqual(page2.store.getState(), { ceilingHeight: 3.1, rooms: { living: { floorColor: '#445566' } }, furniture: [sofa] });
+  assert.deepEqual(page2.store.getState(), { ceilingHeight: 3.1, ceilingColor: '#ddeeff', rooms: { living: { floorColor: '#445566' } }, furniture: [sofa] });
   assert.equal(page2.session.current.id, page1.session.current.id);
 });
 
@@ -91,16 +92,19 @@ test('拖曳中的 preview 不觸發存檔，commit 才存', () => {
   const { session, store, timers } = openPage(storage);
   session.init();
 
+  const baseline = store.getState().furniture.length;
+  const plusSofa = { ...store.getState(), furniture: [...store.getState().furniture, { ...sofa, id: 'extra' }] };
+
   // Act
-  store.preview({ ...store.getState(), furniture: [sofa] });
+  store.preview(plusSofa);
   timers.run();
   const afterPreview = new DesignStore(storage).load(session.current.id).furniture.length;
-  store.commit({ ...store.getState(), furniture: [sofa] });
+  store.commit(plusSofa);
   timers.run();
 
   // Assert
-  assert.equal(afterPreview, 0);
-  assert.equal(new DesignStore(storage).load(session.current.id).furniture.length, 1);
+  assert.equal(afterPreview, baseline);
+  assert.equal(new DesignStore(storage).load(session.current.id).furniture.length, baseline + 1);
 });
 
 test('新增方案時自動取不重複名稱、切過去且清空復原歷史', () => {
@@ -112,9 +116,10 @@ test('新增方案時自動取不重複名稱、切過去且清空復原歷史',
   // Act
   session.createNew();
 
-  // Assert
+  // Assert：只剩預設家具，前一個方案加的沙發不會帶過來
   assert.equal(session.current.name, '方案 2');
-  assert.deepEqual(store.getState().furniture, []);
+  assert.deepEqual(store.getState().furniture.map((f) => f.id), [store.getState().furniture[0].id]);
+  assert.ok(store.getState().furniture[0].id.startsWith('default-'));
   assert.equal(store.canUndo(), false);
 });
 
@@ -274,4 +279,20 @@ test('load 讀取其他方案的完整內容，不切換目前方案', () => {
   // Assert
   assert.deepEqual(loaded.furniture, [sofa]);
   assert.notEqual(session.current.id, firstId);
+});
+
+test('新方案會帶入預設家具（建商附的廚衛），每次 id 都不同', () => {
+  // Arrange
+  const { session, store } = openPage(new MemoryStorage());
+  session.init();
+  const firstIds = store.getState().furniture.map((f) => f.id);
+
+  // Act
+  session.createNew();
+  const secondIds = store.getState().furniture.map((f) => f.id);
+
+  // Assert
+  assert.equal(firstIds.length, 1);
+  assert.equal(secondIds.length, 1);
+  assert.notDeepEqual(firstIds, secondIds);
 });

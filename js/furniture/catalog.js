@@ -2,21 +2,46 @@
 
 export const SIZE_LIMITS = { min: 1, max: 600 };
 
+export const CATEGORIES = [
+  { id: 'furniture', name: '家具' },
+  { id: 'appliance', name: '家電' },
+  { id: 'fixture', name: '廚衛' },
+];
+
+// placement：floor 只能放地上；surface 可以放地上，也可以放到有檯面（surface: true）的家具上
 // allowOverlap：地毯本來就壓在其他家具底下，不算重疊
+const item = (category, type, name, [w, d, h], color, { placement = 'floor', surface = false, allowOverlap = false } = {}) => ({
+  category, type, name, size: { w, d, h }, color, placement, surface, allowOverlap,
+});
+
 export const CATALOG = [
-  { type: 'sofa', name: '沙發', size: { w: 210, d: 90, h: 85 }, color: '#8c9aa6', allowOverlap: false },
-  { type: 'armchair', name: '單椅', size: { w: 80, d: 80, h: 85 }, color: '#c08a5b', allowOverlap: false },
-  { type: 'coffee-table', name: '茶几', size: { w: 110, d: 55, h: 42 }, color: '#a47a52', allowOverlap: false },
-  { type: 'dining-table', name: '餐桌', size: { w: 150, d: 85, h: 75 }, color: '#b48a60', allowOverlap: false },
-  { type: 'dining-chair', name: '餐椅', size: { w: 45, d: 50, h: 88 }, color: '#7d6047', allowOverlap: false },
-  { type: 'double-bed', name: '雙人床', size: { w: 160, d: 205, h: 100 }, color: '#e8e2d6', allowOverlap: false },
-  { type: 'single-bed', name: '單人床', size: { w: 105, d: 200, h: 95 }, color: '#dfe6ea', allowOverlap: false },
-  { type: 'wardrobe', name: '衣櫃', size: { w: 120, d: 60, h: 210 }, color: '#d8cbb6', allowOverlap: false },
-  { type: 'desk', name: '書桌', size: { w: 120, d: 60, h: 75 }, color: '#c7a37a', allowOverlap: false },
-  { type: 'tv-stand', name: '電視櫃', size: { w: 180, d: 40, h: 50 }, color: '#6f5a48', allowOverlap: false },
-  { type: 'fridge', name: '冰箱', size: { w: 70, d: 70, h: 180 }, color: '#e6e8ea', allowOverlap: false },
-  { type: 'rug', name: '地毯', size: { w: 200, d: 140, h: 1 }, color: '#b9a28c', allowOverlap: true },
-  { type: 'plant', name: '植栽', size: { w: 45, d: 45, h: 120 }, color: '#5f8a54', allowOverlap: false },
+  item('furniture', 'sofa', '沙發', [210, 90, 85], '#8c9aa6'),
+  item('furniture', 'armchair', '單椅', [80, 80, 85], '#c08a5b'),
+  item('furniture', 'coffee-table', '茶几', [110, 55, 42], '#a47a52', { surface: true }),
+  item('furniture', 'dining-table', '餐桌', [150, 85, 75], '#b48a60', { surface: true }),
+  item('furniture', 'dining-chair', '餐椅', [45, 50, 88], '#7d6047'),
+  item('furniture', 'double-bed', '雙人床', [160, 205, 100], '#e8e2d6'),
+  item('furniture', 'single-bed', '單人床', [105, 200, 95], '#dfe6ea'),
+  item('furniture', 'wardrobe', '衣櫃', [120, 60, 210], '#d8cbb6'),
+  item('furniture', 'desk', '書桌', [120, 60, 75], '#c7a37a', { surface: true }),
+  item('furniture', 'tv-stand', '電視櫃', [180, 40, 50], '#6f5a48', { surface: true }),
+  item('furniture', 'kitchen-island', '中島櫃', [180, 90, 90], '#e9e4dc', { surface: true }),
+  item('furniture', 'fridge', '冰箱', [70, 70, 180], '#e6e8ea'),
+  item('furniture', 'rug', '地毯', [200, 140, 1], '#b9a28c', { allowOverlap: true }),
+  item('furniture', 'plant', '植栽', [45, 45, 120], '#5f8a54'),
+  item('appliance', 'coffee-machine', '咖啡機', [25, 40, 35], '#2f3237', { placement: 'surface' }),
+  item('appliance', 'microwave', '微波爐', [50, 40, 30], '#d9dbde', { placement: 'surface' }),
+  item('appliance', 'rice-cooker', '電鍋', [30, 30, 28], '#e8e3d8', { placement: 'surface' }),
+  item('appliance', 'laptop', '筆電', [33, 23, 22], '#9aa0a8', { placement: 'surface' }),
+  item('appliance', 'desk-lamp', '檯燈', [18, 18, 45], '#3b3f45', { placement: 'surface' }),
+  item('appliance', 'robot-vacuum', '掃地機器人', [35, 35, 9], '#25272b'),
+  item('appliance', 'washing-machine', '洗衣機', [60, 65, 100], '#eef0f2'),
+  item('appliance', 'air-purifier', '空氣清淨機', [30, 30, 65], '#f2f2f0'),
+  item('appliance', 'fan', '電風扇', [40, 35, 110], '#e9ecef'),
+  item('appliance', 'floor-lamp', '立燈', [35, 35, 160], '#3b3f45'),
+  item('fixture', 'kitchen-counter', '廚具', [225, 60, 90], '#f0ece4', { surface: true }),
+  item('fixture', 'toilet', '馬桶', [40, 70, 75], '#fafafa'),
+  item('fixture', 'basin', '洗手台', [60, 45, 85], '#f5f5f3'),
 ];
 
 const BY_TYPE = new Map(CATALOG.map((item) => [item.type, item]));

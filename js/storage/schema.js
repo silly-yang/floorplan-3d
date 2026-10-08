@@ -1,8 +1,9 @@
 // 設計檔格式：版本、建立、遷移、驗證；不依賴瀏覽器 API，可在 node 測試
 import { getCatalogItem, SIZE_LIMITS } from '../furniture/catalog.js';
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 export const DEFAULT_CEILING = 2.8;
+export const DEFAULT_CEILING_COLOR = '#f4f2ee';
 export const CEILING_LIMITS = { min: 2, max: 5 };
 const NAME_MAX = 60;
 
@@ -15,8 +16,10 @@ export class DesignFormatError extends Error {
 }
 
 // 版本 n → n+1 的轉換；格式改版時在這裡加一筆，舊檔就能一路升到最新版
-// 例：2: (d) => ({ ...d, schemaVersion: 3, wallColor: '#ffffff' })
-export const MIGRATIONS = {};
+export const MIGRATIONS = {
+  // 第 2 版加入天花板顏色
+  1: (d) => ({ ...d, schemaVersion: 2, ceilingColor: DEFAULT_CEILING_COLOR }),
+};
 
 export function createDesign({ id, name, now, floorplanRef = null }) {
   return {
@@ -27,6 +30,7 @@ export function createDesign({ id, name, now, floorplanRef = null }) {
     updatedAt: now,
     floorplanRef,
     ceilingHeight: DEFAULT_CEILING,
+    ceilingColor: DEFAULT_CEILING_COLOR,
     rooms: {},
     furniture: [],
   };
@@ -85,6 +89,7 @@ export function validateDesign(design) {
   if (!isNum(design.ceilingHeight) || design.ceilingHeight < CEILING_LIMITS.min || design.ceilingHeight > CEILING_LIMITS.max) {
     errors.push(`ceilingHeight 必須是 ${CEILING_LIMITS.min}～${CEILING_LIMITS.max} 公尺`);
   }
+  if (!isColor(design.ceilingColor)) errors.push('ceilingColor 必須是 #rrggbb 色碼');
   if (!isPlainObject(design.rooms)) {
     errors.push('rooms 必須是物件');
   } else {

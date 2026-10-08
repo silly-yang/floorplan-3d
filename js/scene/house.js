@@ -35,7 +35,7 @@ export function floorColorOf(roomId, roomSettings) {
 }
 
 // 回傳 { group, floors: Map<roomId, Mesh[]>, wallMeshes }；樓高或地板色變了就整個重建，量很小
-export function buildHouse(floorplan, { ceilingHeight, rooms }) {
+export function buildHouse(floorplan, { ceilingHeight, rooms, ceilingColor = '#f4f2ee' }) {
   const group = new THREE.Group();
   group.name = 'house';
 
@@ -83,6 +83,20 @@ export function buildHouse(floorplan, { ceilingHeight, rooms }) {
     floors.set(room.id, meshes);
   }
 
+  // 天花板：面朝下，從上方看是透明的；不投影，免得室內一片黑
+  const ceiling = new THREE.Group();
+  ceiling.name = 'ceiling';
+  const ceilingMaterial = new THREE.MeshStandardMaterial({ color: ceilingColor, roughness: 0.95 });
+  for (const room of floorplan.rooms) {
+    for (const [x0, y0, x1, y1] of room.rects) {
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, y1 - y0), ceilingMaterial);
+      mesh.rotation.x = Math.PI / 2;
+      mesh.position.set((x0 + x1) / 2, ceilingHeight - 0.002, -(y0 + y1) / 2);
+      ceiling.add(mesh);
+    }
+  }
+  group.add(ceiling);
+
   // 室外地面，讓俯視時房子不是浮在虛空中
   const { width, depth } = floorplan.bounds;
   const ground = new THREE.Mesh(
@@ -95,7 +109,7 @@ export function buildHouse(floorplan, { ceilingHeight, rooms }) {
   ground.name = 'ground';
   group.add(ground);
 
-  return { group, floors, wallMeshes };
+  return { group, floors, wallMeshes, ceiling };
 }
 
 export function disposeObject(object) {

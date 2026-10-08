@@ -60,3 +60,49 @@ def test_parse_config_with_several_missing_fields_should_list_all(
     assert len(problems) == 2
     assert any("unitScale" in p for p in problems)
     assert any("clip" in p for p in problems)
+
+
+def test_parse_config_with_fixtures_should_keep_position_size_and_rotation(
+    raw_config: dict[str, Any],
+) -> None:
+    # Arrange
+    raw_config["fixtures"] = [
+        {"type": "toilet", "center": [3943.5, 1464], "size": [40, 70, 75], "rotation": 180}
+    ]
+
+    # Act
+    config = parse_config(raw_config)
+
+    # Assert
+    fixture = config.fixtures[0]
+    assert (fixture.type, fixture.center, fixture.size, fixture.rotation) == (
+        "toilet",
+        (3943.5, 1464.0),
+        (40.0, 70.0, 75.0),
+        180.0,
+    )
+
+
+@pytest.mark.parametrize(
+    ("fixture", "fragment"),
+    [
+        ({"type": "", "center": [0, 0], "size": [1, 1, 1], "rotation": 0}, "fixtures[0].type"),
+        ({"type": "toilet", "center": [0], "size": [1, 1, 1], "rotation": 0}, "fixtures[0].center"),
+        (
+            {"type": "toilet", "center": [0, 0], "size": [1, 0, 1], "rotation": 0},
+            "fixtures[0].size",
+        ),
+    ],
+    ids=["類型空白", "座標少一個", "尺寸有 0"],
+)
+def test_parse_config_with_invalid_fixture_should_name_the_field(
+    raw_config: dict[str, Any], fixture: dict[str, Any], fragment: str
+) -> None:
+    # Arrange
+    raw_config["fixtures"] = [fixture]
+
+    # Act & Assert
+    with pytest.raises(ConfigError) as excinfo:
+        parse_config(raw_config)
+
+    assert any(fragment in p for p in excinfo.value.problems)

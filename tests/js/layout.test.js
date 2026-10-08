@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   addFurniture,
+  elevationOf,
   findConflicts,
   findFreeSpot,
   footprint,
@@ -11,6 +12,7 @@ import {
   normalizeRotation,
   removeFurniture,
   snapToGrid,
+  supportOf,
   updateFurniture,
 } from '../../js/core/layout.js';
 
@@ -186,4 +188,61 @@ test('moveToward 路上沒有牆時直接到目標', () => {
 
   // Assert
   assert.deepEqual(spot, { x: 3, y: 2 });
+});
+
+// ---------- 疊放：桌上型家電放到檯面上 ----------
+const table = (over = {}) => item({ id: 'table', type: 'dining-table', x: 2, y: 2, size: { w: 150, d: 85, h: 75 }, ...over });
+const coffee = (over = {}) => item({ id: 'coffee', type: 'coffee-machine', x: 2.3, y: 2.1, size: { w: 25, d: 40, h: 35 }, ...over });
+
+test('supportOf 桌上型家電中心落在餐桌上時回傳餐桌', () => {
+  // Act & Assert
+  assert.equal(supportOf(coffee(), [table(), coffee()])?.id, 'table');
+});
+
+for (const [name, furniture, target] of [
+  ['不在任何檯面上', () => [table(), coffee({ x: 5 })], () => coffee({ x: 5 })],
+  ['落地型家電（掃地機器人）不會被抬上桌', () => [table(), item({ id: 'r', type: 'robot-vacuum', x: 2, y: 2, size: { w: 35, d: 35, h: 9 } })], () => item({ id: 'r', type: 'robot-vacuum', x: 2, y: 2, size: { w: 35, d: 35, h: 9 } })],
+  ['沙發沒有檯面', () => [item({ id: 's', type: 'sofa', x: 2, y: 2, size: { w: 200, d: 90, h: 85 } }), coffee()], () => coffee()],
+]) {
+  test(`supportOf ${name}時回傳 null`, () => {
+    // Act & Assert
+    assert.equal(supportOf(target(), furniture()), null);
+  });
+}
+
+test('elevationOf 放在餐桌上的咖啡機離地高度等於桌高', () => {
+  // Act & Assert
+  assert.equal(elevationOf(coffee(), [table(), coffee()]), 0.75);
+  assert.equal(elevationOf(table(), [table(), coffee()]), 0);
+});
+
+test('elevationOf 疊在多個檯面重疊處時取最高的那個', () => {
+  // Arrange：茶几（42 cm）塞在餐桌（75 cm）底下
+  const low = item({ id: 'low', type: 'coffee-table', x: 2.3, y: 2.1, size: { w: 60, d: 50, h: 42 } });
+
+  // Act & Assert
+  assert.equal(elevationOf(coffee(), [table(), low, coffee()]), 0.75);
+});
+
+test('findConflicts 咖啡機放在桌上不算與桌子重疊', () => {
+  // Act & Assert
+  assert.equal(findConflicts([table(), coffee()]).size, 0);
+});
+
+test('findConflicts 同一張桌上兩台家電擠在一起仍算重疊', () => {
+  // Arrange
+  const other = coffee({ id: 'coffee2', x: 2.35 });
+
+  // Act & Assert
+  assert.deepEqual([...findConflicts([table(), coffee(), other])].sort(), ['coffee', 'coffee2']);
+});
+
+test('hitsWalls 抬高的家電只跟它那個高度範圍內的量體比較', () => {
+  // Arrange：只在 0~0.5 m 的矮牆（像窗台）；放在 0.75 m 桌上的家電不會撞到
+  const sill = [wall(rect(0, 0, 0.15, 4), 0, 0.5)];
+  const target = item({ x: 0.4 });
+
+  // Act & Assert
+  assert.equal(hitsWalls(target, sill, 0.75), false);
+  assert.equal(hitsWalls(target, sill, 0), true);
 });

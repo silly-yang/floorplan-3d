@@ -1,7 +1,7 @@
 // 進入點：載入平面圖、建立 3D 場景、串起各面板
 import { createSession } from './app/session.js';
 import { createStore } from './app/store.js';
-import { buildSolids, validateFloorplan } from './core/floorplan.js';
+import { buildSolids, fixturesToFurniture, validateFloorplan } from './core/floorplan.js';
 import { pointInPolygon, pointSegmentDistance } from './core/geometry2d.js';
 import { Editor } from './interact/editor.js';
 import { exportGlb, exportPng } from './scene/exporters.js';
@@ -11,8 +11,8 @@ import { Viewer } from './scene/viewer.js';
 import { DesignStore, StorageUnavailableError } from './storage/localStore.js';
 import { fingerprint } from './storage/schema.js';
 import { renderCatalog } from './ui/catalogPanel.js';
-import { setupCloudPanel } from './ui/cloudPanel.js';
 import { $, alertDialog, el, toast } from './ui/dom.js';
+import { iconSvg } from './ui/icons.js';
 import { setupInspector } from './ui/inspector.js';
 import { makeStatusHandler, setupSessionUi } from './ui/sessionUi.js';
 
@@ -32,7 +32,8 @@ async function loadFloorplan() {
   }
   const errors = validateFloorplan(floorplan);
   if (errors.length) throw new Error(`平面圖格式錯誤：\n${errors.join('\n')}`);
-  return { floorplan, ref: fingerprint(text) };
+  // 指紋只看格局（牆、門窗、房間），新增預設廚衛這類變動不算換了平面圖
+  return { floorplan, ref: fingerprint(JSON.stringify([floorplan.bounds, floorplan.walls, floorplan.openings, floorplan.rooms])) };
 }
 
 // 瀏覽器不給用 localStorage 時（部分無痕模式）改存在記憶體，關掉分頁就沒了
@@ -57,7 +58,7 @@ class MemoryStorage {
   }
 }
 
-function openSession(store, floorplanRef, onStatus) {
+function openSession(store, floorplanRef, onStatus, defaultFurniture) {
   const make = (storage) =>
     createSession({
       designStore: new DesignStore(storage),
@@ -66,6 +67,7 @@ function openSession(store, floorplanRef, onStatus) {
       newId: () => crypto.randomUUID(),
       floorplanRef,
       onStatus,
+      defaultFurniture,
     });
   try {
     const session = make(window.localStorage);
@@ -121,10 +123,20 @@ function makeWalkCollision(getSolids) {
 
 function setupFloorPanel(floorplan, store) {
   const ceiling = $('#ceiling-input');
+  const ceilingColor = $('#ceiling-color');
   const list = $('#room-list');
   let colorBase = null;
+  ceilingColor.addEventListener('input', () => {
+    colorBase ??= store.getState();
+    store.preview({ ...store.getState(), ceilingColor: ceilingColor.value });
+  });
+  ceilingColor.addEventListener('change', () => {
+    store.commit({ ...store.getState(), ceilingColor: ceilingColor.value }, colorBase ? { base: colorBase } : {});
+    colorBase = null;
+  });
   const render = (design) => {
     ceiling.value = design.ceilingHeight;
+    ceilingColor.value = design.ceilingColor;
     list.replaceChildren(
       ...floorplan.rooms.map((room) => {
         const input = el('input', { type: 'color', value: floorColorOf(room.id, design.rooms) });
@@ -159,34 +171,54 @@ function setupFloorPanel(floorplan, store) {
   render(store.getState());
 }
 
-// 回傳 setCutaway(boolean)：剖面模式只改顯示，不改設計裡的樓高
+// 回傳 { setCutaway, setCeiling }：只改顯示，不改設計內容
+// 天花板：漫遊時一定顯示；3D／俯視預設隱藏（會擋住視線），可手動打開；剖面時一律隱藏
 function setupHouse(floorplan, viewer, store) {
   let house = null;
   let lastKey = '';
   let cutaway = false;
+  let ceilingOn = false;
+  const applyCeiling = () => {
+    if (house) house.ceiling.visible = !cutaway && (ceilingOn || viewer.mode === 'walk');
+  };
   const sync = () => {
     const design = store.getState();
     const height = cutaway ? Math.min(CUTAWAY_HEIGHT, design.ceilingHeight) : design.ceilingHeight;
-    const key = JSON.stringify([height, design.rooms]);
+    const key = JSON.stringify([height, design.rooms, design.ceilingColor]);
     if (key === lastKey) return;
     lastKey = key;
     if (house) {
       viewer.scene.remove(house.group);
       disposeObject(house.group);
     }
-    house = buildHouse(floorplan, { ceilingHeight: height, rooms: design.rooms });
+    house = buildHouse(floorplan, { ceilingHeight: height, rooms: design.rooms, ceilingColor: design.ceilingColor });
     viewer.scene.add(house.group);
+    applyCeiling();
   };
   store.subscribe(sync);
+  viewer.onChange(applyCeiling);
   sync();
-  return (enabled) => {
-    cutaway = enabled;
-    sync();
+  return {
+    setCutaway: (enabled) => {
+      cutaway = enabled;
+      sync();
+    },
+    setCeiling: (enabled) => {
+      ceilingOn = enabled;
+      applyCeiling();
+    },
   };
 }
 
-function toggleButton(label, initial, onToggle, title) {
-  const button = el('button', { class: 'btn', 'aria-pressed': String(initial), title }, label);
+function iconLabel(icon, label) {
+  const span = el('span', { class: 'with-icon' });
+  span.innerHTML = iconSvg(icon);
+  span.append(el('span', {}, label));
+  return span;
+}
+
+function toggleButton(icon, label, initial, onToggle, title) {
+  const button = el('button', { class: 'btn', 'aria-pressed': String(initial), title }, iconLabel(icon, label));
   const paint = (on) => {
     button.classList.toggle('primary', on);
     button.setAttribute('aria-pressed', String(on));
@@ -200,11 +232,19 @@ function toggleButton(label, initial, onToggle, title) {
   return button;
 }
 
-function setupStageTools(editor, setCutaway) {
+function setupStageTools(editor, { setCutaway, setCeiling }) {
   $('#stage-tools').replaceChildren(
-    toggleButton('對齊網格 5 cm', true, (on) => editor.setSnap(on), '移動家具時對齊 5 公分網格'),
-    toggleButton('剖面', false, setCutaway, '把牆降到 1.1 公尺，方便看家具配置'),
+    toggleButton('grid', '網格 5 cm', true, (on) => editor.setSnap(on), '移動家具時對齊 5 公分網格'),
+    toggleButton('cutaway', '剖面', false, setCutaway, '把牆降到 1.1 公尺，方便看家具配置'),
+    toggleButton('ceiling', '天花板', false, setCeiling, '在 3D／俯視顯示天花板（漫遊時一定會顯示）'),
   );
+}
+
+// HTML 裡標了 data-icon 的元素，把 icon 插在最前面
+function hydrateIcons(root = document) {
+  root.querySelectorAll('[data-icon]').forEach((node) => {
+    if (!node.querySelector(':scope > svg.icon')) node.insertAdjacentHTML('afterbegin', iconSvg(node.dataset.icon));
+  });
 }
 
 function setupHistoryButtons(store, editor) {
@@ -221,6 +261,7 @@ function setupHistoryButtons(store, editor) {
 }
 
 async function main() {
+  hydrateIcons();
   setupTabs();
   let floorplan;
   let floorplanRef;
@@ -230,14 +271,15 @@ async function main() {
     await alertDialog('無法載入平面圖', error.message);
     return;
   }
-  const store = createStore({ ceilingHeight: 2.8, rooms: {}, furniture: [] });
+  const store = createStore({ ceilingHeight: 2.8, ceilingColor: '#f4f2ee', rooms: {}, furniture: [] });
   let exportAll = () => {};
-  const { session, warnings, persistent } = openSession(store, floorplanRef, makeStatusHandler(() => exportAll));
+  const defaultFurniture = () => fixturesToFurniture(floorplan.fixtures, () => crypto.randomUUID());
+  const { session, warnings, persistent } = openSession(store, floorplanRef, makeStatusHandler(() => exportAll), defaultFurniture);
   const getSolids = makeSolidsGetter(floorplan, store);
   const viewer = new Viewer($('#stage'), floorplan.bounds);
   viewer.canWalkTo = makeWalkCollision(getSolids);
   setupViewSwitch(viewer);
-  const setCutaway = setupHouse(floorplan, viewer, store);
+  const houseView = setupHouse(floorplan, viewer, store);
   setupFloorPanel(floorplan, store);
 
   // 圖層要比編輯器先訂閱：編輯器更新選取與衝突外框時，物件必須已經同步好
@@ -252,7 +294,7 @@ async function main() {
     },
   });
   setupInspector(editor, getSolids);
-  setupStageTools(editor, setCutaway);
+  setupStageTools(editor, houseView);
   setupHistoryButtons(store, editor);
   ({ exportAll } = setupSessionUi({
     session,
@@ -264,7 +306,6 @@ async function main() {
       }
     },
   }));
-  setupCloudPanel({ session });
   // 開發驗證用：網址加 ?debug 才暴露內部物件
   if (new URLSearchParams(location.search).has('debug')) window.__app = { store, viewer, floorplan, furnitureLayer, editor, session };
   if (!persistent) {

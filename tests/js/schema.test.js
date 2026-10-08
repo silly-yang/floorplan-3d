@@ -35,6 +35,7 @@ test('createDesign 帶入版本、名稱、時間與預設樓高', () => {
     updatedAt: NOW,
     floorplanRef: null,
     ceilingHeight: 2.8,
+    ceilingColor: '#f4f2ee',
     rooms: {},
     furniture: [],
   });
@@ -49,6 +50,7 @@ for (const [name, mutate, fragment] of [
   ['名稱空白', (d) => (d.name = '  '), 'name'],
   ['時間不是日期', (d) => (d.updatedAt = '昨天'), 'updatedAt'],
   ['樓高超出範圍', (d) => (d.ceilingHeight = 12), 'ceilingHeight'],
+  ['天花板顏色不是色碼', (d) => (d.ceilingColor = 'white'), 'ceilingColor'],
   ['地板顏色不是色碼', (d) => (d.rooms.living.floorColor = 'red'), 'rooms.living.floorColor'],
   ['家具不是陣列', (d) => (d.furniture = {}), 'furniture'],
   ['家具類型未知', (d) => (d.furniture[0].type = 'spaceship'), 'furniture[0].type'],
@@ -163,4 +165,19 @@ test('migrateDesign 遷移函式就地修改時，原物件也不受影響', () 
   // Assert
   assert.equal(old.schemaVersion, 1);
   assert.equal(old.furniture.length, 0);
+});
+
+test('第 1 版設計檔讀取時自動升到目前版本，補上預設天花板顏色', () => {
+  // Arrange：第 1 版還沒有 ceilingColor
+  const v1 = sampleDesign();
+  v1.schemaVersion = 1;
+  delete v1.ceilingColor;
+
+  // Act
+  const design = parseDesign(v1);
+
+  // Assert
+  assert.equal(design.schemaVersion, SCHEMA_VERSION);
+  assert.equal(design.ceilingColor, '#f4f2ee');
+  assert.deepEqual(design.furniture, v1.furniture);
 });

@@ -6,9 +6,15 @@ import { createDesign, uniqueName } from '../storage/schema.js';
 export const DEFAULT_NAME = '方案 1';
 const NAME_PREFIX = '方案';
 
-const contentOf = (design) => ({ ceilingHeight: design.ceilingHeight, rooms: design.rooms, furniture: design.furniture });
+const contentOf = (design) => ({
+  ceilingHeight: design.ceilingHeight,
+  ceilingColor: design.ceilingColor,
+  rooms: design.rooms,
+  furniture: design.furniture,
+});
 
-export function createSession({ designStore, store, now, newId, floorplanRef = null, timers = globalThis, onStatus = () => {} }) {
+// defaultFurniture：新方案預先擺好的家具（建商附的廚衛），每次呼叫要給新的 id
+export function createSession({ designStore, store, now, newId, floorplanRef = null, timers = globalThis, onStatus = () => {}, defaultFurniture = () => [] }) {
   let meta = null; // 目前方案除了 store 內容以外的欄位
   const listeners = new Set();
   const emit = () => listeners.forEach((l) => l());
@@ -33,6 +39,7 @@ export function createSession({ designStore, store, now, newId, floorplanRef = n
   const open = (design) => {
     meta = { ...design };
     delete meta.ceilingHeight;
+    delete meta.ceilingColor;
     delete meta.rooms;
     delete meta.furniture;
     designStore.setActive(design.id);
@@ -43,7 +50,7 @@ export function createSession({ designStore, store, now, newId, floorplanRef = n
   const names = () => designStore.list().designs.map((d) => d.name);
 
   const createAndOpen = (name) => {
-    const design = createDesign({ id: newId(), name, now: now(), floorplanRef });
+    const design = { ...createDesign({ id: newId(), name, now: now(), floorplanRef }), furniture: defaultFurniture() };
     designStore.save(design);
     open(design);
     return design;
