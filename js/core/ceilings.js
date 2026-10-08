@@ -7,6 +7,8 @@ export const CEILING_TYPES = [
 ];
 
 export const DEFAULT_FLAT_HEIGHT = 2.6; // 廚房上方 J15 樑底就在 2.6 m，平釘齊樑底最自然
+export const COVE_MARGIN = 0.4; // 造型天花板四周下降帶的寬度
+export const COVE_RECESS = 0.12; // 中間內凹的高度
 const MIN_SIZE = 1e-6;
 
 const valid = ([x0, y0, x1, y1]) => x1 - x0 > MIN_SIZE && y1 - y0 > MIN_SIZE;

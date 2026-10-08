@@ -18,6 +18,8 @@ LAYER_KEYS = {
     "beam": "beam",
     "outlet": "outlet",
     "wallDevice": "wall_device",
+    "fireDevice": "fire_device",
+    "duct": "duct",
 }
 
 
@@ -44,6 +46,9 @@ class LayerMap:
     # 插座圖層：上面的圖塊都是插座；開關、電視、網路所在的圖層還有燈具等，只取認得的圖塊
     outlet: list[str] = field(default_factory=list)
     wall_device: list[str] = field(default_factory=list)
+    # 消防圖上灑水頭、探測器所在圖層；給排水通風圖上風管路線與套管所在圖層
+    fire_device: list[str] = field(default_factory=list)
+    duct: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -74,6 +79,13 @@ class CeilingZone:
     rect: tuple[float, float, float, float]  # 圖面單位 x0, y0, x1, y1
 
 
+# 消防圖、給排水通風圖也是建築平面圖的複本，各自相對建築平面圖的位移（圖面單位）
+@dataclass(frozen=True)
+class ServiceSheets:
+    fire: tuple[float, float] = (0.0, 0.0)
+    plumbing: tuple[float, float] = (0.0, 0.0)
+
+
 @dataclass(frozen=True)
 class Config:
     unit_scale: float
@@ -90,6 +102,7 @@ class Config:
     ceiling_zones: list[CeilingZone] = field(default_factory=list)
     # 水電圖是建築平面圖的複本、畫在旁邊；這是它相對建築平面圖的位移（圖面單位）
     electrical_offset: tuple[float, float] = (0.0, 0.0)
+    service_sheets: ServiceSheets = field(default_factory=ServiceSheets)
 
 
 def _is_number(value: object) -> bool:
@@ -254,6 +267,27 @@ def _electrical_offset(raw: dict[str, Any], problems: list[str]) -> tuple[float,
     return (float(offset[0]), float(offset[1]))
 
 
+def _service_sheets(raw: dict[str, Any], problems: list[str]) -> ServiceSheets:
+    sheets = raw.get("serviceSheets", {})
+    if not isinstance(sheets, dict):
+        problems.append(f"serviceSheets：必須是物件，收到 {sheets!r}")
+        return ServiceSheets()
+    offsets: dict[str, tuple[float, float]] = {}
+    for name, offset in sheets.items():
+        if name not in ("fire", "plumbing"):
+            problems.append(f"serviceSheets.{name}：只認得 fire、plumbing")
+            continue
+        if not (
+            isinstance(offset, list) and len(offset) == 2 and all(_is_number(v) for v in offset)
+        ):
+            problems.append(
+                f"serviceSheets.{name}：必須是 [dx, dy] 兩個數字（圖面單位），收到 {offset!r}"
+            )
+            continue
+        offsets[name] = (float(offset[0]), float(offset[1]))
+    return ServiceSheets(**offsets)
+
+
 # raw 來自 json.load，結構未知，驗證完才轉成具型別的 Config
 def parse_config(raw: Any) -> Config:
     if not isinstance(raw, dict):
@@ -273,6 +307,7 @@ def parse_config(raw: Any) -> Config:
     fixtures = _fixtures(raw, problems)
     ceiling_zones = _ceiling_zones(raw, problems)
     electrical_offset = _electrical_offset(raw, problems)
+    service_sheets = _service_sheets(raw, problems)
     ignore = raw.get("ignoreOpenings", [])
     if not isinstance(ignore, list) or not all(isinstance(i, str) for i in ignore):
         problems.append(f"ignoreOpenings：必須是字串陣列，收到 {ignore!r}")
@@ -295,4 +330,5 @@ def parse_config(raw: Any) -> Config:
         fixtures=fixtures,
         ceiling_zones=ceiling_zones,
         electrical_offset=electrical_offset,
+        service_sheets=service_sheets,
     )

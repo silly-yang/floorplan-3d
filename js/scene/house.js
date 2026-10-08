@@ -1,8 +1,9 @@
 // 由 floorplan.json 建出房屋的 Three.js 物件：牆、窗台、楣樑、玻璃、地板
 import * as THREE from 'three';
 import { buildGlass, buildSolids, openingAxis } from '../core/floorplan.js';
-import { ceilingStateOf, ceilingZones, clipRect } from '../core/ceilings.js';
+import { COVE_MARGIN, COVE_RECESS, ceilingStateOf, ceilingZones, clipRect } from '../core/ceilings.js';
 import { floorMaterialOf } from '../core/materials.js';
+import { buildCeilingServices } from './ceilingServices.js';
 import { sizedTexture, proceduralTexture } from './textures.js';
 
 
@@ -97,7 +98,7 @@ export function buildHouse(floorplan, { ceilingHeight, rooms, ceilingColor = '#f
   group.add(buildBaseboards(floorplan, ceilingHeight));
   group.add(buildFrames(floorplan));
 
-  // 天花板（含大樑、管線）：剖面模式時牆變矮，天花板一律依真正的樓板高度建，整組由 visible 控制
+  // 天花板（含大樑、天花板設備）：剖面模式時牆變矮，天花板一律依真正的樓板高度建，整組由 visible 控制
   const ceiling = buildCeilings(floorplan, { slabHeight, ceilingColor, ceilings });
   group.add(ceiling);
 
@@ -117,8 +118,6 @@ export function buildHouse(floorplan, { ceilingHeight, rooms, ceilingColor = '#f
 }
 
 const SLAB_THICKNESS = 0.15; // 樑標示的深度含樓板，樑在天花板下突出的是深度扣掉這個值
-const COVE_MARGIN = 0.4; // 造型天花板四周下降帶的寬度
-const COVE_RECESS = 0.12; // 中間內凹的高度
 
 function plane(rect, y, material, faceDown = true) {
   const [x0, y0, x1, y1] = rect;
@@ -157,7 +156,6 @@ function buildCeilings(floorplan, { slabHeight, ceilingColor, ceilings }) {
   group.name = 'ceiling';
   const paint = new THREE.MeshStandardMaterial({ color: ceilingColor, roughness: 0.95, side: THREE.DoubleSide });
   const concrete = new THREE.MeshStandardMaterial({ color: '#ffffff', map: proceduralTexture('concrete', '#c4c0b9'), roughness: 0.9, side: THREE.DoubleSide });
-  const pipeMaterial = new THREE.MeshStandardMaterial({ color: '#8d9096', roughness: 0.5, metalness: 0.3 });
   const led = new THREE.MeshBasicMaterial({ color: '#ffe2b0' });
   for (const zone of ceilingZones(floorplan)) {
     const state = ceilingStateOf(ceilings, zone.id, floorplan);
@@ -198,25 +196,9 @@ function buildCeilings(floorplan, { slabHeight, ceilingColor, ceilings }) {
         }
         group.add(bulkhead(rect, lowered, slabHeight, paint));
       }
-      // 不包：沿著這一區的長邊拉兩條外露管線
-      if (exposed) {
-        const [x0, y0, x1, y1] = rect;
-        const alongX = x1 - x0 >= y1 - y0;
-        const length = alongX ? x1 - x0 : y1 - y0;
-        if (length > 1) {
-          for (const offset of [0.25, 0.4]) {
-            const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, length - 0.1, 10), pipeMaterial);
-            pipe.rotation.z = alongX ? Math.PI / 2 : 0;
-            pipe.rotation.x = alongX ? 0 : Math.PI / 2;
-            const cx = alongX ? (x0 + x1) / 2 : x0 + offset;
-            const cy = alongX ? y0 + offset : (y0 + y1) / 2;
-            pipe.position.set(cx, slabHeight - 0.08, -cy);
-            group.add(pipe);
-          }
-        }
-      }
     }
   }
+  group.add(buildCeilingServices(floorplan, { slabHeight, ceilings }));
   return group;
 }
 
