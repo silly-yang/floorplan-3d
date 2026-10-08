@@ -14,7 +14,8 @@ import { CEILING_TYPES, ceilingStateOf, ceilingZones } from './core/ceilings.js'
 import { mountSurfaces, outletsToFurniture } from './core/electrical.js';
 import { FLOOR_MATERIALS, floorMaterialOf } from './core/materials.js';
 import { walkStart } from './core/cameraMath.js';
-import { walkBlockers } from './core/layout.js';
+import { footprint, walkBlockers } from './core/layout.js';
+import { occludingWalls } from './core/occlusion.js';
 import { buildGrid } from './scene/gridLayer.js';
 import { buildHouse, disposeObject, floorColorOf } from './scene/house.js';
 import { textureThumbnail } from './scene/textures.js';
@@ -264,6 +265,7 @@ function setupHouse(floorplan, viewer, store) {
     lastKey = key;
     if (house) {
       viewer.scene.remove(house.group);
+      house.wallFade.dispose();
       disposeObject(house.group);
     }
     house = buildHouse(floorplan, {
@@ -279,6 +281,28 @@ function setupHouse(floorplan, viewer, store) {
   store.subscribe(sync);
   viewer.onChange(applyCeiling);
   sync();
+  return () => house;
+}
+
+// 3D 視角時，擋在鏡頭與目標（選取的家具，沒有就是畫面中心）之間的牆變半透明
+// 家具除了中心也看四個角，寬的家具才不會被旁邊的牆遮掉一半
+// 俯視是正交投影、視線垂直向下，牆擋不到目標；漫遊本來就在室內，都不淡化
+// 每幀重算：只有幾十道牆，鏡頭動、選取變、房子重建都不必另外接事件
+function setupWallFade({ viewer, editor, getHouse, getSolids }) {
+  const none = new Set();
+  viewer.onFrame(() => {
+    const house = getHouse();
+    if (viewer.mode !== 'orbit') {
+      house.wallFade.apply(none);
+      return;
+    }
+    const item = editor.selected;
+    const { target: center } = viewer.orbit;
+    const { position: eye } = viewer.perspective;
+    const targets = item ? [[item.x, item.y], ...footprint(item)] : [[center.x, -center.z]];
+    const ids = new Set(targets.flatMap((t) => [...occludingWalls(getSolids(), [eye.x, -eye.z], t)]));
+    house.wallFade.apply(ids);
+  });
 }
 
 function iconLabel(icon, label) {
@@ -389,7 +413,7 @@ async function main() {
   viewer.walkStart = walkStart(floorplan.rooms);
   viewer.canWalkTo = makeWalkCollision(getSolids, floorplan, store);
   setupViewSwitch(viewer);
-  setupHouse(floorplan, viewer, store);
+  const getHouse = setupHouse(floorplan, viewer, store);
   setupFloorPanel(floorplan, store);
 
   // 圖層要比編輯器先訂閱：編輯器更新選取與衝突外框時，物件必須已經同步好
@@ -409,6 +433,7 @@ async function main() {
     lightLayer.update();
   });
   const editor = new Editor({ viewer, store, furnitureLayer, doorLayer, floorplan, getSolids });
+  setupWallFade({ viewer, editor, getHouse, getSolids });
   renderCatalog({
     onAdd: (type) => {
       editor.add(type);

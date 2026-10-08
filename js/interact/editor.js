@@ -165,7 +165,8 @@ export class Editor {
   #worldPointAt(clientX, clientY) {
     const ray = this.#ray(clientX, clientY);
     const targets = ['house', 'furniture', 'doors'].map((n) => this.viewer.scene.getObjectByName(n)).filter(Boolean);
-    const hit = ray.intersectObjects(targets, true).find((h) => h.object.visible && h.object.name !== 'ground');
+    // 淡化的牆看得穿，雙擊要落在後面的東西上
+    const hit = ray.intersectObjects(targets, true).find((h) => h.object.visible && h.object.name !== 'ground' && !h.object.userData.faded);
     if (hit) return hit.point;
     return ray.ray.intersectPlane(this.floor, new THREE.Vector3());
   }

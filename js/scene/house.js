@@ -56,6 +56,7 @@ export function buildHouse(floorplan, { ceilingHeight, rooms, ceilingColor = '#f
     wallMeshes.push(mesh);
     group.add(mesh);
   }
+  const wallFade = wallFader(wallMeshes, paint);
 
   const glassMaterial = new THREE.MeshPhysicalMaterial({
     color: '#bcd7e6',
@@ -114,7 +115,39 @@ export function buildHouse(floorplan, { ceilingHeight, rooms, ceilingColor = '#f
   ground.name = 'ground';
   group.add(ground);
 
-  return { group, floors, wallMeshes, ceiling };
+  return { group, floors, wallMeshes, ceiling, wallFade };
+}
+
+const FADED_OPACITY = 0.2;
+
+// 牆材質依牆種共用，淡化改成換上一份共用的半透明材質，才不會連帶沒被擋的牆
+// 不寫深度：後面的家具照樣畫得出來；mesh.userData.faded 讓射線檢測略過
+// 拆掉房子前先 dispose：換回原材質，disposeObject 才釋放得到
+function wallFader(wallMeshes, paint) {
+  const faded = new THREE.MeshStandardMaterial({
+    color: WALL_COLORS.rc,
+    roughness: 0.92,
+    map: paint,
+    transparent: true,
+    opacity: FADED_OPACITY,
+    depthWrite: false,
+  });
+  const apply = (ids) => {
+    for (const mesh of wallMeshes) {
+      const fade = ids.has(mesh.name);
+      if (fade === Boolean(mesh.userData.faded)) continue;
+      if (fade) mesh.userData.baseMaterial = mesh.material;
+      mesh.material = fade ? faded : mesh.userData.baseMaterial;
+      mesh.userData.faded = fade;
+    }
+  };
+  return {
+    apply,
+    dispose: () => {
+      apply(new Set());
+      faded.dispose();
+    },
+  };
 }
 
 const SLAB_THICKNESS = 0.15; // 樑標示的深度含樓板，樑在天花板下突出的是深度扣掉這個值
