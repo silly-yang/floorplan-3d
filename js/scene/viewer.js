@@ -146,6 +146,7 @@ export class Viewer {
   setMode(mode) {
     if (mode === this.mode) return;
     if (this.walk.isLocked) this.walk.unlock();
+    this.savedView = null;
     this.mode = mode;
     this.orbit.enabled = mode === 'orbit';
     this.topControls.enabled = mode === 'top';
@@ -208,6 +209,22 @@ export class Viewer {
     };
   }
 
+  // 雙擊切換：沒放大就放大到 point 並記住原視角；已放大就回到原視角
+  toggleZoomAt(point) {
+    if (this.savedView) {
+      const view = this.savedView;
+      this.savedView = null;
+      if (view.mode === 'top') this.#animateTop(view.target, view.zoom);
+      else this.#animateOrbit(view);
+      return;
+    }
+    this.savedView =
+      this.mode === 'top'
+        ? { mode: 'top', target: this.topControls.target.clone(), zoom: this.ortho.zoom }
+        : { mode: 'orbit', position: this.perspective.position.clone(), target: this.orbit.target.clone() };
+    this.zoomAt(point);
+  }
+
   // point：世界座標；雙擊的位置
   zoomAt(point) {
     if (this.mode === 'orbit') this.#animateOrbit(zoomToward(this.perspective.position, this.orbit.target, point));
@@ -215,6 +232,7 @@ export class Viewer {
   }
 
   resetView() {
+    this.savedView = null;
     if (this.mode === 'top') this.#animateTop(this.center, 1);
     else if (this.mode === 'orbit') this.#animateOrbit(this.#fitView());
   }

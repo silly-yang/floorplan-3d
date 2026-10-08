@@ -230,7 +230,7 @@ export class Editor {
     const moved = this.drag?.moved;
     if (!moved && this.viewer.mode !== 'walk' && this.doubleTap.tap(e.clientX, e.clientY, e.timeStamp)) {
       const point = this.#worldPointAt(e.clientX, e.clientY);
-      if (point) this.viewer.zoomAt(point);
+      if (point) this.viewer.toggleZoomAt(point);
     }
     if (this.drag) {
       if (this.drag.moved) this.store.commit(this.store.getState(), { base: this.drag.base });
