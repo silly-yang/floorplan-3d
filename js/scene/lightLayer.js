@@ -26,6 +26,9 @@ const COVE_NIGHT_BOOST = 2.5;
 const COVE_LUMENS = 900;
 const COVE_MIN_AREA = 0.5; // 房間扣掉廚房後會切出細長的碎塊，碎塊不配光源，免得吃掉燈具的名額
 const CORD_RADIUS = 0.004;
+// 吸頂的四散型燈具：光源放在燈下方，貼著天花板的點光源會把燈正上方照成一片過曝
+const CEILING_POINT_DROP = 0.5;
+const LAMP_FACE_OFFSET = 0.03; // 聚光燈、吊燈的光源在發光面下方一點
 
 export class LightLayer {
   constructor(scene, furnitureLayer, floorplan) {
@@ -161,13 +164,14 @@ export class LightLayer {
     const lamps = activeLightSources(this.design.furniture, MAX_LIGHT_SOURCES).map((item) => {
       const spec = getCatalogItem(item.type).light;
       const spot = spec.kind === 'spot';
+      const drop = spot || item.type === 'pendant-light' ? LAMP_FACE_OFFSET : CEILING_POINT_DROP;
       return {
         key: `lamp:${item.id}`,
         kind: spot ? 'spot' : 'point',
         beam: spec.beam,
         color: colorTempToHex(lightOptionsOf(item).colorTemp),
         intensity: lightIntensity(item) * INTENSITY_SCALE * (spot ? 1 : POINT_BOUNCE),
-        position: planToWorld([item.x, item.y], (item.elevation ?? 0) - 0.03),
+        position: planToWorld([item.x, item.y], (item.elevation ?? 0) - drop),
       };
     });
     return [...lamps, ...this.#coveSpots().slice(0, MAX_LIGHT_SOURCES - lamps.length)];

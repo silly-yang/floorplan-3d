@@ -1,8 +1,10 @@
 // 家具 3D 模型：程式化低多邊形造型，並預留外部 GLB/GLTF 模型取代
 // 座標：原點在家具底面中心，寬沿 x、深沿 z、正面朝 +z
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { PLINTH, cellBox } from '../core/cabinet.js';
+import { cushionSpans } from '../core/cushions.js';
 import { BOARD_THICKNESS, getAccessory, pegboardFootprint } from '../core/pegboard.js';
 import { getCatalogItem } from './catalog.js';
 import { ELECTRICAL_BUILDERS } from './electricalModels.js';
@@ -35,6 +37,40 @@ function box(group, [sx, sy, sz], [x, y, z], color, roughness) {
   return mesh;
 }
 
+// 圓角方塊：座墊、枕頭、被子這類軟的東西
+function soft(group, [sx, sy, sz], [x, y, z], color, radius = 0.03) {
+  const r = Math.min(radius, sx / 2 - 0.001, sy / 2 - 0.001, sz / 2 - 0.001);
+  // 圓角只切一段：法線已經做成圓弧，看起來是圓的，三角形只有兩段的三分之一
+  const mesh = new THREE.Mesh(new RoundedBoxGeometry(sx, sy, sz, 1, Math.max(0.001, r)), mat(color, 0.95));
+  mesh.position.set(x, y, z);
+  group.add(mesh);
+  return mesh;
+}
+
+const HANDLE_METAL = '#a3a7ac';
+
+// 金屬把手：環境反射下看起來是金屬
+function handleMat() {
+  const key = 'handle-metal';
+  if (!materialCache.has(key)) materialCache.set(key, new THREE.MeshStandardMaterial({ color: HANDLE_METAL, roughness: 0.3, metalness: 0.85 }));
+  return materialCache.get(key);
+}
+
+// 長條把手：axis 'x' 橫放、'y' 直放，兩端各一支腳柱離開門板
+function barHandle(group, length, [x, y, z], axis = 'y') {
+  const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, length, 10), handleMat());
+  if (axis === 'x') bar.rotation.z = Math.PI / 2;
+  bar.position.set(x, y, z + 0.025);
+  group.add(bar);
+  for (const s of [-1, 1]) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.025, 8), handleMat());
+    post.rotation.x = Math.PI / 2;
+    const offset = s * (length / 2 - 0.015);
+    post.position.set(x + (axis === 'x' ? offset : 0), y + (axis === 'y' ? offset : 0), z + 0.0125);
+    group.add(post);
+  }
+}
+
 function cylinder(group, [rTop, rBottom, height, segments], [x, y, z], color) {
   const mesh = new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBottom, height, segments), mat(color));
   mesh.position.set(x, y, z);
@@ -57,10 +93,18 @@ function seating(g, w, d, h, c, { arm }) {
   const armW = arm ? Math.min(0.18, w * 0.15) : 0;
   box(g, [w, seatH * 0.55, d], [0, seatH * 0.275 + 0.06, 0], c.dark);
   legs(g, w, d, 0.06, 0.05, 0.06, WOOD_DARK);
-  box(g, [w - armW * 2, seatH * 0.35, d - back], [0, seatH * 0.55 + 0.06 + seatH * 0.175, back / 2], c.light);
-  box(g, [w, h - 0.06, back], [0, (h - 0.06) / 2 + 0.06, -d / 2 + back / 2], c.main);
+  // 座墊依寬度分塊，後面靠著同樣分塊、略往後倒的靠墊
+  const cushionH = seatH * 0.35;
+  const seatTop = seatH * 0.55 + 0.06 + cushionH;
+  const backCushion = { h: Math.max(0.2, (h - seatTop) * 0.8), d: Math.min(0.16, (d - back) * 0.3) };
+  for (const span of cushionSpans(w - armW * 2)) {
+    soft(g, [span.width, cushionH, d - back - 0.01], [span.center, seatTop - cushionH / 2, back / 2], c.light, 0.04);
+    const pillow = soft(g, [span.width - 0.02, backCushion.h, backCushion.d], [span.center, seatTop + backCushion.h / 2 - 0.02, -d / 2 + back + backCushion.d / 2], c.light, 0.05);
+    pillow.rotation.x = -0.12;
+  }
+  soft(g, [w, h - 0.06, back], [0, (h - 0.06) / 2 + 0.06, -d / 2 + back / 2], c.main, 0.03);
   if (arm) {
-    for (const s of [-1, 1]) box(g, [armW, h * 0.68, d], [s * (w / 2 - armW / 2), h * 0.34 + 0.03, 0], c.main);
+    for (const s of [-1, 1]) soft(g, [armW, h * 0.68, d], [s * (w / 2 - armW / 2), h * 0.34 + 0.03, 0], c.main, 0.04);
   }
 }
 
@@ -83,19 +127,28 @@ const BUILDERS = {
     const seatH = Math.min(0.46, h * 0.52);
     box(g, [w, 0.04, d], [0, seatH, 0], c.main);
     legs(g, w, d, seatH - 0.02, 0.035, 0.03, c.dark);
-    box(g, [w, h - seatH, 0.03], [0, seatH + (h - seatH) / 2, -d / 2 + 0.015], c.main);
+    // 椅背：後腳往上延伸成兩支立柱，中間一片弧形靠板與一支橫檔
+    const backH = h - seatH;
+    const postZ = -d / 2 + 0.03;
+    for (const s of [-1, 1]) box(g, [0.03, backH, 0.03], [s * (w / 2 - 0.0475), seatH + backH / 2, postZ], c.dark);
+    box(g, [w - 0.08, Math.min(0.12, backH * 0.3), 0.02], [0, h - Math.min(0.12, backH * 0.3) / 2 - 0.02, postZ], c.main);
+    box(g, [w - 0.08, 0.025, 0.018], [0, seatH + backH * 0.35, postZ], c.dark);
   },
 
   'double-bed': (g, w, d, h, c) => bed(g, w, d, h, c, 2),
   'single-bed': (g, w, d, h, c) => bed(g, w, d, h, c, 1),
 
   wardrobe: (g, w, d, h, c) => {
-    box(g, [w, h, d], [0, h / 2, 0], c.main);
+    // 櫃體＋踢腳內縮，門板各自一片、之間留 3 mm 縫，門板中段一支直把手
+    const kick = 0.06;
+    box(g, [w - 0.04, kick, d - 0.04], [0, kick / 2, -0.02], c.dark);
+    box(g, [w, h - kick, d - 0.02], [0, kick + (h - kick) / 2, -0.01], c.dark);
     const doors = Math.max(2, Math.round(w / 0.5));
-    for (let i = 1; i < doors; i++) box(g, [0.006, h * 0.96, 0.004], [-w / 2 + (w / doors) * i, h / 2, d / 2], c.dark);
+    const dw = w / doors;
     for (let i = 0; i < doors; i++) {
-      const x = -w / 2 + (w / doors) * (i + 0.5) + (i % 2 === 0 ? 1 : -1) * (w / doors) * 0.35;
-      box(g, [0.015, 0.18, 0.02], [x, h * 0.5, d / 2 + 0.01], METAL);
+      box(g, [dw - 0.003, h - kick - 0.006, 0.02], [-w / 2 + dw * (i + 0.5), kick + (h - kick) / 2, d / 2 - 0.01], c.main);
+      const x = -w / 2 + dw * (i + 0.5) + (i % 2 === 0 ? 1 : -1) * (dw / 2 - 0.05);
+      barHandle(g, 0.3, [x, h * 0.5, d / 2], 'y');
     }
   },
 
@@ -103,6 +156,9 @@ const BUILDERS = {
     box(g, [w, 0.03, d], [0, h - 0.015, 0], c.main, 0.5);
     for (const s of [-1, 1]) box(g, [0.03, h - 0.03, d * 0.9], [s * (w / 2 - 0.03), (h - 0.03) / 2, 0], c.dark);
     box(g, [w * 0.35, 0.12, d * 0.9], [w * 0.28, h - 0.09, 0], c.dark);
+    // 抽屜面板比櫃體淺一階，中間一支橫把手
+    box(g, [w * 0.35 - 0.006, 0.112, 0.012], [w * 0.28, h - 0.09, d * 0.45 + 0.006], c.main);
+    barHandle(g, Math.min(0.12, w * 0.2), [w * 0.28, h - 0.09, d * 0.45 + 0.012], 'x');
   },
 
   'tv-stand': (g, w, d, h, c) => {
@@ -410,13 +466,21 @@ function counterBody(g, w, d, h, c, { top }) {
 function bed(g, w, d, h, c, pillows) {
   const baseH = Math.min(0.3, h * 0.3);
   const mattressH = Math.min(0.22, h * 0.22);
+  const top = baseH + mattressH;
   box(g, [w, baseH, d], [0, baseH / 2, 0], '#8a6e55');
-  box(g, [w - 0.04, mattressH, d - 0.06], [0, baseH + mattressH / 2, 0.02], '#f5f3ee');
-  box(g, [w - 0.02, mattressH * 0.35, d * 0.62], [0, baseH + mattressH + 0.01, d * 0.18], c.main);
+  soft(g, [w - 0.04, mattressH, d - 0.06], [0, baseH + mattressH / 2, 0.02], '#f5f3ee', 0.04);
   box(g, [w, h, 0.07], [0, h / 2, -d / 2 + 0.035], '#8a6e55');
+  // 被子蓋到床尾、兩側垂下一點；靠枕頭那端反折一段
+  const quilt = { start: -d / 2 + 0.62, thick: 0.06 };
+  const quiltD = d / 2 + 0.02 - quilt.start;
+  soft(g, [w + 0.02, quilt.thick, quiltD], [0, top + quilt.thick / 2 - 0.01, quilt.start + quiltD / 2], c.main, 0.03);
+  for (const s of [-1, 1]) box(g, [0.02, mattressH * 0.7, quiltD], [s * (w / 2 + 0.005), top - mattressH * 0.35, quilt.start + quiltD / 2], c.main, 0.95);
+  soft(g, [w + 0.03, quilt.thick * 1.2, 0.26], [0, top + quilt.thick * 0.7, quilt.start + 0.13], c.light, 0.03);
+  // 枕頭靠著床頭、略往後倒
   const pw = (w - 0.2) / pillows;
   for (let i = 0; i < pillows; i++) {
-    box(g, [pw - 0.06, 0.1, 0.38], [-w / 2 + 0.1 + pw * (i + 0.5), baseH + mattressH + 0.05, -d / 2 + 0.3], '#ffffff', 1);
+    const pillow = soft(g, [pw - 0.08, 0.13, 0.42], [-w / 2 + 0.1 + pw * (i + 0.5), top + 0.075, -d / 2 + 0.3], '#ffffff', 0.06);
+    pillow.rotation.x = -0.18;
   }
 }
 
@@ -646,9 +710,11 @@ export function buildFurnitureModel(item, externalTemplate = null, cabinet = nul
   } else {
     (BUILDERS[item.type] ?? BUILDERS['coffee-table'])(group, w, d, h, shades(item.color), item.options);
   }
+  // 牆上的面板只凸出 1 cm，影子看不出來，不畫可以省下陰影那一輪的 draw call
+  const castsShadow = item.type !== 'rug' && !ELECTRICAL_BUILDERS[item.type];
   group.traverse((child) => {
     if (child.isMesh) {
-      child.castShadow = item.type !== 'rug';
+      child.castShadow = castsShadow;
       child.receiveShadow = true;
     }
   });

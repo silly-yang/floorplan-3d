@@ -2,12 +2,14 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { focusOn, zoomToward } from '../core/cameraMath.js';
+import { shadowFrustum } from '../core/sunlight.js';
+import { environmentYaw, interiorEnvironment } from './environment.js';
 
 const EYE_HEIGHT = 1.6;
 const CEILING_PITCH = 0.55; // 看天花板時抬頭約 30°
@@ -15,6 +17,23 @@ const ANIMATION_SECONDS = 0.55;
 const MAX_TOP_ZOOM = 8;
 const WALK_SPEED = 1.6; // 公尺／秒
 const MOVE_KEYS = { KeyW: 'f', ArrowUp: 'f', KeyS: 'b', ArrowDown: 'b', KeyA: 'l', ArrowLeft: 'l', KeyD: 'r', ArrowRight: 'r' };
+// 3D／俯視沒有天花板，太陽接近正上方，牆影才不會蓋掉大半地板
+const OVERHEAD_SUN = new THREE.Vector3(-2.5, 22, 3.5).normalize();
+const SHADOW_HEIGHT = 3.2; // 陰影範圍要包住的房子高度
+const SHADOW_MARGIN = 0.3;
+// 高畫質：陰影貼圖加大、取樣半徑加大，邊緣較柔；一般畫質維持原本的設定
+const SHADOW_QUALITY = { low: { size: 2048, radius: 3 }, high: { size: 4096, radius: 12 } };
+// 只讓夜晚的發光面（燈罩、燈帶）泛光：門檻要高過燈旁被照亮的天花板，否則整個畫面起霧
+const BLOOM = { strength: 0.6, radius: 0.3, threshold: 6 };
+// 曝光：漫遊時天花板擋住陽光，室內只剩窗光與環境光，跟眼睛一樣調亮一些；夜晚只靠燈具，壓低才不會過曝
+const EXPOSURE = { outside: 1.3, indoor: 1.7, night: 1.05 };
+
+// 泛光本來就是模糊的光暈，用半解析度算就夠，成本約剩四分之一
+class HalfResBloomPass extends UnrealBloomPass {
+  setSize(width, height) {
+    super.setSize(Math.max(1, Math.round(width / 2)), Math.max(1, Math.round(height / 2)));
+  }
+}
 
 export class Viewer {
   constructor(container, bounds) {
@@ -32,21 +51,21 @@ export class Viewer {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
-    // 電影常用的色調曲線：亮部不會一片死白，暗部保留細節
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 0.9;
+    // AgX 色調曲線：亮部漸漸變白而不是一片死白，木頭、暖光也不會被推得過飽和
+    this.renderer.toneMapping = THREE.AgXToneMapping;
+    this.renderer.toneMappingExposure = EXPOSURE.outside;
     container.appendChild(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color('#eef1f4');
     // 室內環境光反射：磁磚、金屬、玻璃才會有自然的反光
-    const pmrem = new THREE.PMREMGenerator(this.renderer);
-    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    this.scene.environmentIntensity = 0.35;
-    pmrem.dispose();
+    this.scene.environment = interiorEnvironment(this.renderer);
+    this.scene.environmentIntensity = 0.45;
     this.#addLights();
     // 手機 GPU 較弱，環境光遮蔽預設關閉
     this.highQuality = !window.matchMedia('(max-width: 760px)').matches;
+    this.night = false;
+    this.daylight = null;
     this.animation = null;
 
     const center = new THREE.Vector3(bounds.width / 2, 0, -bounds.depth / 2);
@@ -84,25 +103,53 @@ export class Viewer {
     this.resizeObserver.observe(container);
     this.resize();
     this.fitOrbit();
+    this.#applyShadowQuality();
+    this.#applyLighting();
     this.#rebuildComposer();
     this.renderer.setAnimationLoop(() => this.#tick());
   }
 
   #addLights() {
-    this.scene.add(new THREE.HemisphereLight('#ffffff', '#b8b0a4', 0.75));
+    // 地面反射色偏暖、偏亮：天花板與家具底面靠它補光，太暗整間會灰灰的
+    this.scene.add(new THREE.HemisphereLight('#f4f7ff', '#d2c8ba', 0.75));
     const sun = new THREE.DirectionalLight('#fff3e0', 2.4);
-    const { width, depth } = this.bounds;
-    // 太陽接近正上方，牆影才不會蓋掉大半地板
-    sun.position.set(width / 2 - 2.5, 22, -depth / 2 + 3.5);
-    sun.target.position.set(width / 2, 0, -depth / 2);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
-    const span = Math.max(width, depth);
-    Object.assign(sun.shadow.camera, { left: -span, right: span, top: span, bottom: -span, near: 1, far: 60 });
     sun.shadow.bias = -0.0005;
     sun.shadow.normalBias = 0.02;
-    sun.shadow.radius = 3;
+    this.sun = sun;
     this.scene.add(sun, sun.target);
+  }
+
+  // 漫遊時的陽光方向（世界座標、指向太陽）；由平面圖的對外窗推出來，從窗戶照進室內
+  setDaylight(toSun) {
+    this.daylight = new THREE.Vector3(toSun.x, toSun.y, toSun.z).normalize();
+    this.#applyLighting();
+  }
+
+  // 依視角與日夜套用陽光方向、環境反射方向、曝光；陰影相機只包住房子，範圍越小陰影越細、越不鋸齒
+  #applyLighting() {
+    const toSun = this.mode === 'walk' && this.daylight ? this.daylight : OVERHEAD_SUN;
+    const { width, depth } = this.bounds;
+    const f = shadowFrustum({ min: { x: 0, y: 0, z: -depth }, max: { x: width, y: SHADOW_HEIGHT, z: 0 } }, toSun, SHADOW_MARGIN);
+    this.sun.target.position.set(f.center.x, f.center.y, f.center.z);
+    this.sun.position.copy(this.sun.target.position).addScaledVector(toSun, f.distance);
+    const camera = this.sun.shadow.camera;
+    Object.assign(camera, { left: f.left, right: f.right, top: f.top, bottom: f.bottom, near: f.near, far: f.far });
+    camera.updateProjectionMatrix();
+    // 環境反射的窗轉到陽光那一側
+    this.scene.environmentRotation.y = environmentYaw(this.daylight ?? toSun);
+    this.renderer.toneMappingExposure = this.night ? EXPOSURE.night : this.mode === 'walk' ? EXPOSURE.indoor : EXPOSURE.outside;
+  }
+
+  #applyShadowQuality() {
+    const q = this.highQuality ? SHADOW_QUALITY.high : SHADOW_QUALITY.low;
+    const shadow = this.sun.shadow;
+    shadow.radius = q.radius;
+    if (shadow.mapSize.x === q.size) return;
+    shadow.mapSize.set(q.size, q.size);
+    // 換尺寸要丟掉舊的陰影貼圖，下一幀才會用新尺寸重建
+    shadow.map?.dispose();
+    shadow.map = null;
   }
 
   #bindKeys() {
@@ -178,6 +225,7 @@ export class Viewer {
       this.walkCamera.rotation.set(0, start.yaw, 0, 'YXZ');
     }
     this.resize();
+    this.#applyLighting();
     this.#rebuildComposer();
     this.#emit();
   }
@@ -186,6 +234,14 @@ export class Viewer {
 
   setHighQuality(enabled) {
     this.highQuality = enabled;
+    this.#applyShadowQuality();
+    this.#rebuildComposer();
+  }
+
+  // 夜晚：高畫質時燈具發光面加泛光
+  setNight(on) {
+    this.night = on;
+    this.#applyLighting();
     this.#rebuildComposer();
   }
 
@@ -204,6 +260,7 @@ export class Viewer {
     ao.updateGtaoMaterial({ radius: 0.45, distanceExponent: 1.4, thickness: 1.2, scale: 1.1 });
     ao.blendIntensity = 0.85;
     this.composer.addPass(ao);
+    if (this.night) this.composer.addPass(new HalfResBloomPass(new THREE.Vector2(w, h), BLOOM.strength, BLOOM.radius, BLOOM.threshold));
     this.composer.addPass(new OutputPass());
   }
 

@@ -39,10 +39,15 @@ export function blocksPassage(state) {
 const add = (p, v, s) => [p[0] + v[0] * s, p[1] + v[1] * s];
 const angleOf = (v) => (Math.atan2(v[1], v[0]) * 180) / Math.PI;
 
-function hinged(axis, opening, state, progress) {
-  const { start, dir, across, width } = axis;
+// 門軸位置與從門軸往門片尾端的沿牆方向
+function hingeOf({ start, dir, width }, state) {
   const dirFromHinge = state.flip ? [-dir[0], -dir[1]] : dir;
-  const hinge = add(state.flip ? add(start, dir, width) : start, dirFromHinge, LEAF_GAP);
+  return { hinge: add(state.flip ? add(start, dir, width) : start, dirFromHinge, LEAF_GAP), dirFromHinge };
+}
+
+function hinged(axis, opening, state, progress) {
+  const { across, width } = axis;
+  const { hinge, dirFromHinge } = hingeOf(axis, state);
   const theta = (Math.PI / 2) * progress;
   // 門片從沿牆方向往 across 那一側轉開
   const leafDir = [
@@ -101,4 +106,19 @@ export function swingSide(opening, rooms) {
   if (ahead && behind) return area(behind) < area(ahead) ? -1 : 1;
   if (behind) return -1;
   return 1;
+}
+
+const STOP_FROM_EDGE = 0.05; // 門檔離門片尾端
+const STOP_RADIUS = 0.02;
+
+// 一般門的地上門檔：門全開（90°）時門片尾端內側，門片轉到這裡剛好被擋住；其他門型回 null
+export function doorStopPoint(opening, state, side = 1) {
+  if (state.type !== 'hinged') return null;
+  const axis = openingAxis(opening.polygon);
+  const { across, width } = axis;
+  const sign = side * (state.out ? -1 : 1);
+  const { hinge, dirFromHinge } = hingeOf(axis, state);
+  const leafWidth = width - LEAF_GAP * 2;
+  const tip = add(hinge, [across[0] * sign, across[1] * sign], leafWidth - STOP_FROM_EDGE);
+  return add(tip, dirFromHinge, -(LEAF_THICKNESS / 2 + STOP_RADIUS));
 }
