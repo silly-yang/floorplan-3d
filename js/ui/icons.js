@@ -49,6 +49,14 @@ export const ICONS = {
   'track-light': 'M3 5h18M7 5v3M17 5v3M5 8h4l1 5H4zM15 8h4l1 5h-6z',
   'linear-light': 'M3 5h18M4 8h16v2H4zM6 13l-1 2M12 13v2M18 13l1 2',
   'day-night': 'M8 3v1M8 12v1M3 8h1M12 8h1M8 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM20 16a5 5 0 1 1-6-6 4 4 0 0 0 6 6z',
+  // ---------- 水電 ----------
+  'outlet-110': 'M5 4h14v16H5zM10 9v3M14 9v3M10.5 15.5h3',
+  'outlet-220': 'M5 4h14v16H5zM9 10l2 2M15 10l-2 2M12 15v1.5',
+  'outlet-dedicated': 'M5 4h14v16H5zM10 8v3M14 8v3M13 13l-2 3h2l-2 3',
+  switch: 'M6 3h12v18H6zM9.5 7h5v10h-5zM9.5 12h5',
+  'tv-jack': 'M5 4h14v16H5zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 12h.01',
+  'lan-jack': 'M5 4h14v16H5zM9 10h6v5H9zM10.5 10V8.5h3V10M11 12.5v1M13 12.5v1',
+  'tab-electrical': 'M13 3L6 13h5l-1 8 7-10h-5z',
   // ---------- 門 ----------
   'door-none': 'M5 21V4h14v17M3 21h18M9 9l6 6M15 9l-6 6',
   'door-hinged': 'M5 21V4h10v17M3 21h18M15 4l4 2v15M12 12v1.5',

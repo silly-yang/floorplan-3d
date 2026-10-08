@@ -17,6 +17,7 @@ import { doorStateOf } from '../core/doors.js';
 import { createFurniture, getCatalogItem } from '../furniture/catalog.js';
 import { initialElevation } from '../core/mounting.js';
 import { isCeilingMounted, isLight, lightElevation, lightOptionsOf } from '../core/lighting.js';
+import { createElectrical, isElectrical, mountSurfaces, snapToWall } from '../core/electrical.js';
 import { placeCabinet } from '../core/cabinet.js';
 import { placePegboard } from '../core/pegboard.js';
 import { FURNITURE_MIME } from '../ui/catalogPanel.js';
@@ -39,6 +40,7 @@ export class Editor {
     this.doorLayer = doorLayer;
     this.openings = floorplan.openings;
     this.floorplan = floorplan;
+    this.walls = mountSurfaces(floorplan); // 插座可以貼的面
     this.selectedDoorId = null;
     this.getSolids = getSolids;
     this.selectedId = null;
@@ -233,6 +235,10 @@ export class Editor {
     const item = design.furniture.find((f) => f.id === this.drag.id);
     const [x, y] = this.#snapped([point[0] + this.drag.offset[0], point[1] + this.drag.offset[1]]);
     if (x === item.x && y === item.y) return;
+    if (isElectrical(item.type)) {
+      this.#slideOnWall(design, item, [x, y]);
+      return;
+    }
     // 沿路逐步前進，撞牆就停在牆前；只有真的動到才更新
     const reached = moveToward(item, { x, y }, this.getSolids());
     if (reached.x !== x || reached.y !== y) this.drag.blocked = true;
@@ -241,6 +247,14 @@ export class Editor {
     if (spot.x === item.x && spot.y === item.y) return;
     this.drag.moved = true;
     this.store.preview(updateFurniture(design, item.id, this.#withLightElevation(item, spot)));
+  }
+
+  // 插座、開關拖曳時沿著牆面滑動；離牆太遠就停在原處
+  #slideOnWall(design, item, point) {
+    const spot = snapToWall(point, this.walls);
+    if (!spot || (spot.x === item.x && spot.y === item.y && spot.rotation === item.rotation)) return;
+    this.drag.moved = true;
+    this.store.preview(updateFurniture(design, item.id, spot));
   }
 
   #onUp(e) {
@@ -304,6 +318,10 @@ export class Editor {
     const target = point ?? this.screenToPlan(rect.left + rect.width / 2, rect.top + rect.height / 2);
     if (!target) return;
     const [x, y] = this.#snapped(target);
+    if (isElectrical(type)) {
+      this.#addElectrical(type, [x, y], point ? undefined : Infinity);
+      return;
+    }
     // 吸頂、掛牆的東西放置時就定好離地高度
     const elevation = initialElevation(getCatalogItem(type), this.store.getState().ceilingHeight);
     const item = { ...createFurniture(type, { id: newId(), x, y }), ...(elevation === undefined ? {} : { elevation }) };
@@ -315,6 +333,17 @@ export class Editor {
     }
     if (point && (spot.x !== item.x || spot.y !== item.y)) toast('已自動往內挪一點，避免壓到牆');
     this.store.commit(addFurniture(this.store.getState(), { ...item, ...this.#withLightElevation(item, spot) }));
+    this.select(item.id);
+  }
+
+  // 插座一律貼牆；點清單新增（沒有落點）時貼到離畫面中央最近的牆
+  #addElectrical(type, [x, y], maxDistance) {
+    const item = createElectrical(type, { id: newId(), x, y }, this.walls, { maxDistance });
+    if (!item) {
+      toast('插座、開關要貼在牆上，請拖到靠近牆面的地方');
+      return;
+    }
+    this.store.commit(addFurniture(this.store.getState(), item));
     this.select(item.id);
   }
 
@@ -360,6 +389,8 @@ export class Editor {
 
   // 靠牆的家具旋轉或加大時會撞牆：先試著往內挪一點；回傳實際要套用的變更，放不下回 null
   #fit(item, patch) {
+    // 插座本來就貼著牆，不做撞牆挪動
+    if (isElectrical(item.type)) return patch;
     if (!hitsWalls({ ...item, ...patch }, this.getSolids())) return patch;
     const spot = findFreeSpot({ ...item, ...patch }, this.getSolids(), { radius: NUDGE_RADIUS });
     return spot ? { ...patch, ...spot } : null;
@@ -389,6 +420,10 @@ export class Editor {
   rotate(direction = 1) {
     const item = this.selected;
     if (!item) return;
+    if (isElectrical(item.type)) {
+      toast('插座、開關會自動朝向房間，拖曳就能沿著牆移動');
+      return;
+    }
     for (let k = 1; k < 360 / ROTATION_STEP; k++) {
       const rotation = normalizeRotation(item.rotation - direction * ROTATION_STEP * k);
       const applied = this.#fit(item, { rotation });
@@ -418,7 +453,10 @@ export class Editor {
     const item = this.selected;
     if (!item) return;
     const copy = { ...item, id: newId(), size: { ...item.size }, x: item.x + DUPLICATE_OFFSET, y: item.y - DUPLICATE_OFFSET };
-    const spot = findFreeSpot(copy, this.getSolids());
+    // 插座複製後沿牆貼到旁邊
+    const spot = isElectrical(item.type)
+      ? snapToWall([copy.x, copy.y], this.walls, { maxDistance: Infinity })
+      : findFreeSpot(copy, this.getSolids());
     if (!spot) {
       toast('附近找不到空間放複製的家具');
       return;

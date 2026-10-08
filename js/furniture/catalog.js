@@ -1,4 +1,5 @@
 // 家具目錄：類型、預設尺寸（公分）、預設顏色；不依賴 Three.js
+import { ELECTRICAL_ITEMS } from './electricalCatalog.js';
 
 export const SIZE_LIMITS = { min: 1, max: 600 };
 
@@ -7,6 +8,7 @@ export const CATEGORIES = [
   { id: 'appliance', name: '家電' },
   { id: 'fixture', name: '廚衛' },
   { id: 'light', name: '照明' },
+  { id: 'electrical', name: '水電' },
 ];
 
 // placement：floor 只能放地上；surface 可以放地上，也可以放到有檯面（surface: true）的家具上
@@ -66,6 +68,7 @@ export const CATALOG = [
   item('light', 'pendant-light', '吊燈', [35, 35, 30], '#3b3f45', { placement: 'ceiling', power: [110, 15], light: { kind: 'point', lumens: 1200 } }),
   item('light', 'track-light', '軌道燈', [120, 8, 15], '#2b2d31', { placement: 'ceiling', power: [110, 28], light: { kind: 'spot', lumens: 2400, beam: 24 } }),
   item('light', 'linear-light', '線燈', [120, 4, 4], '#e9e9e6', { placement: 'ceiling', power: [110, 18], light: { kind: 'linear', lumens: 1800 } }),
+  ...ELECTRICAL_ITEMS,
 ];
 
 const BY_TYPE = new Map(CATALOG.map((item) => [item.type, item]));

@@ -719,5 +719,229 @@
         "h": 200.0
       }
     }
+  ],
+  "outlets": [
+    {
+      "type": "outlet-dedicated",
+      "x": 3.4,
+      "y": 0.279,
+      "height": 1.2
+    },
+    {
+      "type": "outlet-110",
+      "x": 6.9,
+      "y": 0.75,
+      "height": 0.45
+    },
+    {
+      "type": "outlet-dedicated",
+      "x": 4.3,
+      "y": 0.961,
+      "height": 2.0
+    },
+    {
+      "type": "outlet-110",
+      "x": 5.45,
+      "y": 0.963,
+      "height": 1.2
+    },
+    {
+      "type": "outlet-110",
+      "x": 6.15,
+      "y": 1.016,
+      "height": 1.2
+    },
+    {
+      "type": "outlet-110",
+      "x": 5.099,
+      "y": 1.059,
+      "height": 1.1
+    },
+    {
+      "type": "outlet-dedicated",
+      "x": 5.45,
+      "y": 1.068,
+      "height": 1.2
+    },
+    {
+      "type": "outlet-220",
+      "x": 4.3,
+      "y": 1.167,
+      "height": 1.1
+    },
+    {
+      "type": "switch",
+      "x": 1.791,
+      "y": 1.25,
+      "height": 1.2
+    },
+    {
+      "type": "switch",
+      "x": 5.875,
+      "y": 1.46,
+      "height": 1.2
+    },
+    {
+      "type": "switch",
+      "x": 5.863,
+      "y": 1.594,
+      "height": 1.2
+    },
+    {
+      "type": "outlet-220",
+      "x": 6.826,
+      "y": 1.775,
+      "height": 2.3
+    },
+    {
+      "type": "outlet-110",
+      "x": 5.75,
+      "y": 3.425,
+      "height": 1.2
+    },
+    {
+      "type": "outlet-110",
+      "x": 8.45,
+      "y": 3.454,
+      "height": 0.3
+    },
+    {
+      "type": "lan-jack",
+      "x": 0.71,
+      "y": 3.523,
+      "height": 0.3
+    },
+    {
+      "type": "switch",
+      "x": 5.415,
+      "y": 3.622,
+      "height": 1.2
+    },
+    {
+      "type": "switch",
+      "x": 6.179,
+      "y": 3.627,
+      "height": 1.2
+    },
+    {
+      "type": "switch",
+      "x": 5.422,
+      "y": 3.734,
+      "height": 1.2
+    },
+    {
+      "type": "tv-jack",
+      "x": 0.702,
+      "y": 3.943,
+      "height": 0.3
+    },
+    {
+      "type": "outlet-110",
+      "x": 0.6,
+      "y": 4.044,
+      "height": 0.3
+    },
+    {
+      "type": "outlet-110",
+      "x": 0.796,
+      "y": 4.251,
+      "height": 0.3
+    },
+    {
+      "type": "outlet-110",
+      "x": 5.686,
+      "y": 4.638,
+      "height": 0.3
+    },
+    {
+      "type": "outlet-110",
+      "x": 3.53,
+      "y": 4.958,
+      "height": 0.3
+    },
+    {
+      "type": "outlet-110",
+      "x": 0.796,
+      "y": 5.046,
+      "height": 0.3
+    },
+    {
+      "type": "switch",
+      "x": 1.265,
+      "y": 5.167,
+      "height": 1.2
+    },
+    {
+      "type": "switch",
+      "x": 3.736,
+      "y": 5.19,
+      "height": 1.2
+    },
+    {
+      "type": "outlet-110",
+      "x": 3.925,
+      "y": 5.425,
+      "height": 0.3
+    },
+    {
+      "type": "outlet-110",
+      "x": 3.437,
+      "y": 5.612,
+      "height": 1.2
+    },
+    {
+      "type": "outlet-110",
+      "x": 8.452,
+      "y": 5.75,
+      "height": 0.3
+    },
+    {
+      "type": "outlet-110",
+      "x": 3.537,
+      "y": 5.827,
+      "height": 0.3
+    },
+    {
+      "type": "switch",
+      "x": 8.043,
+      "y": 5.84,
+      "height": 1.2
+    },
+    {
+      "type": "outlet-220",
+      "x": 3.32,
+      "y": 6.076,
+      "height": 2.3
+    },
+    {
+      "type": "outlet-110",
+      "x": 5.9,
+      "y": 6.098,
+      "height": 0.3
+    },
+    {
+      "type": "outlet-110",
+      "x": 6.0,
+      "y": 6.1,
+      "height": 0.3
+    },
+    {
+      "type": "outlet-220",
+      "x": 3.32,
+      "y": 6.275,
+      "height": 2.3
+    },
+    {
+      "type": "outlet-110",
+      "x": 4.8,
+      "y": 6.4,
+      "height": 0.3
+    },
+    {
+      "type": "outlet-110",
+      "x": 7.0,
+      "y": 6.85,
+      "height": 0.3
+    }
   ]
 }

@@ -5,6 +5,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { PLINTH, cellBox } from '../core/cabinet.js';
 import { BOARD_THICKNESS, getAccessory, pegboardFootprint } from '../core/pegboard.js';
 import { getCatalogItem } from './catalog.js';
+import { ELECTRICAL_BUILDERS } from './electricalModels.js';
 
 const materialCache = new Map();
 
@@ -320,6 +321,7 @@ const BUILDERS = {
     box(g, [w, h * 0.7, d], [0, h * 0.65, 0], c.main, 0.4);
     lightFace(box(g, [w * 0.98, h * 0.3, d * 0.8], [0, h * 0.15, 0], '#ffffff'));
   },
+  ...ELECTRICAL_BUILDERS,
 };
 
 function lightFace(mesh) {

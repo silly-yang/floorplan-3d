@@ -6,6 +6,10 @@
     "xMax": 4150,
     "yMax": 2130
   },
+  "electricalOffset": [
+    2300.67,
+    0
+  ],
   "layers": {
     "rcWall": [
       "L3"
@@ -27,6 +31,14 @@
     ],
     "beam": [
       "S01-RC大梁"
+    ],
+    "outlet": [
+      "01插座設備"
+    ],
+    "wallDevice": [
+      "01照明設備",
+      "02電視設備",
+      "02電話設備"
     ]
   },
   "windowTypes": {

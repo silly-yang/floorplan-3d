@@ -33,6 +33,7 @@
           <button role="tab" data-tab="furniture" data-icon="tab-furniture" aria-selected="true"><span>家具</span></button>
           <button role="tab" data-tab="appliance" data-icon="tab-appliance"><span>家電</span></button>
           <button role="tab" data-tab="fixture" data-icon="tab-fixture"><span>廚衛</span></button>
+          <button role="tab" data-tab="electrical" data-icon="tab-electrical"><span>水電</span></button>
           <button role="tab" data-tab="cabinet" data-icon="custom-cabinet"><span>櫃子</span></button>
           <button role="tab" data-tab="light" data-icon="ceiling-light"><span>照明</span></button>
           <button role="tab" data-tab="pegboard" data-icon="custom-pegboard"><span>洞洞板</span></button>
@@ -51,6 +52,12 @@
           <p class="hint-text">建商附的廚具與衛浴已預先擺好，可以移動、調整尺寸或刪除；也可以從這裡再新增。</p>
           <div class="fixture-actions" id="fixture-actions"></div>
           <ul class="catalog" id="catalog-fixture"></ul>
+        </section>
+        <section class="tab-panel" data-panel="electrical" hidden>
+          <p class="hint-text">插座、開關一律貼牆，拖曳時會沿著牆面滑動；選取後可以改離地高度與電壓。</p>
+          <div class="fixture-actions" id="electrical-actions"></div>
+          <ul class="catalog" id="catalog-electrical"></ul>
+          <div class="power-check" id="power-check"></div>
         </section>
         <section class="tab-panel" data-panel="cabinet" hidden id="cabinet-panel"></section>
         <section class="tab-panel" data-panel="light" hidden>

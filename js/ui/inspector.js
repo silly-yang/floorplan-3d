@@ -2,6 +2,7 @@
 import { elevationOf, nearestWallDistance, supportOf } from '../core/layout.js';
 import { getCatalogItem, normalizeSizeValue } from '../furniture/catalog.js';
 import { $, el } from './dom.js';
+import { electricalFields, powerNotes, updateElectricalFields } from './electricalPanel.js';
 import { iconSvg } from './icons.js';
 import { lightControls } from './lightControls.js';
 
@@ -82,6 +83,7 @@ export function setupInspector(editor, getSolids, { editCabinet, editPegboard } 
       title,
       ...body,
       ...lightControls(editor, item),
+      ...electricalFields(editor, item),
       el(
         'div',
         { class: 'field' },
@@ -97,6 +99,7 @@ export function setupInspector(editor, getSolids, { editCabinet, editPegboard } 
       el('p', { class: 'metric wall' }),
       el('p', { class: 'metric support' }),
       el('p', { class: 'warn' }),
+      powerNotes(),
       el(
         'div',
         { class: 'row' },
@@ -135,6 +138,7 @@ export function setupInspector(editor, getSolids, { editCabinet, editPegboard } 
     });
     const color = panel.querySelector('input[type=color]');
     if (color && document.activeElement !== color) color.value = item.color;
+    updateElectricalFields(panel, item, editor.store.getState());
   };
 
   editor.onChange(render);

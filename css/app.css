@@ -875,3 +875,40 @@ select {
   color: var(--accent);
   font-weight: 600;
 }
+
+/* ---------- 水電 ---------- */
+.power-check {
+  margin-top: 14px;
+}
+
+.power-check h3 {
+  font-size: 14px;
+  margin: 0 0 6px;
+}
+
+.link-button {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  vertical-align: top;
+  cursor: pointer;
+}
+
+.link-button:hover {
+  text-decoration: underline;
+}
+
+.height-presets {
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.field.inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}

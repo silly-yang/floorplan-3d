@@ -12,7 +12,8 @@ const REQUIRED_APPLIANCES = [
   'air-fryer', 'oven', 'steam-oven', 'kettle', 'dishwasher',
 ];
 const REQUIRED_FIXTURES = ['kitchen-counter', 'toilet', 'basin', 'upper-cabinet', 'shower-screen'];
-const REQUIRED = [...REQUIRED_FURNITURE, ...REQUIRED_APPLIANCES, ...REQUIRED_FIXTURES];
+const REQUIRED_ELECTRICAL = ['outlet-110', 'outlet-220', 'outlet-dedicated', 'switch', 'tv-jack', 'lan-jack'];
+const REQUIRED = [...REQUIRED_FURNITURE, ...REQUIRED_APPLIANCES, ...REQUIRED_FIXTURES, ...REQUIRED_ELECTRICAL];
 
 test('目錄包含需求列出的家具與家電，每種都有中文名稱與正數尺寸', () => {
   // Act：自己設計的系統櫃（custom）不在一般清單裡；照明（light）由 lighting.test.js 檢查
@@ -76,6 +77,7 @@ test('每個項目都分到家具、家電或廚衛，放置方式只有地面�
   assert.deepEqual(byCategory('furniture'), [...REQUIRED_FURNITURE].sort());
   assert.deepEqual(byCategory('appliance'), [...REQUIRED_APPLIANCES].sort());
   assert.deepEqual(byCategory('fixture'), [...REQUIRED_FIXTURES].sort());
+  assert.deepEqual(byCategory('electrical'), [...REQUIRED_ELECTRICAL].sort());
   for (const item of CATALOG) assert.ok(['floor', 'surface', 'wall', 'ceiling'].includes(item.placement), item.type);
 });
 
@@ -147,3 +149,24 @@ test('自己設計的洞洞板有獨立類型、掛在牆上，不混進家具�
   assert.equal(custom.category, 'custom');
   assert.equal(custom.placement, 'wall');
 });
+
+for (const [type, height, options] of [
+  ['outlet-110', 30, { voltage: 110, dedicated: false }],
+  ['outlet-220', 230, { voltage: 220, dedicated: true }],
+  ['outlet-dedicated', 110, { voltage: 110, dedicated: true }],
+  ['switch', 120, {}],
+  ['tv-jack', 30, {}],
+  ['lan-jack', 30, {}],
+]) {
+  test(`${type} 是掛牆面板，預設離地 ${height} cm`, () => {
+    // Act
+    const spec = getCatalogItem(type);
+
+    // Assert：面板會跟貼牆的家具疊在一起，擋住與否另外檢查，不算重疊
+    assert.equal(spec.placement, 'wall');
+    assert.equal(spec.allowOverlap, true);
+    assert.deepEqual(spec.size, { w: 12, d: 4, h: 12 });
+    assert.equal(spec.mountHeight, height);
+    assert.deepEqual(spec.options, options);
+  });
+}
