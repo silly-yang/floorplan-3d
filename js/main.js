@@ -30,7 +30,6 @@ import { makeStatusHandler, setupSessionUi } from './ui/sessionUi.js';
 
 const WALKER_RADIUS = 0.2;
 const BODY_HEIGHT = 1.2; // 低於這個高度的量體（牆、窗台）會擋住漫遊
-const CUTAWAY_HEIGHT = 1.1; // 剖面模式的牆高，方便從上方看家具
 
 async function loadFloorplan() {
   const response = await fetch('data/floorplan.json', { cache: 'no-cache' });
@@ -208,14 +207,13 @@ function setupFloorPanel(floorplan, store) {
 }
 
 // 「空間」分頁的天花板：每一區選形式；平釘與造型可調高度
-function setupCeilingPanel(floorplan, store, showCeiling) {
+function setupCeilingPanel(floorplan, store) {
   const list = $('#ceiling-list');
   const zones = ceilingZones(floorplan);
   const update = (zoneId, patch) => {
     const design = store.getState();
     const current = ceilingStateOf(design.ceilings, zoneId, floorplan);
     store.commit(relevelLights({ ...design, ceilings: { ...design.ceilings, [zoneId]: { ...current, ...patch } } }, floorplan));
-    showCeiling();
   };
   const render = (design) => {
     list.replaceChildren(
@@ -248,19 +246,16 @@ function setupCeilingPanel(floorplan, store, showCeiling) {
   render(store.getState());
 }
 
-// 回傳 { setCutaway, setCeiling }：只改顯示，不改設計內容
-// 天花板：漫遊時一定顯示；3D／俯視預設隱藏（會擋住視線），可手動打開；剖面時一律隱藏
+// 天花板只在漫遊時顯示；3D／俯視會擋住視線
 function setupHouse(floorplan, viewer, store) {
   let house = null;
   let lastKey = '';
-  let cutaway = false;
-  let ceilingOn = false;
   const applyCeiling = () => {
-    if (house) house.ceiling.visible = !cutaway && (ceilingOn || viewer.mode === 'walk');
+    if (house) house.ceiling.visible = viewer.mode === 'walk';
   };
   const sync = () => {
     const design = store.getState();
-    const height = cutaway ? Math.min(CUTAWAY_HEIGHT, design.ceilingHeight) : design.ceilingHeight;
+    const height = design.ceilingHeight;
     const key = JSON.stringify([height, design.rooms, design.ceilingColor, design.ceilings]);
     if (key === lastKey) return;
     lastKey = key;
@@ -281,16 +276,6 @@ function setupHouse(floorplan, viewer, store) {
   store.subscribe(sync);
   viewer.onChange(applyCeiling);
   sync();
-  return {
-    setCutaway: (enabled) => {
-      cutaway = enabled;
-      sync();
-    },
-    setCeiling: (enabled) => {
-      ceilingOn = enabled;
-      applyCeiling();
-    },
-  };
 }
 
 function iconLabel(icon, label) {
@@ -315,15 +300,17 @@ function toggleButton(icon, label, initial, onToggle, title) {
   return button;
 }
 
-function setupStageTools(editor, { setCutaway, setCeiling }) {
+function setupStageTools(editor) {
   const fullView = el('button', { class: 'btn', title: '回到看得到整間房子的視角（也可以雙擊畫面放大）' }, iconLabel('full-view', '全景'));
   fullView.addEventListener('click', () => editor.viewer.resetView());
+  // 天花板在 3D／俯視會擋住視線，所以直接進漫遊從室內往上看
+  const ceilingButton = el('button', { class: 'btn', title: '進入漫遊，從室內看天花板' }, iconLabel('ceiling', '天花板'));
+  ceilingButton.addEventListener('click', () => editor.viewer.setMode('walk'));
   $('#stage-tools').replaceChildren(
     fullView,
     toggleButton('high-quality', '高畫質', editor.viewer.highQuality, (on) => editor.viewer.setHighQuality(on), '牆角、家具底下的柔和陰影；手機較慢可關閉'),
     toggleButton('grid', '網格 5 cm', true, (on) => editor.setSnap(on), '移動家具時對齊 5 公分網格'),
-    toggleButton('cutaway', '剖面', false, setCutaway, '把牆降到 1.1 公尺，方便看家具配置'),
-    toggleButton('ceiling', '天花板', false, setCeiling, '在 3D／俯視顯示天花板（漫遊時一定會顯示）'),
+    ceilingButton,
   );
 }
 
@@ -386,7 +373,7 @@ async function main() {
   const viewer = new Viewer($('#stage'), floorplan.bounds);
   viewer.canWalkTo = makeWalkCollision(getSolids, floorplan, store);
   setupViewSwitch(viewer);
-  const houseView = setupHouse(floorplan, viewer, store);
+  setupHouse(floorplan, viewer, store);
   setupFloorPanel(floorplan, store);
 
   // 圖層要比編輯器先訂閱：編輯器更新選取與衝突外框時，物件必須已經同步好
@@ -416,13 +403,10 @@ async function main() {
   const pegboardPanel = setupPegboardPanel({ store, editor });
   setupInspector(editor, getSolids, { editCabinet: cabinetPanel.edit, editPegboard: pegboardPanel.edit });
   setupDoorPanel(editor, floorplan);
-  setupStageTools(editor, houseView);
+  setupStageTools(editor);
   $('#stage-tools').append(toggleButton('day-night', '夜晚', false, (on) => lightLayer.setNight(on), '關掉日光，看燈具開起來的效果'));
   // 改了天花板就自動打開天花板顯示，才看得到改了什麼
-  setupCeilingPanel(floorplan, store, () => {
-    const toggle = [...document.querySelectorAll('#stage-tools button')].find((b) => b.textContent.includes('天花板'));
-    if (toggle && toggle.getAttribute('aria-pressed') !== 'true') toggle.click();
-  });
+  setupCeilingPanel(floorplan, store);
   setupFixtureActions(floorplan, store);
   setupElectricalPanel({ store, editor, floorplan });
   setupHistoryButtons(store, editor);

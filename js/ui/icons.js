@@ -84,7 +84,6 @@ export const ICONS = {
   duplicate: 'M8 8h12v12H8zM16 8V4H4v12h4',
   delete: 'M4 7h16M10 11v6M14 11v6M5 7l1 13h12l1-13M9 7V4h6v3',
   grid: 'M4 4h16v16H4zM4 9.3h16M4 14.7h16M9.3 4v16M14.7 4v16',
-  cutaway: 'M3 20h18M5 20v-7h14v7M5 13l3-4M19 13l-3-4M8 9h8',
   ceiling: 'M3 5h18M5 5v3M19 5v3M12 5v4M9 13a3 3 0 0 0 6 0zM12 16v1',
   'view-3d': 'M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5',
   'view-top': 'M4 4h16v16H4zM4 12h7v8M11 4v5h9',
