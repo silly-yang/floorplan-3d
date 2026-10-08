@@ -912,3 +912,61 @@ select {
   align-items: center;
   gap: 6px;
 }
+
+/* ---------- 預設樣式選單 ---------- */
+.dialog:has(.preset-grid) {
+  width: min(760px, 94vw);
+  max-width: none;
+}
+
+.preset-grid {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.preset-card {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+
+.preset-card:hover,
+.preset-card:focus-visible {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.preset-thumb {
+  width: 100%;
+  height: 96px;
+}
+
+.preset-card .dims {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+@media (max-width: 760px) {
+  .preset-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .preset-thumb {
+    height: 72px;
+  }
+}

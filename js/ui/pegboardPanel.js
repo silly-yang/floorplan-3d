@@ -1,8 +1,10 @@
 // 「洞洞板」分頁：新增、編輯、複製、刪除自己設計的洞洞板；拖到畫面（手機點一下）擺放
 import { createPegboard, deletePegboardDesign, savePegboardDesign } from '../core/pegboard.js';
+import { PEGBOARD_PRESETS } from '../core/presets.js';
 import { $, confirmDialog, el } from './dom.js';
 import { boardSummary, issueSummary, openPegboardDesigner, pegboardElevation } from './pegboardDesigner.js';
 import { iconSvg } from './icons.js';
+import { pickPreset } from './presetPicker.js';
 
 export const PEGBOARD_MIME = 'application/x-pegboard-id'; // editor.js 有同一個字串
 
@@ -13,10 +15,24 @@ function iconButton(icon, label, attrs) {
   return button;
 }
 
+const BLANK = { label: '空白', name: '洞洞板', description: '沒有配件，從頭自己擺', build: (opts) => createPegboard(opts) };
+
 export function setupPegboardPanel({ store, editor }) {
   const panel = $('#pegboard-panel');
   const save = (board) => store.commit(savePegboardDesign(store.getState(), board));
   const edit = (board) => openPegboardDesigner(board, { onSave: save });
+
+  // 先選樣式再開設計器；取消就什麼都不建立
+  const startNew = async () => {
+    const options = [BLANK, ...PEGBOARD_PRESETS].map((preset) => {
+      const preview = preset.build({ id: 'preview', name: preset.name });
+      return { preset, name: preset.label ?? preset.name, dims: boardSummary(preview), description: preset.description, thumb: pegboardElevation(preview) };
+    });
+    const picked = await pickPreset('設計新的洞洞板', options);
+    if (!picked) return;
+    const n = (store.getState().pegboards ?? []).length + 1;
+    edit(picked.preset.build({ id: crypto.randomUUID(), name: `${picked.preset.name} ${n}` }));
+  };
 
   const render = () => {
     // 舊方案沒有 pegboards 欄位
@@ -25,7 +41,7 @@ export function setupPegboardPanel({ store, editor }) {
       el('p', { class: 'hint-text' }, '先設計洞洞板的尺寸、材質、掛牆高度與配件（也能做成貓跳台），儲存後拖進右側畫面靠牆擺放（手機點一下）。'),
       iconButton('add', '設計新的洞洞板', {
         class: 'btn primary block',
-        onclick: () => edit(createPegboard({ id: crypto.randomUUID(), name: `洞洞板 ${boards.length + 1}` })),
+        onclick: startNew,
       }),
       boards.length === 0 ? el('p', { class: 'note' }, '還沒有洞洞板。可以先做一面「貓跳台牆」試試。') : null,
       el('ul', { class: 'cabinet-list' }, boards.map((board) =>

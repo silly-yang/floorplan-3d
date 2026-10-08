@@ -1,8 +1,10 @@
 // 「櫃子」分頁：新增、編輯、複製、刪除自己設計的系統櫃；拖到畫面（手機點一下）擺放
 import { createCabinet, deleteCabinetDesign, saveCabinetDesign } from '../core/cabinet.js';
+import { CABINET_PRESETS } from '../core/presets.js';
 import { $, confirmDialog, el } from './dom.js';
 import { cabinetElevation, issueSummary, openCabinetDesigner } from './cabinetDesigner.js';
 import { iconSvg } from './icons.js';
+import { pickPreset } from './presetPicker.js';
 
 export const CABINET_MIME = 'application/x-cabinet-id';
 
@@ -13,10 +15,25 @@ function iconButton(icon, label, attrs) {
   return button;
 }
 
+const BLANK = { label: '空白', name: '系統櫃', description: '一欄一格，從頭自己分割', build: (opts) => createCabinet(opts) };
+
 export function setupCabinetPanel({ store, editor }) {
   const panel = $('#cabinet-panel');
   const save = (cab) => store.commit(saveCabinetDesign(store.getState(), cab));
   const edit = (cab) => openCabinetDesigner(cab, { onSave: save });
+
+  // 先選樣式再開設計器；取消就什麼都不建立
+  const startNew = async () => {
+    const options = [BLANK, ...CABINET_PRESETS].map((preset) => {
+      const preview = preset.build({ id: 'preview', name: preset.name });
+      const { w, d, h } = preview.size;
+      return { preset, name: preset.label ?? preset.name, dims: `${w}×${d}×${h} cm`, description: preset.description, thumb: cabinetElevation(preview) };
+    });
+    const picked = await pickPreset('設計新的櫃子', options);
+    if (!picked) return;
+    const n = store.getState().cabinets.length + 1;
+    edit(picked.preset.build({ id: crypto.randomUUID(), name: `${picked.preset.name} ${n}` }));
+  };
 
   const render = () => {
     const cabinets = store.getState().cabinets;
@@ -25,7 +42,7 @@ export function setupCabinetPanel({ store, editor }) {
       el('p', { class: 'hint-text' }, '先設計櫃子的尺寸、隔板、插座，試放家電，儲存後拖進右側畫面擺放（手機點一下）。'),
       iconButton('add', '設計新的櫃子', {
         class: 'btn primary block',
-        onclick: () => edit(createCabinet({ id: crypto.randomUUID(), name: `系統櫃 ${cabinets.length + 1}` })),
+        onclick: startNew,
       }),
       cabinets.length === 0 ? el('p', { class: 'note' }, '還沒有櫃子。可以先做一個「家電櫃」試試。') : null,
       el('ul', { class: 'cabinet-list' }, cabinets.map((cab) =>
