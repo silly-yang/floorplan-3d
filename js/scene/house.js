@@ -191,6 +191,7 @@ function buildCeilings(floorplan, { slabHeight, ceilingColor, ceilings }) {
           group.add(plane(inner, recessTop, paint));
           group.add(bulkhead(inner, lowered, recessTop, paint));
           const glow = bulkhead([inner[0] + 0.02, inner[1] + 0.02, inner[2] - 0.02, inner[3] - 0.02], lowered + 0.01, lowered + 0.04, led);
+          glow.name = 'cove-led'; // 夜晚模式靠這個名字找燈帶調亮
           group.add(glow);
         } else {
           group.add(plane(rect, lowered, paint));

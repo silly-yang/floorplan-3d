@@ -45,6 +45,13 @@ export const ICONS = {
   'mesh-node': 'M8 5h8v15H8zM8 5a4 2 0 0 1 8 0M12 15v.01M10 10a3 3 0 0 1 4 0',
   'ceiling-ap': 'M3 4h18M5 7h14a7 3 0 0 1-14 0zM12 9v.01M8 15a6 6 0 0 1 8 0M10 18a3 3 0 0 1 4 0',
   'network-panel': 'M5 3h14v18H5zM8 7h8M8 11h8M8 15h2M12 15h2M16 15h.01',
+  // ---------- 照明 ----------
+  downlight: 'M3 5h18M8 5v2h8V5M12 11v2M8 10l-1.5 2M16 10l1.5 2',
+  'ceiling-light': 'M3 4h18M5 6h14a7 4 0 0 1-14 0zM12 13v2M7 12l-1 2M17 12l1 2',
+  'pendant-light': 'M12 3v7M10 10h4M6 16a6 6 0 0 1 12 0zM12 19v2',
+  'track-light': 'M3 5h18M7 5v3M17 5v3M5 8h4l1 5H4zM15 8h4l1 5h-6z',
+  'linear-light': 'M3 5h18M4 8h16v2H4zM6 13l-1 2M12 13v2M18 13l1 2',
+  'day-night': 'M8 3v1M8 12v1M3 8h1M12 8h1M8 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM20 16a5 5 0 1 1-6-6 4 4 0 0 0 6 6z',
   // ---------- 門 ----------
   'door-none': 'M5 21V4h14v17M3 21h18M9 9l6 6M15 9l-6 6',
   'door-hinged': 'M5 21V4h10v17M3 21h18M15 4l4 2v15M12 12v1.5',

@@ -16,6 +16,7 @@ import { createDoubleTapDetector } from '../core/cameraMath.js';
 import { doorStateOf } from '../core/doors.js';
 import { createFurniture, getCatalogItem } from '../furniture/catalog.js';
 import { initialElevation } from '../core/mounting.js';
+import { isCeilingMounted, isLight, lightElevation, lightOptionsOf } from '../core/lighting.js';
 import { placeCabinet } from '../core/cabinet.js';
 import { FURNITURE_MIME } from '../ui/catalogPanel.js';
 import { toast } from '../ui/dom.js';
@@ -35,6 +36,7 @@ export class Editor {
     this.layer = furnitureLayer;
     this.doorLayer = doorLayer;
     this.openings = floorplan.openings;
+    this.floorplan = floorplan;
     this.selectedDoorId = null;
     this.getSolids = getSolids;
     this.selectedId = null;
@@ -81,6 +83,13 @@ export class Editor {
     this.layer.setSelected(id);
     if (id) this.#setDoorSelection(null);
     this.#emit();
+  }
+
+  // 燈具吊在天花板下，位置或尺寸一變就要依該處天花板重算離地高度
+  #withLightElevation(item, patch) {
+    if (!isCeilingMounted(item)) return patch;
+    const design = this.store.getState();
+    return { ...patch, elevation: lightElevation({ ...item, ...patch }, this.floorplan, design.ceilings, design.ceilingHeight) };
   }
 
   // ---------- 門 ----------
@@ -229,7 +238,7 @@ export class Editor {
     const spot = hitsWalls({ ...item, x: rx, y: ry }, this.getSolids()) ? reached : { x: rx, y: ry };
     if (spot.x === item.x && spot.y === item.y) return;
     this.drag.moved = true;
-    this.store.preview(updateFurniture(design, item.id, spot));
+    this.store.preview(updateFurniture(design, item.id, this.#withLightElevation(item, spot)));
   }
 
   #onUp(e) {
@@ -296,7 +305,7 @@ export class Editor {
       return;
     }
     if (point && (spot.x !== item.x || spot.y !== item.y)) toast('已自動往內挪一點，避免壓到牆');
-    this.store.commit(addFurniture(this.store.getState(), { ...item, ...spot }));
+    this.store.commit(addFurniture(this.store.getState(), { ...item, ...this.#withLightElevation(item, spot) }));
     this.select(item.id);
   }
 
@@ -340,7 +349,7 @@ export class Editor {
       return false;
     }
     if (commit && applied !== patch) toast('已自動挪開一點，避免撞牆');
-    const next = updateFurniture(this.store.getState(), item.id, applied);
+    const next = updateFurniture(this.store.getState(), item.id, this.#withLightElevation(item, applied));
     if (commit) this.store.commit(next, base ? { base } : {});
     else this.store.preview(next);
     return true;
@@ -357,10 +366,17 @@ export class Editor {
       const applied = this.#fit(item, { rotation });
       if (!applied) continue;
       if (k > 1) toast(`中間角度放不下，已跳到 ${(360 - rotation) % 360}°`);
-      this.store.commit(updateFurniture(this.store.getState(), item.id, applied));
+      this.store.commit(updateFurniture(this.store.getState(), item.id, this.#withLightElevation(item, applied)));
       return;
     }
     toast('這裡空間不夠旋轉，請先把家具移到比較寬的地方');
+  }
+
+  // 燈具的開關與色溫；patch 只帶要改的欄位
+  setLightOptions(patch) {
+    const item = this.selected;
+    if (!item || !isLight(item)) return;
+    this.store.commit(updateFurniture(this.store.getState(), item.id, { options: { ...lightOptionsOf(item), ...patch } }));
   }
 
   remove() {
@@ -379,7 +395,7 @@ export class Editor {
       toast('附近找不到空間放複製的家具');
       return;
     }
-    this.store.commit(addFurniture(this.store.getState(), { ...copy, ...spot }));
+    this.store.commit(addFurniture(this.store.getState(), { ...copy, ...this.#withLightElevation(copy, spot) }));
     this.select(copy.id);
   }
 

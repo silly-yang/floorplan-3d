@@ -3,6 +3,7 @@ import { elevationOf, nearestWallDistance, supportOf } from '../core/layout.js';
 import { getCatalogItem, normalizeSizeValue } from '../furniture/catalog.js';
 import { $, el } from './dom.js';
 import { iconSvg } from './icons.js';
+import { lightControls } from './lightControls.js';
 
 // 帶 icon 的小按鈕
 function iconButton(icon, label, title, onclick, extra = '') {
@@ -76,6 +77,7 @@ export function setupInspector(editor, getSolids, { editCabinet } = {}) {
     panel.replaceChildren(
       title,
       ...body,
+      ...lightControls(editor, item),
       el(
         'div',
         { class: 'field' },
