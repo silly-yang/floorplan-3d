@@ -20,7 +20,8 @@ import { toast } from '../ui/dom.js';
 
 const CLICK_TOLERANCE = 5; // 像素；按下到放開移動小於此值視為點擊
 const DUPLICATE_OFFSET = 0.3;
-const WALK_REACH = 2.5; // 漫遊時伸手可及、能開關門的距離（公尺）
+const WALK_REACH = 2.5;
+const NUDGE_RADIUS = 0.8; // 旋轉、改尺寸撞牆時，最多自動挪動幾公尺 // 漫遊時伸手可及、能開關門的距離（公尺）
 
 const newId = () => crypto.randomUUID();
 
@@ -257,12 +258,12 @@ export class Editor {
       e.preventDefault();
       e.stopPropagation();
       const point = this.screenToPlan(e.clientX, e.clientY);
-      if (point) this.add(type, point, { exact: true });
+      if (point) this.add(type, point);
     });
   }
 
-  // exact：拖放到指定位置時撞牆就拒絕；點清單新增時則自動找附近空位
-  add(type, point = null, { exact = false } = {}) {
+  // 拖放或點清單新增；落點壓到牆時自動往內挪到最近的空位（拖到牆邊想靠牆擺是常態）
+  add(type, point = null) {
     if (this.viewer.mode === 'walk') this.viewer.setMode('orbit');
     const rect = this.viewer.domElement.getBoundingClientRect();
     const target = point ?? this.screenToPlan(rect.left + rect.width / 2, rect.top + rect.height / 2);
@@ -270,41 +271,58 @@ export class Editor {
     const [x, y] = this.#snapped(target);
     const item = createFurniture(type, { id: newId(), x, y });
     const solids = this.getSolids();
-    if (exact && hitsWalls(item, solids)) {
-      toast('這個位置會壓到牆，請放在房間內');
-      return;
-    }
     const spot = findFreeSpot(item, solids);
     if (!spot) {
-      toast('附近找不到空間放這件家具');
+      toast('附近找不到空間放這件家具，請換個位置');
       return;
     }
+    if (point && (spot.x !== item.x || spot.y !== item.y)) toast('已自動往內挪一點，避免壓到牆');
     this.store.commit(addFurniture(this.store.getState(), { ...item, ...spot }));
     this.select(item.id);
   }
 
   // ---------- 編輯選取的家具 ----------
 
+  // 靠牆的家具旋轉或加大時會撞牆：先試著往內挪一點；回傳實際要套用的變更，放不下回 null
+  #fit(item, patch) {
+    if (!hitsWalls({ ...item, ...patch }, this.getSolids())) return patch;
+    const spot = findFreeSpot({ ...item, ...patch }, this.getSolids(), { radius: NUDGE_RADIUS });
+    return spot ? { ...patch, ...spot } : null;
+  }
+
   // 套用變更前先檢查撞牆；回傳是否成功
   // base：連續預覽（例如拖動取色器）開始前的狀態，讓復原一次回到原樣
   update(patch, { commit = true, base } = {}) {
     const item = this.selected;
     if (!item) return false;
-    if (hitsWalls({ ...item, ...patch }, this.getSolids())) {
-      toast('這樣會撞到牆，請先把家具移開一點');
+    const applied = this.#fit(item, patch);
+    if (!applied) {
+      toast('這裡空間不夠，請先把家具移到比較寬的地方');
       this.#emit();
       return false;
     }
-    const next = updateFurniture(this.store.getState(), item.id, patch);
+    if (commit && applied !== patch) toast('已自動挪開一點，避免撞牆');
+    const next = updateFurniture(this.store.getState(), item.id, applied);
     if (commit) this.store.commit(next, base ? { base } : {});
     else this.store.preview(next);
     return true;
   }
 
   // direction 1＝順時針（從上往下看）；資料內的 rotation 是逆時針角度，所以要減
+  // 窄房間裡家具轉到斜角時會卡牆（例如 2.45 m 寬的臥室放不下斜 45° 的雙人床）；
+  // 中間角度放不下就跳到下一個放得下的角度，才轉得到 90°
   rotate(direction = 1) {
     const item = this.selected;
-    if (item) this.update({ rotation: normalizeRotation(item.rotation - direction * ROTATION_STEP) });
+    if (!item) return;
+    for (let k = 1; k < 360 / ROTATION_STEP; k++) {
+      const rotation = normalizeRotation(item.rotation - direction * ROTATION_STEP * k);
+      const applied = this.#fit(item, { rotation });
+      if (!applied) continue;
+      if (k > 1) toast(`中間角度放不下，已跳到 ${(360 - rotation) % 360}°`);
+      this.store.commit(updateFurniture(this.store.getState(), item.id, applied));
+      return;
+    }
+    toast('這裡空間不夠旋轉，請先把家具移到比較寬的地方');
   }
 
   remove() {
