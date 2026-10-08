@@ -610,3 +610,12 @@ select {
 .door-types .btn {
   flex: 1 1 auto;
 }
+
+.fixture-actions {
+  margin-bottom: 10px;
+}
+
+.fixture-actions .btn {
+  width: 100%;
+  justify-content: center;
+}

@@ -98,3 +98,12 @@ export function fixturesToFurniture(fixtures, newId) {
     .filter((f) => getCatalogItem(f.type))
     .map((f) => ({ id: newId(), type: f.type, x: f.x, y: f.y, rotation: f.rotation, size: { ...f.size }, color: getCatalogItem(f.type).color }));
 }
+
+// 建商預設廚衛裡，目前設計還沒擺在原位附近的那些
+const FIXTURE_TOLERANCE = 0.3; // 公尺；同類型家具中心在原位這個距離內就算已擺好
+
+export function missingFixtures(furniture, fixtures) {
+  return (fixtures ?? []).filter(
+    (f) => !furniture.some((item) => item.type === f.type && Math.hypot(item.x - f.x, item.y - f.y) <= FIXTURE_TOLERANCE),
+  );
+}

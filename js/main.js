@@ -2,7 +2,7 @@
 import { createSession } from './app/session.js';
 import { createStore } from './app/store.js';
 import { blocksPassage, doorStateOf } from './core/doors.js';
-import { buildSolids, fixturesToFurniture, validateFloorplan } from './core/floorplan.js';
+import { buildSolids, fixturesToFurniture, missingFixtures, validateFloorplan } from './core/floorplan.js';
 import { pointInPolygon, pointSegmentDistance } from './core/geometry2d.js';
 import { Editor } from './interact/editor.js';
 import { DoorLayer } from './scene/doorLayer.js';
@@ -256,6 +256,23 @@ function hydrateIcons(root = document) {
   });
 }
 
+// 舊方案或刪掉後想找回時，把缺的建商預設廚衛放回原位
+function setupFixtureActions(floorplan, store) {
+  const button = el('button', { class: 'btn' }, iconLabel('tab-fixture', '放回建商預設廚衛'));
+  button.addEventListener('click', () => {
+    const design = store.getState();
+    const missing = missingFixtures(design.furniture, floorplan.fixtures);
+    if (missing.length === 0) {
+      toast('建商預設的廚衛都已經在原位');
+      return;
+    }
+    const added = fixturesToFurniture(missing, () => crypto.randomUUID());
+    store.commit({ ...design, furniture: [...design.furniture, ...added] });
+    toast(`已放回 ${added.length} 件廚衛`);
+  });
+  $('#fixture-actions').replaceChildren(button);
+}
+
 function setupHistoryButtons(store, editor) {
   const undo = $('#undo-btn');
   const redo = $('#redo-btn');
@@ -309,6 +326,7 @@ async function main() {
   setupInspector(editor, getSolids);
   setupDoorPanel(editor, floorplan);
   setupStageTools(editor, houseView);
+  setupFixtureActions(floorplan, store);
   setupHistoryButtons(store, editor);
   ({ exportAll } = setupSessionUi({
     session,

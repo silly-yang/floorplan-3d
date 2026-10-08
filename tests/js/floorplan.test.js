@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGlass, buildSolids, fixturesToFurniture, openingAxis, planToWorld, validateFloorplan } from '../../js/core/floorplan.js';
+import { buildGlass, buildSolids, fixturesToFurniture, missingFixtures, openingAxis, planToWorld, validateFloorplan } from '../../js/core/floorplan.js';
 
 const rect = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
 
@@ -163,3 +163,25 @@ test('openingAxis 矩形從短邊（牆厚）開始排列時，仍算出正確�
   assert.ok(Math.abs(axis.start[0] - 1) < 1e-9 && Math.abs(axis.start[1] - 0.075) < 1e-9, `start=${axis.start}`);
   assert.ok(Math.abs(axis.across[0]) < 1e-9 && Math.abs(Math.abs(axis.across[1]) - 1) < 1e-9, `across=${axis.across}`);
 });
+
+const FIXTURES = [
+  { type: 'toilet', x: 7.15, y: 1.1, rotation: 180, size: { w: 40, d: 70, h: 75 } },
+  { type: 'basin', x: 6.45, y: 0.975, rotation: 180, size: { w: 60, d: 45, h: 85 } },
+];
+const placed = (type, x, y) => ({ id: type, type, x, y, rotation: 0, size: { w: 40, d: 40, h: 40 }, color: '#ffffff' });
+
+for (const [name, furniture, expected] of [
+  ['舊方案完全沒有廚衛時全部都缺', [], ['toilet', 'basin']],
+  ['已在原位附近的不重複加', [placed('toilet', 7.2, 1.05)], ['basin']],
+  ['同類型但被搬到很遠的地方，原位仍算缺', [placed('toilet', 2, 4)], ['toilet', 'basin']],
+  ['都在原位時沒有缺', [placed('toilet', 7.15, 1.1), placed('basin', 6.45, 0.975)], []],
+  ['原位放的是別種家具，仍算缺', [placed('plant', 7.15, 1.1)], ['toilet', 'basin']],
+]) {
+  test(`missingFixtures ${name}`, () => {
+    // Act
+    const missing = missingFixtures(furniture, FIXTURES);
+
+    // Assert
+    assert.deepEqual(missing.map((f) => f.type), expected);
+  });
+}
