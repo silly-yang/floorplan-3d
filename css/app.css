@@ -830,3 +830,41 @@ select {
     border-top: 1px solid var(--line);
   }
 }
+
+/* ---------- 地板材質 ---------- */
+.room-floor {
+  padding: 6px 0 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.material-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.material-swatch {
+  border: 2px solid transparent;
+  border-radius: 6px;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+  font-size: 10px;
+  line-height: 1.2;
+  color: var(--muted);
+  text-align: center;
+}
+
+.material-swatch img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.material-swatch.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}

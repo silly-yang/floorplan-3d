@@ -1,23 +1,9 @@
 // 由 floorplan.json 建出房屋的 Three.js 物件：牆、窗台、楣樑、玻璃、地板
 import * as THREE from 'three';
 import { buildGlass, buildSolids, openingAxis } from '../core/floorplan.js';
+import { floorMaterialOf } from '../core/materials.js';
 import { sizedTexture, proceduralTexture } from './textures.js';
 
-export const DEFAULT_FLOOR_COLORS = {
-  living: '#c8a97e',
-  bedroom: '#b98b5e',
-  bath: '#d9d9d6',
-  balcony: '#a7a39a',
-};
-const FALLBACK_FLOOR = '#c8b49a';
-
-// 第 2 棒會開放各房間自選材質；這裡先依房間類型給一個合理的預設
-const DEFAULT_FLOOR_LOOK = {
-  living: { kind: 'wood', tile: 1.8, roughness: 0.62, options: { plankRows: 9 } },
-  bedroom: { kind: 'wood', tile: 1.8, roughness: 0.62, options: { plankRows: 9 } },
-  bath: { kind: 'tile', tile: 1.2, roughness: 0.35, options: { tiles: 4 } },
-  balcony: { kind: 'tile', tile: 1.2, roughness: 0.7, options: { tiles: 4, speckle: 0.12 } },
-};
 
 const BASEBOARD_HEIGHT = 0.08;
 const BASEBOARD_THICKNESS = 0.012;
@@ -43,8 +29,9 @@ function extrude(polygon, bottom, top, material) {
   return mesh;
 }
 
+// 自訂顏色優先，否則用材質本身的顏色
 export function floorColorOf(roomId, roomSettings) {
-  return roomSettings?.[roomId]?.floorColor ?? DEFAULT_FLOOR_COLORS[roomId] ?? FALLBACK_FLOOR;
+  return roomSettings?.[roomId]?.floorColor ?? floorMaterialOf(roomId, roomSettings).color;
 }
 
 // 回傳 { group, floors: Map<roomId, Mesh[]>, wallMeshes }；樓高或地板色變了就整個重建，量很小
@@ -88,12 +75,13 @@ export function buildHouse(floorplan, { ceilingHeight, rooms, ceilingColor = '#f
   const floors = new Map();
   for (const room of floorplan.rooms) {
     const color = floorColorOf(room.id, rooms);
-    const look = DEFAULT_FLOOR_LOOK[room.id] ?? DEFAULT_FLOOR_LOOK.living;
+    const look = floorMaterialOf(room.id, rooms);
     const meshes = room.rects.map(([x0, y0, x1, y1]) => {
       // 每塊地板依實際大小貼圖，木紋與磁磚的尺寸才不會被拉長；世界座標對齊，相鄰兩塊會接得起來
-      const map = sizedTexture(look.kind, '#ffffff', x1 - x0, y1 - y0, look.tile, look.options);
+      // 紋理直接用材質顏色畫，比白底再乘色更飽和
+      const map = sizedTexture(look.pattern, color, x1 - x0, y1 - y0, look.tile, look.options);
       map.offset.set(x0 / look.tile, y0 / look.tile);
-      const material = new THREE.MeshStandardMaterial({ color, map, roughness: look.roughness, metalness: 0 });
+      const material = new THREE.MeshStandardMaterial({ color: '#ffffff', map, roughness: look.roughness, metalness: 0 });
       const mesh = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, y1 - y0), material);
       mesh.rotation.x = -Math.PI / 2;
       mesh.position.set((x0 + x1) / 2, 0.002, -(y0 + y1) / 2);

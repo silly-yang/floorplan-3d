@@ -1,9 +1,11 @@
 // 設計檔格式：版本、建立、遷移、驗證；不依賴瀏覽器 API，可在 node 測試
 import { DOOR_TYPES } from '../core/doors.js';
+import { getFloorMaterial } from '../core/materials.js';
 import { getCatalogItem, SIZE_LIMITS } from '../furniture/catalog.js';
 
 export const SCHEMA_VERSION = 4;
-export const DEFAULT_CEILING = 2.8;
+// 層高 320 cm 扣掉樓板約 15 cm
+export const DEFAULT_CEILING = 3.05;
 export const DEFAULT_CEILING_COLOR = '#f4f2ee';
 export const CEILING_LIMITS = { min: 2, max: 5 };
 const NAME_MAX = 60;
@@ -134,7 +136,11 @@ export function validateDesign(design) {
     errors.push('rooms 必須是物件');
   } else {
     for (const [roomId, setting] of Object.entries(design.rooms)) {
-      if (!isColor(setting?.floorColor)) errors.push(`rooms.${roomId}.floorColor 必須是 #rrggbb 色碼`);
+      // 兩個欄位都是選填：只選材質時顏色用材質預設
+      if (setting?.floorColor !== undefined && !isColor(setting.floorColor)) errors.push(`rooms.${roomId}.floorColor 必須是 #rrggbb 色碼`);
+      if (setting?.floorMaterial !== undefined && !getFloorMaterial(setting.floorMaterial)) {
+        errors.push(`rooms.${roomId}.floorMaterial 是未知的地板材質（${setting.floorMaterial}）`);
+      }
     }
   }
   validateDoors(design.doors, errors);

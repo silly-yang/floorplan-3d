@@ -22,7 +22,7 @@ function sampleDesign() {
   return design;
 }
 
-test('createDesign 帶入版本、名稱、時間與預設樓高', () => {
+test('createDesign 帶入版本、名稱、時間與預設室內淨高 3.05 m', () => {
   // Act
   const design = createDesign({ id: 'd1', name: '方案 1', now: NOW });
 
@@ -34,7 +34,8 @@ test('createDesign 帶入版本、名稱、時間與預設樓高', () => {
     createdAt: NOW,
     updatedAt: NOW,
     floorplanRef: null,
-    ceilingHeight: 2.8,
+    // 層高 320 cm 扣掉樓板約 15 cm
+    ceilingHeight: 3.05,
     ceilingColor: '#f4f2ee',
     rooms: {},
     doors: {},
@@ -59,6 +60,7 @@ for (const [name, mutate, fragment] of [
   ['櫃子設計格式錯誤', (d) => (d.cabinets = [{ id: 'c1', name: '櫃', size: { w: 60, d: 60, h: 90 }, columns: 'x' }]), 'cabinets[0].columns'],
   ['門的內外開不是布林值', (d) => (d.doors = { 'FD2-1': { type: 'hinged', open: false, flip: false, out: 1 } }), 'doors.FD2-1.out'],
   ['地板顏色不是色碼', (d) => (d.rooms.living.floorColor = 'red'), 'rooms.living.floorColor'],
+  ['地板材質未知', (d) => (d.rooms.living.floorMaterial = 'lava'), 'rooms.living.floorMaterial'],
   ['家具不是陣列', (d) => (d.furniture = {}), 'furniture'],
   ['家具類型未知', (d) => (d.furniture[0].type = 'spaceship'), 'furniture[0].type'],
   ['家具座標不是數字', (d) => (d.furniture[0].x = '2'), 'furniture[0].x'],

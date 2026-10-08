@@ -8,7 +8,9 @@ import { Editor } from './interact/editor.js';
 import { DoorLayer } from './scene/doorLayer.js';
 import { exportGlb, exportPng } from './scene/exporters.js';
 import { FurnitureLayer } from './scene/furnitureLayer.js';
+import { FLOOR_MATERIALS, floorMaterialOf } from './core/materials.js';
 import { buildHouse, disposeObject, floorColorOf } from './scene/house.js';
+import { textureThumbnail } from './scene/textures.js';
 import { Viewer } from './scene/viewer.js';
 import { DesignStore, StorageUnavailableError } from './storage/localStore.js';
 import { fingerprint } from './storage/schema.js';
@@ -149,11 +151,29 @@ function setupFloorPanel(floorplan, store) {
     ceilingColor.value = design.ceilingColor;
     list.replaceChildren(
       ...floorplan.rooms.map((room) => {
-        const input = el('input', { type: 'color', value: floorColorOf(room.id, design.rooms) });
+        const input = el('input', { type: 'color', value: floorColorOf(room.id, design.rooms), title: '自訂顏色' });
         const next = () => {
           const current = store.getState();
-          return { ...current, rooms: { ...current.rooms, [room.id]: { floorColor: input.value } } };
+          return { ...current, rooms: { ...current.rooms, [room.id]: { ...current.rooms[room.id], floorColor: input.value } } };
         };
+        // 換材質時清掉自訂顏色，直接用材質本身的顏色
+        const pickMaterial = (id) => {
+          const current = store.getState();
+          store.commit({ ...current, rooms: { ...current.rooms, [room.id]: { floorMaterial: id } } });
+        };
+        const currentMaterial = floorMaterialOf(room.id, design.rooms).id;
+        const swatches = el('div', { class: 'material-grid', role: 'group', 'aria-label': `${room.name}地板材質` },
+          FLOOR_MATERIALS.map((m) =>
+            el('button', {
+              type: 'button',
+              class: `material-swatch ${m.id === currentMaterial ? 'active' : ''}`,
+              title: m.name,
+              'aria-pressed': String(m.id === currentMaterial),
+              onclick: () => pickMaterial(m.id),
+            },
+              el('img', { src: textureThumbnail(m.pattern, m.color, m.options), alt: '' }),
+              el('span', {}, m.name),
+            )));
         input.addEventListener('input', () => {
           colorBase ??= store.getState();
           store.preview(next());
@@ -162,7 +182,7 @@ function setupFloorPanel(floorplan, store) {
           store.commit(next(), colorBase ? { base: colorBase } : {});
           colorBase = null;
         });
-        return el('li', {}, el('label', { class: 'field' }, el('span', {}, room.name), input));
+        return el('li', { class: 'room-floor' }, el('label', { class: 'field' }, el('strong', {}, room.name), input), swatches);
       }),
     );
   };
@@ -302,7 +322,7 @@ async function main() {
     await alertDialog('無法載入平面圖', error.message);
     return;
   }
-  const store = createStore({ ceilingHeight: 2.8, ceilingColor: '#f4f2ee', rooms: {}, doors: {}, cabinets: [], furniture: [] });
+  const store = createStore({ ceilingHeight: 3.05, ceilingColor: '#f4f2ee', rooms: {}, doors: {}, cabinets: [], furniture: [] });
   let exportAll = () => {};
   const defaultFurniture = () => fixturesToFurniture(floorplan.fixtures, () => crypto.randomUUID());
   const { session, warnings, persistent } = openSession(store, floorplanRef, makeStatusHandler(() => exportAll), defaultFurniture);

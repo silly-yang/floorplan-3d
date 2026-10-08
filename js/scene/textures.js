@@ -22,7 +22,7 @@ function canvas() {
 const shade = (hex, amount) => `#${new THREE.Color(hex).offsetHSL(0, 0, amount).getHexString()}`;
 
 // 木地板：長條木板、交錯接縫、木紋與每片的色差
-function drawWood(ctx, base, { plankRows = 6, grain = 0.06 } = {}) {
+function drawWood(ctx, base, { plankRows = 6, grain = 0.06, grout = false } = {}) {
   const rand = seeded(7);
   const rowH = SIZE / plankRows;
   for (let r = 0; r < plankRows; r++) {
@@ -40,12 +40,13 @@ function drawWood(ctx, base, { plankRows = 6, grain = 0.06 } = {}) {
         ctx.bezierCurveTo(x + len * 0.3, y + (rand() - 0.5) * 6, x + len * 0.7, y + (rand() - 0.5) * 6, x + len, y);
         ctx.stroke();
       }
-      ctx.fillStyle = 'rgba(40,25,12,0.35)';
-      ctx.fillRect(x, r * rowH, 2, rowH);
+      // 木紋磚的接縫是較寬的淺色填縫，木地板則是細的深色縫
+      ctx.fillStyle = grout ? 'rgba(220,214,204,0.95)' : 'rgba(40,25,12,0.35)';
+      ctx.fillRect(x, r * rowH, grout ? 4 : 2, rowH);
       x += len;
     }
-    ctx.fillStyle = 'rgba(40,25,12,0.4)';
-    ctx.fillRect(0, r * rowH, SIZE, 2);
+    ctx.fillStyle = grout ? 'rgba(220,214,204,0.95)' : 'rgba(40,25,12,0.4)';
+    ctx.fillRect(0, r * rowH, SIZE, grout ? 4 : 2);
   }
 }
 
@@ -112,6 +113,11 @@ export function proceduralTexture(kind, base, options = {}) {
 }
 
 // 依實際尺寸（公尺）重複貼圖；tileSize＝一張紋理代表幾公尺
+// 材質選單的小縮圖
+export function textureThumbnail(kind, base, options) {
+  return proceduralTexture(kind, base, options).image.toDataURL('image/jpeg', 0.7);
+}
+
 export function sizedTexture(kind, base, width, depth, tileSize, options) {
   const texture = proceduralTexture(kind, base, options).clone();
   texture.needsUpdate = true;
