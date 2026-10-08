@@ -6,7 +6,6 @@ import {
   polygonDistance,
   polygonsIntersect,
   rectCorners,
-  segmentPolygonCrossings,
 } from '../../js/core/geometry2d.js';
 
 const square = (x0, y0, s) => [[x0, y0], [x0 + s, y0], [x0 + s, y0 + s], [x0, y0 + s]];
@@ -109,32 +108,4 @@ test('polygonsIntersect 矩形壓到 L 形牆的一臂算相交', () => {
 
   // Assert
   assert.equal(result, true);
-});
-
-for (const [name, a, b, expected] of [
-  ['橫穿方塊一次', [-1, 0.5], [2, 0.5], 1],
-  ['沒碰到', [-1, 2], [2, 2], 0],
-  ['起點在多邊形內只算出去那一次', [0.5, 0.5], [2, 0.5], 1],
-  ['兩端都在外但沒穿過', [-1, -1], [-0.5, 3], 0],
-  ['線段在碰到之前就結束', [-3, 0.5], [-1, 0.5], 0],
-  ['對角線剛好穿過兩個頂點只算一次', [-1, -1], [2, 2], 1],
-]) {
-  test(`segmentPolygonCrossings ${name}`, () => {
-    // Act
-    const count = segmentPolygonCrossings(a, b, square(0, 0, 1));
-
-    // Assert
-    assert.equal(count, expected);
-  });
-}
-
-test('segmentPolygonCrossings ㄇ 形穿過兩隻腳算兩次', () => {
-  // Arrange
-  const u = [[0, 0], [1, 0], [1, 3], [3, 3], [3, 0], [4, 0], [4, 4], [0, 4]];
-
-  // Act
-  const count = segmentPolygonCrossings([-1, 1], [5, 1], u);
-
-  // Assert
-  assert.equal(count, 2);
 });

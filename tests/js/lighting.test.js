@@ -282,15 +282,3 @@ test('relevelLights 高度都沒變時回傳原本的設計物件', () => {
   // Assert
   assert.equal(next, design);
 });
-
-test('relevelLights 吸頂 AP 這類非燈具的吸頂物件也跟著天花板重算', () => {
-  // Arrange：AP 高 5 cm，客廳改成 2.5 m 平釘，AP 要貼在 2.45 m
-  const ap = { id: 'ap', type: 'ceiling-ap', x: 0.5, y: 3, rotation: 0, size: { w: 20, d: 20, h: 5 }, color: '#f4f4f2', elevation: 3.0 };
-  const design = { ceilingHeight: SLAB, ceilings: { living: { type: 'flat', height: 2.5 } }, furniture: [ap] };
-
-  // Act
-  const next = relevelLights(design, FLOORPLAN);
-
-  // Assert
-  assert.ok(close(next.furniture[0].elevation, 2.45), `${next.furniture[0].elevation}`);
-});

@@ -5,7 +5,7 @@ import { getFloorMaterial } from '../core/materials.js';
 import { getAccessory, PEGBOARD_MATERIALS } from '../core/pegboard.js';
 import { getCatalogItem, SIZE_LIMITS } from '../furniture/catalog.js';
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 // 層高 320 cm 扣掉樓板約 15 cm
 export const DEFAULT_CEILING = 3.05;
 export const DEFAULT_CEILING_COLOR = '#f4f2ee';
@@ -21,6 +21,8 @@ export class DesignFormatError extends Error {
 }
 
 // 版本 n → n+1 的轉換；格式改版時在這裡加一筆，舊檔就能一路升到最新版
+const RETIRED_TYPES = new Set(['wifi-router', 'mesh-node', 'ceiling-ap', 'network-panel']);
+
 export const MIGRATIONS = {
   // 第 2 版加入天花板顏色
   1: (d) => ({ ...d, schemaVersion: 2, ceilingColor: DEFAULT_CEILING_COLOR }),
@@ -30,6 +32,8 @@ export const MIGRATIONS = {
   3: (d) => ({ ...d, schemaVersion: 4, cabinets: [] }),
   // 第 5 版加入各區天花板形式；空物件＝全部用預設（廚房平釘、其他不包）
   4: (d) => ({ ...d, schemaVersion: 5, ceilings: {} }),
+  // 第 6 版下架 WiFi 規劃；舊檔留著這些設備會被當成未知家具，整份讀不進來
+  5: (d) => ({ ...d, schemaVersion: 6, furniture: d.furniture.filter((f) => !RETIRED_TYPES.has(f.type)) }),
 };
 
 export function createDesign({ id, name, now, floorplanRef = null }) {

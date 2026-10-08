@@ -249,37 +249,6 @@ const BUILDERS = {
     cylinder(g, [w * 0.3, w * 0.5, h * 0.18, 16], [0, h * 0.91, 0], '#f1e6cf');
   },
 
-  // ---------- 網路設備 ----------
-  'wifi-router': (g, w, d, h, c) => {
-    const bodyH = Math.min(h * 0.25, 0.05);
-    box(g, [w, bodyH, d], [0, bodyH / 2, 0], c.main, 0.5);
-    for (let i = 0; i < 4; i++) box(g, [0.006, 0.006, 0.002], [-w * 0.3 + i * 0.02, bodyH * 0.5, d / 2 + 0.001], '#7ee08a');
-    // 後方兩支天線
-    for (const s of [-1, 1]) cylinder(g, [0.006, 0.008, h - bodyH, 8], [s * w * 0.38, bodyH + (h - bodyH) / 2, -d * 0.35], c.dark);
-  },
-
-  'mesh-node': (g, w, d, h, c) => {
-    const r = Math.min(w, d) / 2;
-    cylinder(g, [r * 0.85, r, h * 0.95, 24], [0, h * 0.475, 0], c.main);
-    cylinder(g, [r * 0.6, r * 0.85, h * 0.05, 24], [0, h * 0.975, 0], c.light);
-    box(g, [r * 0.3, 0.004, 0.002], [0, h * 0.2, r * 0.95], '#7ee08a');
-  },
-
-  // 底面貼著天花板：模型原點在底面，整體被 elevation 推到樓板下
-  'ceiling-ap': (g, w, d, h, c) => {
-    const r = Math.min(w, d) / 2;
-    cylinder(g, [r * 0.8, r * 0.95, h * 0.7, 32], [0, h * 0.35, 0], c.main);
-    cylinder(g, [r * 0.95, r * 0.95, h * 0.3, 32], [0, h * 0.85, 0], c.light);
-    cylinder(g, [r * 0.08, r * 0.08, 0.003, 12], [0, -0.0015, 0], '#4f9be0');
-  },
-
-  'network-panel': (g, w, d, h, c) => {
-    box(g, [w, h, d], [0, h / 2, 0], c.main, 0.45);
-    box(g, [w - 0.02, h - 0.02, 0.006], [0, h / 2, d / 2 + 0.003], c.light, 0.45);
-    for (let i = 0; i < 3; i++) box(g, [w * 0.5, 0.004, 0.002], [0, h * (0.62 + i * 0.06), d / 2 + 0.007], c.dark);
-    box(g, [0.02, 0.06, 0.012], [w / 2 - 0.04, h / 2, d / 2 + 0.012], METAL);
-  },
-
   // 貓爬架：底座、左下貓窩方屋、兩支麻繩柱、中層跳台、頂層軟墊
   'cat-tree': (g, w, d, h, c) => {
     const sisal = '#d8c49b';

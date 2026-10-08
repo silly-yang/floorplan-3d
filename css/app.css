@@ -875,35 +875,3 @@ select {
   color: var(--accent);
   font-weight: 600;
 }
-
-/* ---------- WiFi 各房間訊號 ---------- */
-.wifi-rating {
-  padding: 8px 0;
-  border-bottom: 1px solid var(--line);
-  font-size: 13px;
-}
-
-.wifi-rating-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.wifi-grade {
-  min-width: 36px;
-  padding: 1px 8px;
-  border-radius: 10px;
-  color: #fff;
-  font-size: 12px;
-  text-align: center;
-}
-
-.wifi-rating .dims {
-  color: var(--muted);
-  margin-top: 2px;
-}
-
-.wifi-rating .warn {
-  margin: 4px 0 0;
-  color: var(--warn);
-}

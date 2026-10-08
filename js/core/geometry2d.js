@@ -124,21 +124,3 @@ export function rectCorners(cx, cy, w, d, rotationDeg) {
     [-w / 2, d / 2],
   ].map(([x, y]) => [round(cx + x * cos - y * sin), round(cy + x * sin + y * cos)]);
 }
-
-// 線段 a→b 穿過多邊形幾次（進出算一次）；非凸的 L 形牆可能被穿過兩次
-export function segmentPolygonCrossings(a, b, poly) {
-  const rx = b[0] - a[0];
-  const ry = b[1] - a[1];
-  let hits = 0;
-  for (const [p, q] of edges(poly)) {
-    const sx = q[0] - p[0];
-    const sy = q[1] - p[1];
-    const denom = rx * sy - ry * sx;
-    if (Math.abs(denom) < EPS) continue; // 平行或沿邊擦過不算
-    const t = ((p[0] - a[0]) * sy - (p[1] - a[1]) * sx) / denom;
-    const u = ((p[0] - a[0]) * ry - (p[1] - a[1]) * rx) / denom;
-    // 邊取半開區間，剛好穿過頂點時不會被相鄰兩條邊各算一次
-    if (t >= 0 && t <= 1 && u >= 0 && u < 1) hits++;
-  }
-  return Math.ceil(hits / 2);
-}

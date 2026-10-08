@@ -245,6 +245,21 @@ test('第 4 版設計檔讀取時補上空的天花板設定', () => {
   assert.deepEqual(design.ceilings, {});
 });
 
+test('第 5 版設計檔讀取時拿掉已下架的網路設備，其他家具保留', () => {
+  // Arrange
+  const v5 = sampleDesign();
+  v5.schemaVersion = 5;
+  const device = (id, type) => ({ id, type, x: 1, y: 1, rotation: 0, size: { w: 20, d: 20, h: 5 }, color: '#f4f4f2' });
+  v5.furniture.push(device('n1', 'wifi-router'), device('n2', 'mesh-node'), device('n3', 'ceiling-ap'), device('n4', 'network-panel'));
+
+  // Act
+  const design = parseDesign(v5);
+
+  // Assert
+  assert.equal(design.schemaVersion, SCHEMA_VERSION);
+  assert.deepEqual(design.furniture.map((f) => f.id), ['f1']);
+});
+
 test('validateDesign 家具可以帶選填的 elevation 與 options', () => {
   // Arrange
   const design = sampleDesign();

@@ -6,7 +6,6 @@ export const CATEGORIES = [
   { id: 'furniture', name: '家具' },
   { id: 'appliance', name: '家電' },
   { id: 'fixture', name: '廚衛' },
-  { id: 'network', name: '網路' },
   { id: 'light', name: '照明' },
 ];
 
@@ -14,12 +13,10 @@ export const CATEGORIES = [
 // allowOverlap：地毯本來就壓在其他家具底下，不算重疊
 // power：電壓（110／220）與瓦數；vent：上方建議保留的散熱空間（公分），放進櫃子時檢查
 // mountHeight：掛牆家具（吊櫃）的固定離地高度（公分）
-// wireless：無線設備的發射功率（txPower，dBm，2.4 GHz），WiFi 熱圖用
 // light：燈具的光源參數（kind：spot 朝下聚光／point 四散／linear 長條；lumens 光通量；beam 光束角°）
-const item = (category, type, name, [w, d, h], color, { placement = 'floor', surface = false, allowOverlap = false, power, vent, mountHeight, wireless, light } = {}) => ({
+const item = (category, type, name, [w, d, h], color, { placement = 'floor', surface = false, allowOverlap = false, power, vent, mountHeight, light } = {}) => ({
   category, type, name, size: { w, d, h }, color, placement, surface, allowOverlap,
   ...(mountHeight ? { mountHeight } : {}),
-  ...(wireless ? { wireless } : {}),
   ...(light ? { light } : {}),
   ...(power ? { power: { voltage: power[0], watts: power[1] }, vent: vent ?? 0 } : {}),
 });
@@ -64,10 +61,6 @@ export const CATALOG = [
   item('fixture', 'upper-cabinet', '吊櫃', [225, 35, 70], '#f0ece4', { placement: 'wall', mountHeight: 145 }),
   item('fixture', 'shower-screen', '淋浴拉門', [105, 2, 200], '#cfe3ee'),
   item('fixture', 'basin', '洗手台', [60, 45, 85], '#f5f5f3'),
-  item('network', 'wifi-router', '路由器', [26, 16, 20], '#2f3237', { placement: 'surface', power: [110, 15], wireless: { txPower: 20 } }),
-  item('network', 'mesh-node', 'Mesh 節點', [11, 11, 18], '#f2f2f0', { placement: 'surface', power: [110, 10], wireless: { txPower: 18 } }),
-  item('network', 'ceiling-ap', '吸頂 AP', [20, 20, 5], '#f4f4f2', { placement: 'ceiling', power: [110, 13], wireless: { txPower: 20 } }),
-  item('network', 'network-panel', '弱電箱', [40, 12, 50], '#d9dbde', { placement: 'wall', mountHeight: 150, power: [110, 20] }),
   item('light', 'downlight', '嵌燈', [10, 10, 2], '#f2f2f0', { placement: 'ceiling', power: [110, 9], light: { kind: 'spot', lumens: 800, beam: 36 } }),
   item('light', 'ceiling-light', '吸頂燈', [50, 50, 10], '#f6f5f2', { placement: 'ceiling', power: [110, 36], light: { kind: 'point', lumens: 3600 } }),
   item('light', 'pendant-light', '吊燈', [35, 35, 30], '#3b3f45', { placement: 'ceiling', power: [110, 15], light: { kind: 'point', lumens: 1200 } }),

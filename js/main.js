@@ -24,7 +24,6 @@ import { setupPegboardPanel } from './ui/pegboardPanel.js';
 import { setupDoorPanel } from './ui/doorPanel.js';
 import { iconSvg } from './ui/icons.js';
 import { setupInspector } from './ui/inspector.js';
-import { setupWifiPanel } from './ui/wifiPanel.js';
 import { makeStatusHandler, setupSessionUi } from './ui/sessionUi.js';
 
 const WALKER_RADIUS = 0.2;
@@ -413,8 +412,6 @@ async function main() {
   setupInspector(editor, getSolids, { editCabinet: cabinetPanel.edit, editPegboard: pegboardPanel.edit });
   setupDoorPanel(editor, floorplan);
   setupStageTools(editor, houseView);
-  const wifi = setupWifiPanel({ store, floorplan, viewer });
-  $('#stage-tools').append(toggleButton('wifi-heatmap', 'WiFi 熱圖', false, wifi.setHeatmap, '在地板上顯示估算的 WiFi 訊號強度（綠強、紅弱）'));
   $('#stage-tools').append(toggleButton('day-night', '夜晚', false, (on) => lightLayer.setNight(on), '關掉日光，看燈具開起來的效果'));
   // 改了天花板就自動打開天花板顯示，才看得到改了什麼
   setupCeilingPanel(floorplan, store, () => {
