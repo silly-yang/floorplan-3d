@@ -488,14 +488,15 @@ export function buildCabinetModel(cab) {
       if (col > 0 && index === 0) box(group, [PANEL, h - plinth, d - 0.01], [x0, plinth + (h - plinth) / 2, 0.005], c.main);
       if (index > 0) box(group, [cw - PANEL, PANEL, d - 0.01], [cx, y0, 0.005], c.main);
       if (cell.kind === 'door') {
-        box(group, [cw - 0.006, ch - 0.006, PANEL], [cx, y0 + ch / 2, d / 2 + PANEL / 2], c.light);
+        // front：門片與抽屜面板，場景會換成木皮
+        box(group, [cw - 0.006, ch - 0.006, PANEL], [cx, y0 + ch / 2, d / 2 + PANEL / 2], c.light).userData.front = true;
         box(group, [0.012, Math.min(0.16, ch * 0.5), 0.02], [x0 + cw - 0.05, y0 + ch / 2, d / 2 + PANEL + 0.01], '#4a4d52');
       }
       if (cell.kind === 'drawer') {
         const count = Math.max(1, Math.round(ch / 0.22));
         for (let k = 0; k < count; k++) {
           const dh = ch / count;
-          box(group, [cw - 0.006, dh - 0.006, PANEL], [cx, y0 + dh * (k + 0.5), d / 2 + PANEL / 2], c.light);
+          box(group, [cw - 0.006, dh - 0.006, PANEL], [cx, y0 + dh * (k + 0.5), d / 2 + PANEL / 2], c.light).userData.front = true;
           box(group, [Math.min(0.16, cw * 0.4), 0.012, 0.02], [cx, y0 + dh * (k + 0.5), d / 2 + PANEL + 0.01], '#4a4d52');
         }
       }

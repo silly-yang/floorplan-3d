@@ -9,6 +9,10 @@ export const FLOOR_MATERIALS = [
   { id: 'wood-tile', name: '木紋磚', pattern: 'wood', tile: 1.2, color: '#b49371', roughness: 0.4, options: { plankRows: 6, grout: true } },
   { id: 'microcement', name: '磐多魔／水泥粉光', pattern: 'concrete', tile: 3, color: '#b8b3ab', roughness: 0.45, options: {} },
   { id: 'anti-slip', name: '止滑地磚 30×30', pattern: 'tile', tile: 1.2, color: '#cdc8bf', roughness: 0.82, options: { tiles: 4, grout: '#a9a39a', speckle: 0.12 } },
+  // 以下為寫實貼圖新增的選項，只能接在後面；pattern 是貼圖載入前（或失敗時）的程式紋理
+  { id: 'walnut', name: '深色胡桃木地板', pattern: 'wood', tile: 1.8, color: '#5a3c26', roughness: 0.45, options: { plankRows: 8, grain: 0.1 } },
+  { id: 'marble', name: '大理石', pattern: 'tile', tile: 1.5, color: '#c8b38e', roughness: 0.15, options: { tiles: 2, grout: '#b5a17e', speckle: 0.02 } },
+  { id: 'mosaic', name: '浴室小磚', pattern: 'tile', tile: 0.8, color: '#b7aa94', roughness: 0.6, options: { tiles: 16, grout: '#8f8574', speckle: 0.04 } },
 ];
 
 const BY_ID = new Map(FLOOR_MATERIALS.map((m) => [m.id, m]));
