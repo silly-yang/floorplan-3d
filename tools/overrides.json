@@ -188,6 +188,32 @@
         115
       ],
       "rotation": 180
+    },
+    {
+      "type": "water-heater",
+      "center": [
+        3574.55,
+        1922.7
+      ],
+      "size": [
+        35,
+        18,
+        60
+      ],
+      "rotation": 270
+    },
+    {
+      "type": "balcony-tap",
+      "center": [
+        3574.55,
+        1980.9
+      ],
+      "size": [
+        6,
+        18,
+        12
+      ],
+      "rotation": 270
     }
   ],
   "ceilingZones": [

@@ -177,6 +177,22 @@ const BUILDERS = {
     cylinder(g, [0.03, 0.03, 0.012, 16], [w * 0.15, h * 0.55 + 0.11, back + 0.07], chrome);
   },
 
+  // 背面貼牆（-d/2）：白色機身、前面板、上方排氣口、下方進出水管
+  'water-heater': (g, w, d, h, c) => {
+    box(g, [w, h, d], [0, h / 2, 0], c.main, 0.4);
+    box(g, [w * 0.6, h * 0.12, 0.004], [0, h * 0.62, d / 2 + 0.002], '#3a3d42', 0.3);
+    for (let i = 0; i < 4; i++) box(g, [w * 0.8, 0.006, 0.004], [0, h * 0.92 - i * 0.015, d / 2 + 0.002], c.dark);
+    for (const x of [-w * 0.25, 0, w * 0.25]) cylinder(g, [0.01, 0.01, 0.12, 10], [x, -0.06, -d / 2 + 0.05], '#9aa0a8');
+  },
+
+  'balcony-tap': (g, w, d, h, c) => {
+    const back = -d / 2;
+    box(g, [w, w, 0.02], [0, h / 2, back + 0.01], c.main, 0.2); // 牆座
+    box(g, [0.022, 0.022, d - 0.02], [0, h / 2, 0.01], c.main, 0.2); // 長出水管
+    cylinder(g, [0.008, 0.008, h / 2, 10], [0, h * 0.25, d / 2 - 0.01], c.main); // 出水口朝下
+    box(g, [0.05, 0.008, 0.012], [0, h * 0.95, back + 0.04], '#c0392b', 0.4); // 把手
+  },
+
   'shower-screen': (g, w, d, h) => {
     const glass = new THREE.Mesh(
       new THREE.BoxGeometry(w, h - 0.02, Math.max(d, 0.01)),

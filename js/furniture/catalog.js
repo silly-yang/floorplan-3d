@@ -76,6 +76,9 @@ export const CATALOG = [
   // 淋浴龍頭組：龍頭離地 100 cm，滑桿與頂噴到 215 cm；頂噴往前伸出約 35 cm
   // 淋浴龍頭組（頂噴＋手持）：龍頭離地 100 cm，滑桿與頂噴到 215 cm，頂噴往前伸出約 35 cm
   item('fixture', 'shower-set', '淋浴龍頭組', [25, 35, 115], '#c9ccd1', { placement: 'wall', mountHeight: 100 }),
+  // 陽台：屋外型瓦斯熱水器底部約離地 130 cm；長水栓（拖把、澆花用）約 70 cm
+  item('fixture', 'water-heater', '熱水器', [35, 18, 60], '#f1f1ee', { placement: 'wall', mountHeight: 130 }),
+  item('fixture', 'balcony-tap', '長水栓', [6, 18, 12], '#c9ccd1', { placement: 'wall', mountHeight: 70 }),
   item('fixture', 'basin', '洗手台', [60, 45, 85], '#f5f5f3'),
   item('light', 'downlight', '嵌燈', [10, 10, 2], '#f2f2f0', { placement: 'ceiling', power: [110, 9], light: { kind: 'spot', lumens: 800, beam: 36 } }),
   item('light', 'ceiling-light', '吸頂燈', [50, 50, 10], '#f6f5f2', { placement: 'ceiling', power: [110, 36], light: { kind: 'point', lumens: 3600 } }),

@@ -13,7 +13,7 @@ const REQUIRED_APPLIANCES = [
   'robot-vacuum', 'washing-machine', 'air-purifier', 'fan', 'floor-lamp',
   'air-fryer', 'oven', 'steam-oven', 'kettle', 'dishwasher', 'tv',
 ];
-const REQUIRED_FIXTURES = ['kitchen-counter', 'toilet', 'basin', 'upper-cabinet', 'shower-screen', 'shower-set'];
+const REQUIRED_FIXTURES = ['kitchen-counter', 'toilet', 'basin', 'upper-cabinet', 'shower-screen', 'shower-set', 'water-heater', 'balcony-tap'];
 const REQUIRED_ELECTRICAL = ['outlet-110', 'outlet-220', 'outlet-dedicated', 'switch', 'tv-jack', 'lan-jack'];
 const REQUIRED = [...REQUIRED_FURNITURE, ...REQUIRED_APPLIANCES, ...REQUIRED_FIXTURES, ...REQUIRED_ELECTRICAL];
 
@@ -261,3 +261,19 @@ test('電視櫃本身只是櫃子：大小不變，檯面可以放電視', () =>
   assert.equal(stand.surface, true);
   assert.equal(stand.power, undefined);
 });
+
+for (const [type, mountHeight] of [
+  ['water-heater', 130],
+  ['balcony-tap', 70],
+]) {
+  test(`${type} 是建商附的設備，掛牆、底部離地 ${mountHeight} cm`, () => {
+    // Act
+    const item = getCatalogItem(type);
+
+    // Assert
+    assert.ok(item, `目錄要有 ${type}`);
+    assert.equal(item.category, 'fixture');
+    assert.equal(item.placement, 'wall');
+    assert.equal(item.mountHeight, mountHeight);
+  });
+}
