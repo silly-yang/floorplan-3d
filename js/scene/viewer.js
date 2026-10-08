@@ -231,10 +231,11 @@ export class Viewer {
     if (this.mode === 'top') this.#animateTop(point, Math.min(MAX_TOP_ZOOM, this.ortho.zoom * 2));
   }
 
+  // 不論目前是俯視或漫遊，都回到一開始的 3D 視角與大小
   resetView() {
     this.savedView = null;
-    if (this.mode === 'top') this.#animateTop(this.center, 1);
-    else if (this.mode === 'orbit') this.#animateOrbit(this.#fitView());
+    this.setMode('orbit');
+    this.#animateOrbit(this.#fitView());
   }
 
   // item 需含 x、y、elevation、size；俯視時先切回 3D 才看得到正面

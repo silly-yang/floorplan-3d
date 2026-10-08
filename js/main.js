@@ -301,7 +301,7 @@ function toggleButton(icon, label, initial, onToggle, title) {
 }
 
 function setupStageTools(editor) {
-  const fullView = el('button', { class: 'btn', title: '回到看得到整間房子的視角（也可以雙擊畫面放大）' }, iconLabel('full-view', '全景'));
+  const fullView = el('button', { class: 'btn', title: '回到一開始的 3D 視角與大小（漫遊、俯視時也會切回 3D）' }, iconLabel('full-view', '回到原位'));
   fullView.addEventListener('click', () => editor.viewer.resetView());
   // 天花板在 3D／俯視會擋住視線，所以直接進漫遊從室內往上看
   const ceilingButton = el('button', { class: 'btn', title: '進入漫遊，從室內看天花板' }, iconLabel('ceiling', '天花板'));
