@@ -287,6 +287,13 @@ test('powerIssues 1.5 m 內有電壓相符的插座就不提醒', () => {
   assert.deepEqual(issuesOf(furniture), []);
 });
 
+for (const type of ['downlight', 'ceiling-light', 'pendant-light', 'track-light', 'linear-light']) {
+  test(`powerIssues 吸頂的 ${type} 由天花板直接配線，附近沒插座也不提醒`, () => {
+    // Act & Assert
+    assert.deepEqual(issuesOf([place(type, 'l', 1, 1, { elevation: 2.9 })]), []);
+  });
+}
+
 test('powerIssues 插座太遠時寫出最近的距離', () => {
   // Arrange：底面離插座 1.88 m
   const furniture = [place('air-purifier', 'p', 1, 2.2), outlet('o', 1, 0.17)];

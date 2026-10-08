@@ -210,7 +210,8 @@ export function powerIssues(design) {
   const furniture = design.furniture ?? [];
   const electrical = furniture.filter((f) => isElectrical(f.type));
   const outlets = electrical.filter((o) => outletSpec(o).voltage);
-  const appliances = furniture.filter((f) => getCatalogItem(f.type)?.power);
+  // 吸頂燈具接天花板的燈具迴路，不插插座
+  const appliances = furniture.filter((f) => getCatalogItem(f.type)?.power && getCatalogItem(f.type).placement !== 'ceiling');
   const candidates = blockers(furniture);
   return [
     ...appliances.flatMap((item) => applianceIssues(item, outlets, furniture)),
