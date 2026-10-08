@@ -1,0 +1,9 @@
+{
+  "name": "floorplan-3d",
+  "private": true,
+  "type": "module",
+  "description": "純靜態網站，不需要安裝套件；這個檔案只為了讓 node --test 以 ES module 載入 js/",
+  "scripts": {
+    "test": "node --test \"tests/js/**/*.test.js\""
+  }
+}

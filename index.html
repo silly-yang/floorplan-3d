@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>平面圖 3D 設計</title>
+    <link rel="stylesheet" href="css/app.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <header class="topbar">
+      <button class="icon-btn menu-toggle" id="menu-toggle" aria-label="開關側欄">☰</button>
+      <h1 class="brand">平面圖 3D 設計</h1>
+      <div class="scheme-bar" id="scheme-bar"></div>
+      <span class="save-status" id="save-status" aria-live="polite"></span>
+      <div class="topbar-actions">
+        <button class="btn" id="undo-btn" title="復原（Ctrl+Z）" disabled>↶ 復原</button>
+        <button class="btn" id="redo-btn" title="重做（Ctrl+Y）" disabled>↷ 重做</button>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar" id="sidebar">
+        <nav class="tabs" role="tablist">
+          <button role="tab" data-tab="furniture" aria-selected="true">家具</button>
+          <button role="tab" data-tab="floors">地板</button>
+          <button role="tab" data-tab="files">檔案</button>
+          <button role="tab" data-tab="cloud">雲端</button>
+        </nav>
+        <section class="tab-panel" data-panel="furniture">
+          <p class="hint-text">把家具拖進右側畫面放置；手機上點一下即可放到畫面中央。</p>
+          <ul class="catalog" id="catalog"></ul>
+        </section>
+        <section class="tab-panel" data-panel="floors" hidden>
+          <label class="field">
+            <span>樓高（公尺）</span>
+            <input type="number" id="ceiling-input" min="2" max="5" step="0.05" />
+          </label>
+          <h2 class="panel-title">各房間地板顏色</h2>
+          <ul class="room-list" id="room-list"></ul>
+        </section>
+        <section class="tab-panel" data-panel="files" hidden id="files-panel"></section>
+        <section class="tab-panel" data-panel="cloud" hidden id="cloud-panel"></section>
+      </aside>
+
+      <main class="stage" id="stage">
+        <div class="view-switch" role="group" aria-label="視角">
+          <button data-view="orbit" aria-pressed="true">3D</button>
+          <button data-view="top">俯視</button>
+          <button data-view="walk" class="walk-btn">漫遊</button>
+        </div>
+        <div class="stage-tools" id="stage-tools"></div>
+        <div class="walk-overlay" id="walk-overlay" hidden>
+          <p>點一下畫面開始漫遊</p>
+          <p class="small">W A S D 移動・滑鼠轉頭・Esc 離開</p>
+        </div>
+        <aside class="inspector" id="inspector" hidden></aside>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" hidden></div>
+    <dialog class="dialog" id="dialog"></dialog>
+    <div class="drop-zone" id="drop-zone" hidden><p>放開以匯入 .design.json</p></div>
+
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>
