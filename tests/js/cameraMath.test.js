@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createDoubleTapDetector, focusOn, zoomToward } from '../../js/core/cameraMath.js';
+import { createDoubleTapDetector, focusOn, walkStart, zoomToward } from '../../js/core/cameraMath.js';
 
 const v = (x, y, z) => ({ x, y, z });
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
@@ -66,3 +66,43 @@ for (const [name, taps, expected] of [
     assert.deepEqual(results, expected);
   });
 }
+
+// ---------- 漫遊起點 ----------
+
+const room = (id, rects) => ({ id, name: id, rects });
+
+test('walkStart 從面積最大的房間開始，站在最大一塊矩形長邊的 20% 處，面向另一端', () => {
+  // Arrange：客廳 4×2（東西向較長）比臥室 3×2 大
+  const rooms = [room('bed', [[10, 0, 13, 2]]), room('living', [[0, 0, 4, 2], [0, 2, 1, 2.5]])];
+
+  // Act
+  const start = walkStart(rooms);
+
+  // Assert：平面 (0.8, 1) → 世界 z = -1；朝 +x 看是 yaw -π/2
+  assert.ok(close(start.x, 0.8), `${start.x}`);
+  assert.ok(close(start.z, -1), `${start.z}`);
+  assert.ok(close(start.yaw, -Math.PI / 2), `${start.yaw}`);
+});
+
+test('walkStart 南北向較長的矩形從南端出發、面向北（yaw 0）', () => {
+  // Act
+  const start = walkStart([room('hall', [[0, 0, 2, 5]])]);
+
+  // Assert：平面 (1, 1) → 世界 z = -1
+  assert.ok(close(start.x, 1), `${start.x}`);
+  assert.ok(close(start.z, -1), `${start.z}`);
+  assert.ok(close(start.yaw, 0), `${start.yaw}`);
+});
+
+test('walkStart 房間面積以所有矩形加總比較，不是只看最大的一塊', () => {
+  // Arrange：A 單塊 3×1＝3；B 兩塊 2×1＋2×1＝4
+  const rooms = [room('a', [[0, 0, 3, 1]]), room('b', [[10, 0, 12, 1], [10, 1, 12, 2]])];
+
+  // Act & Assert
+  assert.ok(walkStart(rooms).x >= 10);
+});
+
+test('walkStart 沒有房間時回 null', () => {
+  // Act & Assert
+  assert.equal(walkStart([]), null);
+});

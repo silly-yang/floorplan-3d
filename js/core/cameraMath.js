@@ -41,3 +41,18 @@ export function createDoubleTapDetector({ maxDelay = 320, maxDistance = 24 } = {
     },
   };
 }
+
+const WALK_START_RATIO = 0.2; // 站在長邊這個比例處，看向另一端，視野裡的天花板最多
+
+const rectArea = ([x0, y0, x1, y1]) => (x1 - x0) * (y1 - y0);
+
+// 漫遊起點：面積最大的房間裡最大的一塊矩形；回傳世界座標 { x, z, yaw }，沒有房間回 null
+export function walkStart(rooms) {
+  const areaOf = (room) => room.rects.reduce((s, r) => s + rectArea(r), 0);
+  const biggest = rooms.reduce((best, room) => (best === null || areaOf(room) > areaOf(best) ? room : best), null);
+  if (!biggest) return null;
+  const [x0, y0, x1, y1] = biggest.rects.reduce((best, r) => (rectArea(r) > rectArea(best) ? r : best));
+  // yaw 0 看向平面的 +y（世界 -z）；-π/2 看向 +x
+  if (x1 - x0 >= y1 - y0) return { x: x0 + (x1 - x0) * WALK_START_RATIO, z: -(y0 + y1) / 2, yaw: -Math.PI / 2 };
+  return { x: (x0 + x1) / 2, z: -(y0 + (y1 - y0) * WALK_START_RATIO), yaw: 0 };
+}

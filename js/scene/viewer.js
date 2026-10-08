@@ -10,6 +10,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { focusOn, zoomToward } from '../core/cameraMath.js';
 
 const EYE_HEIGHT = 1.6;
+const CEILING_PITCH = 0.55; // 看天花板時抬頭約 30°
 const ANIMATION_SECONDS = 0.55;
 const MAX_TOP_ZOOM = 8;
 const WALK_SPEED = 1.6; // 公尺／秒
@@ -151,9 +152,10 @@ export class Viewer {
     this.orbit.enabled = mode === 'orbit';
     this.topControls.enabled = mode === 'top';
     if (mode === 'walk') {
-      // 從房子中央、視線朝北開始
-      this.walkCamera.position.set(this.center.x, EYE_HEIGHT, this.center.z);
-      this.walkCamera.rotation.set(0, 0, 0);
+      // 從最大房間的一端看向另一端（walkStart 由外部設定）；沒有就從房子中央朝北
+      const start = this.walkStart ?? { x: this.center.x, z: this.center.z, yaw: 0 };
+      this.walkCamera.position.set(start.x, EYE_HEIGHT, start.z);
+      this.walkCamera.rotation.set(0, start.yaw, 0, 'YXZ');
     }
     this.resize();
     this.#rebuildComposer();
@@ -229,6 +231,12 @@ export class Viewer {
   zoomAt(point) {
     if (this.mode === 'orbit') this.#animateOrbit(zoomToward(this.perspective.position, this.orbit.target, point));
     if (this.mode === 'top') this.#animateTop(point, Math.min(MAX_TOP_ZOOM, this.ortho.zoom * 2));
+  }
+
+  // 進漫遊並抬頭，天花板佔滿畫面；已在漫遊時只抬頭，不換位置
+  lookAtCeiling() {
+    this.setMode('walk');
+    this.walkCamera.rotation.set(CEILING_PITCH, this.walkCamera.rotation.y, 0, 'YXZ');
   }
 
   // 不論目前是俯視或漫遊，都回到一開始的 3D 視角與大小

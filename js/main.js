@@ -13,6 +13,7 @@ import { relevelLights } from './core/lighting.js';
 import { CEILING_TYPES, ceilingStateOf, ceilingZones } from './core/ceilings.js';
 import { mountSurfaces, outletsToFurniture } from './core/electrical.js';
 import { FLOOR_MATERIALS, floorMaterialOf } from './core/materials.js';
+import { walkStart } from './core/cameraMath.js';
 import { buildHouse, disposeObject, floorColorOf } from './scene/house.js';
 import { textureThumbnail } from './scene/textures.js';
 import { Viewer } from './scene/viewer.js';
@@ -305,7 +306,7 @@ function setupStageTools(editor) {
   fullView.addEventListener('click', () => editor.viewer.resetView());
   // 天花板在 3D／俯視會擋住視線，所以直接進漫遊從室內往上看
   const ceilingButton = el('button', { class: 'btn', title: '進入漫遊，從室內看天花板' }, iconLabel('ceiling', '天花板'));
-  ceilingButton.addEventListener('click', () => editor.viewer.setMode('walk'));
+  ceilingButton.addEventListener('click', () => editor.viewer.lookAtCeiling());
   $('#stage-tools').replaceChildren(
     fullView,
     toggleButton('high-quality', '高畫質', editor.viewer.highQuality, (on) => editor.viewer.setHighQuality(on), '牆角、家具底下的柔和陰影；手機較慢可關閉'),
@@ -371,6 +372,7 @@ async function main() {
   const { session, warnings, persistent } = openSession(store, floorplanRef, makeStatusHandler(() => exportAll), defaultFurniture);
   const getSolids = makeSolidsGetter(floorplan, store);
   const viewer = new Viewer($('#stage'), floorplan.bounds);
+  viewer.walkStart = walkStart(floorplan.rooms);
   viewer.canWalkTo = makeWalkCollision(getSolids, floorplan, store);
   setupViewSwitch(viewer);
   setupHouse(floorplan, viewer, store);
