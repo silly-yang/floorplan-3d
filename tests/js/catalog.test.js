@@ -12,7 +12,7 @@ const REQUIRED_APPLIANCES = [
   'robot-vacuum', 'washing-machine', 'air-purifier', 'fan', 'floor-lamp',
   'air-fryer', 'oven', 'steam-oven', 'kettle', 'dishwasher',
 ];
-const REQUIRED_FIXTURES = ['kitchen-counter', 'toilet', 'basin', 'upper-cabinet', 'shower-screen'];
+const REQUIRED_FIXTURES = ['kitchen-counter', 'toilet', 'basin', 'upper-cabinet', 'shower-screen', 'shower-set'];
 const REQUIRED_ELECTRICAL = ['outlet-110', 'outlet-220', 'outlet-dedicated', 'switch', 'tv-jack', 'lan-jack'];
 const REQUIRED = [...REQUIRED_FURNITURE, ...REQUIRED_APPLIANCES, ...REQUIRED_FIXTURES, ...REQUIRED_ELECTRICAL];
 
@@ -224,3 +224,14 @@ for (const [name, input, expected] of [
     assert.equal(normalizeSizeValue(input, [8, 30]), expected);
   });
 }
+
+test('淋浴龍頭組（頂噴＋手持）掛在牆上，龍頭離地 100 cm、頂噴約 215 cm', () => {
+  // Act
+  const shower = getCatalogItem('shower-set');
+
+  // Assert
+  assert.equal(shower.category, 'fixture');
+  assert.equal(shower.placement, 'wall');
+  assert.equal(shower.mountHeight, 100);
+  assert.equal(shower.mountHeight + shower.size.h, 215);
+});

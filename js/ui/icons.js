@@ -42,6 +42,7 @@ export const ICONS = {
   'custom-pegboard': 'M3 4h18v15H3zM7 8h.01M12 8h.01M17 8h.01M7 12h.01M12 12h.01M6 15.5h6M16 11v3a1.5 1.5 0 0 0 3 0',
   'kitchen-counter': 'M2 10h20v10H2zM2 13h20M6 7h3v3M5 7h5M15 10.5h4M14 16h2M8 16h2',
   'upper-cabinet': 'M3 4h18v8H3zM12 4v8M9.5 9h.01M14.5 9h.01M3 20h18M5 16h14',
+  'shower-set': 'M6 21V5h6M12 5v2M8 9h8M9 12v1M12 12v2M15 12v1M4 16h4',
   'shower-screen': 'M5 3v18M19 3v18M5 4h14M5 20h14M9 7l4 4M9 11l6 6M16 8h.01',
   toilet: 'M7 3h7v6H7zM5 9h11c0 4-3 6-5.5 6S5 13 5 9zM8 15l-1 6h8l-1-6',
   basin: 'M4 9h16a8 5 0 0 1-16 0zM12 9V5h3M9 14v7M15 14v7',

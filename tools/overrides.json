@@ -175,6 +175,19 @@
         200
       ],
       "rotation": 90
+    },
+    {
+      "type": "shower-set",
+      "center": [
+        4016.8,
+        1506.5
+      ],
+      "size": [
+        25,
+        35,
+        115
+      ],
+      "rotation": 180
     }
   ],
   "ceilingZones": [

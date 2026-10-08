@@ -70,6 +70,9 @@ export const CATALOG = [
   item('fixture', 'toilet', '馬桶', [40, 70, 75], '#fafafa'),
   item('fixture', 'upper-cabinet', '吊櫃', [225, 35, 70], '#f0ece4', { placement: 'wall', mountHeight: 145 }),
   item('fixture', 'shower-screen', '淋浴拉門', [105, 2, 200], '#cfe3ee'),
+  // 淋浴龍頭組：龍頭離地 100 cm，滑桿與頂噴到 215 cm；頂噴往前伸出約 35 cm
+  // 淋浴龍頭組（頂噴＋手持）：龍頭離地 100 cm，滑桿與頂噴到 215 cm，頂噴往前伸出約 35 cm
+  item('fixture', 'shower-set', '淋浴龍頭組', [25, 35, 115], '#c9ccd1', { placement: 'wall', mountHeight: 100 }),
   item('fixture', 'basin', '洗手台', [60, 45, 85], '#f5f5f3'),
   item('light', 'downlight', '嵌燈', [10, 10, 2], '#f2f2f0', { placement: 'ceiling', power: [110, 9], light: { kind: 'spot', lumens: 800, beam: 36 } }),
   item('light', 'ceiling-light', '吸頂燈', [50, 50, 10], '#f6f5f2', { placement: 'ceiling', power: [110, 36], light: { kind: 'point', lumens: 3600 } }),

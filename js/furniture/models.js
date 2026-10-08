@@ -156,6 +156,19 @@ const BUILDERS = {
     }
   },
 
+  // 原點在龍頭底部、背面貼牆（-d/2）；立管沿牆往上，頂端彎出頂噴，中段掛手持蓮蓬頭
+  'shower-set': (g, w, d, h, c) => {
+    const back = -d / 2;
+    const chrome = '#c9ccd1';
+    box(g, [w * 0.6, 0.08, 0.06], [0, 0.04, back + 0.03], chrome, 0.2); // 龍頭本體
+    cylinder(g, [0.012, 0.012, 0.06, 12], [w * 0.22, 0.04, back + 0.09], chrome).rotation.x = Math.PI / 2; // 把手朝前
+    cylinder(g, [0.012, 0.012, h - 0.06, 12], [-w * 0.3, (h + 0.06) / 2, back + 0.03], chrome); // 立管
+    box(g, [0.015, 0.015, d - 0.05], [-w * 0.3, h - 0.01, 0.0], chrome, 0.2); // 頂噴橫臂
+    cylinder(g, [w * 0.45, w * 0.45, 0.012, 32], [-w * 0.3 + 0.0, h - 0.025, d / 2 - w * 0.45], chrome); // 頂噴盤
+    cylinder(g, [0.022, 0.016, 0.22, 16], [w * 0.15, h * 0.55, back + 0.06], c.dark); // 手持蓮蓬頭
+    cylinder(g, [0.03, 0.03, 0.012, 16], [w * 0.15, h * 0.55 + 0.11, back + 0.07], chrome);
+  },
+
   'shower-screen': (g, w, d, h) => {
     const glass = new THREE.Mesh(
       new THREE.BoxGeometry(w, h - 0.02, Math.max(d, 0.01)),
