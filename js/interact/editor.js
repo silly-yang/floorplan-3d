@@ -14,7 +14,8 @@ import {
 } from '../core/layout.js';
 import { createDoubleTapDetector } from '../core/cameraMath.js';
 import { doorStateOf } from '../core/doors.js';
-import { createFurniture } from '../furniture/catalog.js';
+import { createFurniture, getCatalogItem } from '../furniture/catalog.js';
+import { initialElevation } from '../core/mounting.js';
 import { placeCabinet } from '../core/cabinet.js';
 import { FURNITURE_MIME } from '../ui/catalogPanel.js';
 import { toast } from '../ui/dom.js';
@@ -285,7 +286,9 @@ export class Editor {
     const target = point ?? this.screenToPlan(rect.left + rect.width / 2, rect.top + rect.height / 2);
     if (!target) return;
     const [x, y] = this.#snapped(target);
-    const item = createFurniture(type, { id: newId(), x, y });
+    // 吸頂、掛牆的東西放置時就定好離地高度
+    const elevation = initialElevation(getCatalogItem(type), this.store.getState().ceilingHeight);
+    const item = { ...createFurniture(type, { id: newId(), x, y }), ...(elevation === undefined ? {} : { elevation }) };
     const solids = this.getSolids();
     const spot = findFreeSpot(item, solids);
     if (!spot) {

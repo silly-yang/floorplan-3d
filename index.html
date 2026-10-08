@@ -34,6 +34,7 @@
           <button role="tab" data-tab="appliance" data-icon="tab-appliance"><span>家電</span></button>
           <button role="tab" data-tab="fixture" data-icon="tab-fixture"><span>廚衛</span></button>
           <button role="tab" data-tab="cabinet" data-icon="custom-cabinet"><span>櫃子</span></button>
+          <button role="tab" data-tab="network" data-icon="tab-network"><span>網路</span></button>
           <button role="tab" data-tab="floors" data-icon="tab-floor"><span>空間</span></button>
           <button role="tab" data-tab="files" data-icon="tab-files"><span>檔案</span></button>
         </nav>
@@ -51,6 +52,13 @@
           <ul class="catalog" id="catalog-fixture"></ul>
         </section>
         <section class="tab-panel" data-panel="cabinet" hidden id="cabinet-panel"></section>
+        <section class="tab-panel" data-panel="network" hidden>
+          <p class="hint-text">路由器、Mesh 拖到桌面或電視櫃上；吸頂 AP 會貼在天花板、弱電箱掛在牆上 1.5 公尺。按左下「WiFi 熱圖」看訊號分布。</p>
+          <ul class="catalog" id="catalog-network"></ul>
+          <h2 class="panel-title">各房間訊號</h2>
+          <p class="hint-text">以 2.4 GHz、穿牆損失估算（RC 牆 12 dB、輕隔間 4 dB、柱 15 dB、窗 3 dB），僅供比較擺放位置。</p>
+          <ul class="room-list" id="wifi-ratings"></ul>
+        </section>
         <section class="tab-panel" data-panel="floors" hidden>
           <label class="field">
             <span>室內淨高（公尺）</span>
