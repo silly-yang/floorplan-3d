@@ -6,15 +6,18 @@ export const CATEGORIES = [
   { id: 'furniture', name: '家具' },
   { id: 'appliance', name: '家電' },
   { id: 'fixture', name: '廚衛' },
+  { id: 'light', name: '照明' },
 ];
 
 // placement：floor 只能放地上；surface 可以放地上，也可以放到有檯面（surface: true）的家具上
 // allowOverlap：地毯本來就壓在其他家具底下，不算重疊
 // power：電壓（110／220）與瓦數；vent：上方建議保留的散熱空間（公分），放進櫃子時檢查
 // mountHeight：掛牆家具（吊櫃）的固定離地高度（公分）
-const item = (category, type, name, [w, d, h], color, { placement = 'floor', surface = false, allowOverlap = false, power, vent, mountHeight } = {}) => ({
+// light：燈具的光源參數（kind：spot 朝下聚光／point 四散／linear 長條；lumens 光通量；beam 光束角°）
+const item = (category, type, name, [w, d, h], color, { placement = 'floor', surface = false, allowOverlap = false, power, vent, mountHeight, light } = {}) => ({
   category, type, name, size: { w, d, h }, color, placement, surface, allowOverlap,
   ...(mountHeight ? { mountHeight } : {}),
+  ...(light ? { light } : {}),
   ...(power ? { power: { voltage: power[0], watts: power[1] }, vent: vent ?? 0 } : {}),
 });
 
@@ -55,6 +58,11 @@ export const CATALOG = [
   item('fixture', 'upper-cabinet', '吊櫃', [225, 35, 70], '#f0ece4', { placement: 'wall', mountHeight: 145 }),
   item('fixture', 'shower-screen', '淋浴拉門', [105, 2, 200], '#cfe3ee'),
   item('fixture', 'basin', '洗手台', [60, 45, 85], '#f5f5f3'),
+  item('light', 'downlight', '嵌燈', [10, 10, 2], '#f2f2f0', { placement: 'ceiling', power: [110, 9], light: { kind: 'spot', lumens: 800, beam: 36 } }),
+  item('light', 'ceiling-light', '吸頂燈', [50, 50, 10], '#f6f5f2', { placement: 'ceiling', power: [110, 36], light: { kind: 'point', lumens: 3600 } }),
+  item('light', 'pendant-light', '吊燈', [35, 35, 30], '#3b3f45', { placement: 'ceiling', power: [110, 15], light: { kind: 'point', lumens: 1200 } }),
+  item('light', 'track-light', '軌道燈', [120, 8, 15], '#2b2d31', { placement: 'ceiling', power: [110, 28], light: { kind: 'spot', lumens: 2400, beam: 24 } }),
+  item('light', 'linear-light', '線燈', [120, 4, 4], '#e9e9e6', { placement: 'ceiling', power: [110, 18], light: { kind: 'linear', lumens: 1800 } }),
 ];
 
 const BY_TYPE = new Map(CATALOG.map((item) => [item.type, item]));

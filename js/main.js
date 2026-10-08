@@ -8,6 +8,8 @@ import { Editor } from './interact/editor.js';
 import { DoorLayer } from './scene/doorLayer.js';
 import { exportGlb, exportPng } from './scene/exporters.js';
 import { FurnitureLayer } from './scene/furnitureLayer.js';
+import { LightLayer } from './scene/lightLayer.js';
+import { relevelLights } from './core/lighting.js';
 import { CEILING_TYPES, ceilingStateOf, ceilingZones } from './core/ceilings.js';
 import { FLOOR_MATERIALS, floorMaterialOf } from './core/materials.js';
 import { buildHouse, disposeObject, floorColorOf } from './scene/house.js';
@@ -193,7 +195,7 @@ function setupFloorPanel(floorplan, store) {
       ceiling.value = store.getState().ceilingHeight;
       return;
     }
-    store.commit({ ...store.getState(), ceilingHeight: value });
+    store.commit(relevelLights({ ...store.getState(), ceilingHeight: value }, floorplan));
   });
   store.subscribe((design, { source }) => {
     // 拖拉顏色時不要重建清單，否則會把正在用的取色器關掉
@@ -209,7 +211,7 @@ function setupCeilingPanel(floorplan, store, showCeiling) {
   const update = (zoneId, patch) => {
     const design = store.getState();
     const current = ceilingStateOf(design.ceilings, zoneId, floorplan);
-    store.commit({ ...design, ceilings: { ...design.ceilings, [zoneId]: { ...current, ...patch } } });
+    store.commit(relevelLights({ ...design, ceilings: { ...design.ceilings, [zoneId]: { ...current, ...patch } } }, floorplan));
     showCeiling();
   };
   const render = (design) => {
@@ -388,9 +390,14 @@ async function main() {
   const doorLayer = new DoorLayer(viewer.scene, floorplan);
   store.subscribe((design) => doorLayer.sync(design.doors));
   doorLayer.sync(store.getState().doors);
+  // 要在家具圖層之後同步：模型重建後才換得到發光面材質
+  const lightLayer = new LightLayer(viewer.scene, furnitureLayer, floorplan);
+  store.subscribe((design) => lightLayer.sync(design));
+  lightLayer.sync(store.getState());
   viewer.onFrame((dt) => {
     doorLayer.update(dt);
     furnitureLayer.update(dt);
+    lightLayer.update();
   });
   const editor = new Editor({ viewer, store, furnitureLayer, doorLayer, floorplan, getSolids });
   renderCatalog({
@@ -403,6 +410,7 @@ async function main() {
   setupInspector(editor, getSolids, { editCabinet: cabinetPanel.edit });
   setupDoorPanel(editor, floorplan);
   setupStageTools(editor, houseView);
+  $('#stage-tools').append(toggleButton('day-night', '夜晚', false, (on) => lightLayer.setNight(on), '關掉日光，看燈具開起來的效果'));
   // 改了天花板就自動打開天花板顯示，才看得到改了什麼
   setupCeilingPanel(floorplan, store, () => {
     const toggle = [...document.querySelectorAll('#stage-tools button')].find((b) => b.textContent.includes('天花板'));

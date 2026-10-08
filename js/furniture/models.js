@@ -263,7 +263,50 @@ const BUILDERS = {
       g.add(mesh);
     }
   },
+
+  // ---------- 照明：原點在燈具底面，頂面貼天花板；發光面由 lightLayer 依開關與色溫換材質 ----------
+  downlight: (g, w, d, h, c) => {
+    const r = Math.min(w, d) / 2;
+    cylinder(g, [r, r, h, 24], [0, h / 2, 0], c.main);
+    lightFace(cylinder(g, [r * 0.72, r * 0.72, 0.004, 24], [0, -0.001, 0], '#ffffff'));
+  },
+
+  'ceiling-light': (g, w, d, h, c) => {
+    const r = Math.min(w, d) / 2;
+    cylinder(g, [r, r, h * 0.25, 32], [0, h * 0.875, 0], c.dark);
+    lightFace(cylinder(g, [r * 0.97, r * 0.8, h * 0.75, 32], [0, h * 0.375, 0], '#ffffff'));
+  },
+
+  // 吊線長度跟天花板高度有關，由 lightLayer 另外畫
+  'pendant-light': (g, w, d, h, c) => {
+    const r = Math.min(w, d) / 2;
+    cylinder(g, [0.03, 0.03, 0.04, 12], [0, h - 0.02, 0], c.main);
+    cylinder(g, [r * 0.2, r, h - 0.04, 24], [0, (h - 0.04) / 2, 0], c.main);
+    // 燈罩是實心的，發光面貼在燈罩口下方，從底下往上看才看得到亮
+    lightFace(cylinder(g, [r * 0.9, r * 0.9, 0.004, 24], [0, -0.001, 0], '#ffffff'));
+  },
+
+  'track-light': (g, w, d, h, c) => {
+    box(g, [w, 0.03, Math.min(d, 0.04)], [0, h - 0.015, 0], c.main, 0.4);
+    const count = Math.max(2, Math.round(w / 0.4));
+    for (let k = 0; k < count; k++) {
+      const x = -w / 2 + (w * (k + 0.5)) / count;
+      cylinder(g, [0.006, 0.006, h * 0.3, 6], [x, h - 0.03 - h * 0.15, 0], c.main);
+      cylinder(g, [0.03, 0.035, h * 0.55, 16], [x, h * 0.3, 0], c.main);
+      lightFace(cylinder(g, [0.026, 0.026, 0.004, 16], [x, 0.02, 0], '#ffffff'));
+    }
+  },
+
+  'linear-light': (g, w, d, h, c) => {
+    box(g, [w, h * 0.7, d], [0, h * 0.65, 0], c.main, 0.4);
+    lightFace(box(g, [w * 0.98, h * 0.3, d * 0.8], [0, h * 0.15, 0], '#ffffff'));
+  },
 };
+
+function lightFace(mesh) {
+  mesh.userData.lightFace = true;
+  return mesh;
+}
 
 // 櫃體＋踢腳內縮＋檯面＋門板分隔；中島櫃與廚具共用
 function counterBody(g, w, d, h, c, { top }) {

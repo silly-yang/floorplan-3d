@@ -404,6 +404,11 @@ select {
   font-size: 13px;
 }
 
+.inspector .light-issue {
+  color: var(--danger);
+  font-size: 13px;
+}
+
 .inspector .metric {
   color: var(--muted);
   font-size: 13px;

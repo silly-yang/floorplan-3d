@@ -15,8 +15,8 @@ const REQUIRED_FIXTURES = ['kitchen-counter', 'toilet', 'basin', 'upper-cabinet'
 const REQUIRED = [...REQUIRED_FURNITURE, ...REQUIRED_APPLIANCES, ...REQUIRED_FIXTURES];
 
 test('目錄包含需求列出的家具與家電，每種都有中文名稱與正數尺寸', () => {
-  // Act：自己設計的系統櫃（custom）不在一般清單裡，另外檢查
-  const types = CATALOG.filter((c) => c.category !== 'custom').map((c) => c.type);
+  // Act：自己設計的系統櫃（custom）不在一般清單裡；照明（light）由 lighting.test.js 檢查
+  const types = CATALOG.filter((c) => !['custom', 'light'].includes(c.category)).map((c) => c.type);
 
   // Assert
   assert.deepEqual([...types].sort(), [...REQUIRED].sort());
