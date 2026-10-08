@@ -2,8 +2,11 @@
 import { createStore } from './app/store.js';
 import { buildSolids, validateFloorplan } from './core/floorplan.js';
 import { pointInPolygon, pointSegmentDistance } from './core/geometry2d.js';
+import { createFurniture } from './furniture/catalog.js';
+import { FurnitureLayer } from './scene/furnitureLayer.js';
 import { buildHouse, disposeObject, floorColorOf } from './scene/house.js';
 import { Viewer } from './scene/viewer.js';
+import { renderCatalog } from './ui/catalogPanel.js';
 import { $, alertDialog, el } from './ui/dom.js';
 
 const WALKER_RADIUS = 0.2;
@@ -118,7 +121,16 @@ async function main() {
   setupViewSwitch(viewer);
   setupHouse(floorplan, viewer, store);
   setupFloorPanel(floorplan, store);
-  window.__app = { store, viewer, floorplan };
+  const furnitureLayer = new FurnitureLayer(viewer.scene);
+  store.subscribe((design) => furnitureLayer.sync(design.furniture));
+  renderCatalog({
+    onAdd: (type) => {
+      const design = store.getState();
+      const item = createFurniture(type, { id: crypto.randomUUID(), x: floorplan.bounds.width / 2, y: floorplan.bounds.depth / 2 });
+      store.commit({ ...design, furniture: [...design.furniture, item] });
+    },
+  });
+  window.__app = { store, viewer, floorplan, furnitureLayer };
 }
 
 main();
