@@ -2,6 +2,7 @@
 export const TV_INCHES = [43, 50, 55, 65, 75, 85];
 export const TV_DEFAULTS = { inch: 55, mount: 'stand', centerHeight: 110 };
 export const CENTER_HEIGHT_LIMITS = [60, 200];
+export const INCH_LIMITS = [32, 100];
 
 const TV_WATTS = { 43: 80, 50: 100, 55: 120, 65: 160, 75: 220, 85: 300 };
 const BEZEL = 1; // 邊框合計約 1 cm
@@ -28,8 +29,16 @@ export function tvSize(inch, mount) {
   return mount === 'wall' ? { w, d: DEPTH.wall, h } : { w, d: DEPTH.stand, h: h + STAND_LIFT };
 }
 
+// 表上的吋數照表；表與表之間線性內插；超出表的範圍依螢幕面積比例推算，取到 5 W
 export function tvWatts(inch) {
-  return TV_WATTS[inch];
+  if (TV_WATTS[inch]) return TV_WATTS[inch];
+  const known = Object.keys(TV_WATTS).map(Number).sort((a, b) => a - b);
+  const to5 = (w) => Math.round(w / 5) * 5;
+  const lo = known.filter((k) => k < inch).pop();
+  const hi = known.find((k) => k > inch);
+  if (lo === undefined) return to5(TV_WATTS[hi] * (inch / hi) ** 2);
+  if (hi === undefined) return to5(TV_WATTS[lo] * (inch / lo) ** 2);
+  return to5(TV_WATTS[lo] + ((TV_WATTS[hi] - TV_WATTS[lo]) * (inch - lo)) / (hi - lo));
 }
 
 // 壁掛底部離地（公尺）＝螢幕中心高度 − 機身高的一半
@@ -56,6 +65,7 @@ export function tvChange(item, patch) {
   const options = { ...current, ...patch };
   const [lo, hi] = CENTER_HEIGHT_LIMITS;
   options.centerHeight = Math.min(hi, Math.max(lo, Math.round(options.centerHeight)));
+  options.inch = Math.min(INCH_LIMITS[1], Math.max(INCH_LIMITS[0], Math.round(options.inch)));
   const size = tvSize(options.inch, options.mount);
   const forward = (size.d - item.size.d) / 200;
   const rad = (item.rotation * Math.PI) / 180;

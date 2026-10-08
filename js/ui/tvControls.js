@@ -1,5 +1,5 @@
 // 屬性面板裡的電視設定：吋數、放置方式、壁掛中心高度、觀看距離；不是電視時回傳空陣列
-import { CENTER_HEIGHT_LIMITS, TV_INCHES, nearestSeatDistance, tvOptionsOf, tvWatts, viewingDistance } from '../core/tv.js';
+import { CENTER_HEIGHT_LIMITS, INCH_LIMITS, TV_INCHES, nearestSeatDistance, tvOptionsOf, tvSize, tvWatts, viewingDistance } from '../core/tv.js';
 import { el } from './dom.js';
 
 const MOUNTS = [
@@ -40,6 +40,21 @@ function centerHeightField(editor, centerHeight) {
   return el('label', { class: 'field' }, el('span', {}, `螢幕中心離地（${min}～${max} 公分）`), input);
 }
 
+// 吋數：可以直接填（例如 60 吋），旁邊是常見吋數的快選
+function inchField(editor, inch) {
+  const [min, max] = INCH_LIMITS;
+  const input = el('input', { type: 'number', min: String(min), max: String(max), step: '1', value: String(inch), class: 'tv-inch-input' });
+  input.addEventListener('change', () => {
+    const value = Number(input.value);
+    if (input.value === '' || !Number.isFinite(value)) {
+      input.value = String(tvOptionsOf(editor.selected).inch);
+      return;
+    }
+    editor.setTvOptions({ inch: value });
+  });
+  return el('label', { class: 'field' }, el('span', {}, `尺寸（${min}～${max} 吋）`), input);
+}
+
 export function tvControls(editor, item) {
   if (item.type !== 'tv') return [];
   const { inch, mount, centerHeight } = tvOptionsOf(item);
@@ -56,7 +71,9 @@ export function tvControls(editor, item) {
       ? `離沙發太遠，${inch} 吋建議 ${m(view.max)} m 內，或換大一點的吋數`
       : null;
   return [
-    choices('吋數', TV_INCHES.map((n) => [n, `${n}"`]), inch, (n) => editor.setTvOptions({ inch: n })),
+    inchField(editor, inch),
+    choices('常見尺寸', TV_INCHES.map((n) => [n, `${n} 吋`]), inch, (n) => editor.setTvOptions({ inch: n })),
+    el('p', { class: 'metric' }, `機身 ${tvSize(inch, 'wall').w} × ${tvSize(inch, 'wall').h} cm（不含腳座）`),
     choices('放置方式', MOUNTS, mount, (id) => editor.setTvOptions({ mount: id })),
     mount === 'wall' ? centerHeightField(editor, centerHeight) : null,
     el('p', { class: 'metric' }, `建議觀看距離 ${m(view.min)}～${m(view.max)} m（4K）`),

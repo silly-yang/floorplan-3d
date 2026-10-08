@@ -70,7 +70,7 @@ export function setupInspector(editor, getSolids, { editCabinet, editPegboard } 
 
     const sizeInputs = DIMENSIONS.map(([key, label]) => {
       const limits = sizeLimitsOf(item.type, key, editor.store.getState().ceilingHeight);
-      const input = el('input', { type: 'number', min: String(limits[0]), max: String(limits[1]), step: '1', value: String(item.size[key]) });
+      const input = el('input', { type: 'number', class: 'size-input', min: String(limits[0]), max: String(limits[1]), step: '1', value: String(item.size[key]) });
       input.addEventListener('change', () => {
         const value = normalizeSizeValue(input.value, limits);
         const current = editor.selected;
@@ -105,7 +105,7 @@ export function setupInspector(editor, getSolids, { editCabinet, editPegboard } 
       ? [iconButton('rename', '編輯櫃子設計', '尺寸、隔板、插座、格內家電', () => editCabinet?.(cabinet), 'primary block')]
       : pegboard
         ? [iconButton('rename', '編輯洞洞板設計', '尺寸、材質、掛牆高度、板上配件', () => editPegboard?.(pegboard), 'primary block')]
-        : [...sizeInputs, el('label', { class: 'field' }, el('span', {}, '顏色'), color)];
+        : [...(item.type === 'tv' ? [] : sizeInputs), el('label', { class: 'field' }, el('span', {}, '顏色'), color)]; // 電視的尺寸由吋數決定
     panel.replaceChildren(
       title,
       ...body,
@@ -165,7 +165,7 @@ export function setupInspector(editor, getSolids, { editCabinet, editPegboard } 
           : '';
     panel.querySelector('.warn').textContent = editor.conflicts.has(item.id) ? '⚠ 與其他家具重疊' : '';
     DIMENSIONS.forEach(([key], i) => {
-      const input = panel.querySelectorAll('input[type=number]')[i];
+      const input = panel.querySelectorAll('.size-input')[i];
       if (input && document.activeElement !== input) input.value = item.size[key];
     });
     const color = panel.querySelector('input[type=color]');

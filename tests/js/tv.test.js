@@ -183,3 +183,35 @@ test('tvChange 不修改原物件', () => {
   // Assert
   assert.deepEqual(tv, before);
 });
+
+// ---------- 自訂吋數 ----------
+
+const tvItem = (options = {}) => ({ id: 't', type: 'tv', x: 2, y: 2, rotation: 0, size: tvSize(55, 'stand'), color: '#1d1f22', options });
+
+for (const [name, inch, expected] of [
+  ['表上沒有的 60 吋照填', 60, 60],
+  ['小數四捨五入', 54.6, 55],
+  ['超過 100 吋夾到 100', 120, 100],
+  ['小於 32 吋夾到 32', 20, 32],
+]) {
+  test(`tvChange ${name}`, () => {
+    // Act
+    const change = tvChange(tvItem(), { inch });
+
+    // Assert
+    assert.equal(change.options.inch, expected);
+    assert.deepEqual(change.size, tvSize(expected, 'stand'));
+  });
+}
+
+for (const [name, inch, expected] of [
+  ['表上的吋數照表', 65, 160],
+  ['兩個吋數之間線性內插', 60, 140],
+  ['比表上最小還小時依面積比例縮小', 32, 45],
+  ['比表上最大還大時依面積比例放大', 100, 415],
+]) {
+  test(`tvWatts ${name}`, () => {
+    // Act & Assert
+    assert.equal(tvWatts(inch), expected);
+  });
+}
